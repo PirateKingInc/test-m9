@@ -1,3 +1,4 @@
+// Gameplay values only: player-facing names and text live in src/theme (Phase 5).
 // AI scripts (SPEC.md Phase 2 "Strategies"). Each is data the engine executes:
 // an ordered opening, a macro loop and army thresholds. Phase 3 tunes these
 // numbers without touching src/ai/engine.js.
@@ -63,8 +64,6 @@ export const EXPANSION = {
 
 export const STRATEGIES = {
   rush: {
-    name: 'Rush',
-    description: 'Aggression: a lean economy feeding many Foundries of Strikers and Sparkers (plus a few Lancers), big early waves and constant reinforcements.',
     opening: [
       { train: 'drone' }, { build: 'depot' }, { train: 'drone' }, { build: 'foundry' },
       { train: 'striker' }, { train: 'striker' }, { train: 'drone' },
@@ -89,7 +88,6 @@ export const STRATEGIES = {
   // The Phase 1 sandbox bot's behaviour, now expressed as a script: one of every
   // building, one of every unit, no attack. test/bot.test.js runs it.
   sandbox: {
-    name: 'Sandbox bot',
     opening: [
       { train: 'drone' }, { build: 'depot' }, { train: 'drone' },
       { build: 'foundry' }, { build: 'spire' }, { build: 'core' },
@@ -101,8 +99,6 @@ export const STRATEGIES = {
   },
 
   boom: {
-    name: 'Economy-Boom',
-    description: 'Greed: ten Drones and two Depots before its first Foundry, expands early, then attacks with a big mixed army and falls back when a wave breaks.',
     opening: [
       { train: 'drone' }, { train: 'drone' }, { build: 'depot' }, { train: 'drone' }, { train: 'drone' },
       { build: 'depot', spot: 'depot2' }, { train: 'drone' }, { train: 'drone' }, { train: 'drone' }, { train: 'drone' },
@@ -131,8 +127,6 @@ export const STRATEGIES = {
   },
 
   turtle: {
-    name: 'Turtle-and-Tech',
-    description: 'Defense: Sentry Spires on its front, a Sparker/Bulwark/Lancer army, fortified expansions, and a heavy push once it has built up.',
     opening: [
       { train: 'drone' }, { train: 'drone' }, { build: 'depot' }, { train: 'drone' }, { build: 'foundry' },
       { build: 'spire' }, { train: 'drone' }, { build: 'spire', spot: 'spire2' },
@@ -165,7 +159,6 @@ export const STRATEGIES = {
   // defensive economy that never attacks, so each AI strategy must carry its
   // full build/train/attack sequence to win.
   sentinel: {
-    name: 'Sentinel (test player script)',
     opening: [
       { train: 'drone' }, { build: 'depot' }, { train: 'drone' }, { build: 'foundry' },
       { train: 'drone' }, { build: 'spire' },

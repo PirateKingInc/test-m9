@@ -17,12 +17,12 @@ const rows = (header) => {
 test('unit stats in src/data/units.js match the SPEC.md table', () => {
   const table = rows('| id | Name | Role |');
   assert.equal(table.length, 5, 'five playable unit types');
-  for (const [id, name, , hp, armor, attack, dmg, cd, range, speed, radius, cost, time] of table) {
+  for (const [id, , , hp, armor, attack, dmg, cd, range, speed, radius, cost, time] of table) {
     const u = UNITS[id];
     assert.ok(u, `unit ${id} exists`);
     assert.deepEqual(
-      [u.name, u.hp, u.armor, u.attack, u.damage, u.cooldown, u.range, u.speed, u.radius, u.cost, u.trainTime],
-      [name, +hp, armor, attack, +dmg, +cd, +range, +speed, +radius, +cost, +time], id);
+      [u.hp, u.armor, u.attack, u.damage, u.cooldown, u.range, u.speed, u.radius, u.cost, u.trainTime],
+      [+hp, armor, attack, +dmg, +cd, +range, +speed, +radius, +cost, +time], id);
   }
 });
 
@@ -33,10 +33,10 @@ test('damage multipliers match the SPEC.md table', () => {
 });
 
 test('building stats match SPEC.md', () => {
-  for (const [id, name, fp, hp, , cost, time] of rows('| id | Name | Footprint |')) {
+  for (const [id, , fp, hp, , cost, time] of rows('| id | Name | Footprint |')) {
     const b = BUILDINGS[id];
     const [w, h] = fp.split('×').map(Number);
-    assert.deepEqual([b.name, b.w, b.h, b.hp, b.cost, b.buildTime], [name, w, h, +hp, +cost, +time], id);
+    assert.deepEqual([b.w, b.h, b.hp, b.cost, b.buildTime], [w, h, +hp, +cost, +time], id);
   }
 });
 

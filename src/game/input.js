@@ -3,6 +3,7 @@ import { pickAt, boxSelect, Selection, ControlGroups } from '../sim/selection.js
 import { PLAYER } from '../sim/constants.js';
 import { BUILDINGS, BUILD_ORDER, PRODUCTION } from '../data/buildings.js';
 import { UNITS } from '../data/units.js';
+import { unitName, buildingName } from '../theme/names.js';
 import { canPlace } from '../sim/construction.js';
 import { supplyOf } from '../sim/supply.js';
 import { TouchInput } from './touch.js';
@@ -171,13 +172,13 @@ export class InputController {
     if (sel.length && sel.every((e) => e.kind === 'unit') && sel.some((u) => u.type === 'drone')) {
       return BUILD_ORDER.map((type) => {
         const d = BUILDINGS[type];
-        return { key: d.hotkey, label: d.name, cost: d.cost, action: `build:${type}`, enabled: lumen >= d.cost, active: this.placing === type };
+        return { key: d.hotkey, label: buildingName(type), cost: d.cost, action: `build:${type}`, enabled: lumen >= d.cost, active: this.placing === type };
       });
     }
     const trainer = sel.length === 1 && sel[0].kind === 'building' && sel[0].built ? sel[0] : null;
     if (trainer && BUILDINGS[trainer.type].trains.length) {
       return BUILDINGS[trainer.type].trains.map((unit, i) => ({
-        key: 'QWER'[i], label: UNITS[unit].name, cost: UNITS[unit].cost, action: `train:${unit}`,
+        key: 'QWER'[i], label: unitName(unit), cost: UNITS[unit].cost, action: `train:${unit}`,
         enabled: lumen >= UNITS[unit].cost && trainer.queue.length < PRODUCTION.maxQueue && supplyOf(this.world, PLAYER).free >= UNITS[unit].supply,
       }));
     }

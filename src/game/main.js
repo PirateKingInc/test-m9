@@ -2,6 +2,7 @@ import { World } from '../sim/world.js';
 import { Match } from '../ai/match.js';
 import { DIFFICULTY } from '../data/difficulty.js';
 import { STRATEGIES } from '../data/strategies.js';
+import { STRATEGY_TEXT, strategyName, difficultyName } from '../theme/names.js';
 import { GameScene } from './scene.js';
 import { Hud } from './hud.js';
 import { Sfx } from './audio.js';
@@ -27,7 +28,7 @@ function showMenu() {
   const describe = () => {
     const d = DIFFICULTY[difficulty];
     document.getElementById('difficulty-note').textContent =
-      `${d.name}: plays ${STRATEGIES[d.strategy].name} by default. Decides every ${d.decisionInterval}s, reacts to scouting after ${d.reactionDelay}s.`;
+      `${difficultyName(difficulty)}: plays ${strategyName(d.strategy)} by default. Decides every ${d.decisionInterval}s, reacts to scouting after ${d.reactionDelay}s.`;
     buttons.forEach((b) => b.classList.toggle('active', b.dataset.difficulty === difficulty));
   };
   buttons.forEach((b) => b.addEventListener('click', () => { difficulty = b.dataset.difficulty; describe(); }));
@@ -35,7 +36,7 @@ function showMenu() {
   const select = document.getElementById('strategy');
   const describeStrategy = () => {
     const id = select.value === 'auto' ? DIFFICULTY[difficulty].strategy : select.value;
-    document.getElementById('strategy-note').textContent = `${STRATEGIES[id].name}: ${STRATEGIES[id].description}`;
+    document.getElementById('strategy-note').textContent = `${strategyName(id)}: ${STRATEGY_TEXT[id].description}`;
   };
   select.addEventListener('change', describeStrategy);
   buttons.forEach((b) => b.addEventListener('click', describeStrategy));
@@ -62,7 +63,7 @@ function start(mode) {
   const touch = setupInputMode(); // Phase 4: touch chrome when the device is touch-first
   const sfx = new Sfx();
   const scene = new GameScene(world, hud, sfx, match ? () => match.step() : () => world.step());
-  hud.setOpponent(match ? { difficulty: DIFFICULTY[difficulty].name, strategy: STRATEGIES[match.ai.strategyId].name } : null);
+  hud.setOpponent(match ? { difficulty: difficultyName(difficulty), strategy: strategyName(match.ai.strategyId) } : null);
 
   // Audio may only start after a user gesture.
   let greeted = false;

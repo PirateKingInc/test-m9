@@ -14,7 +14,9 @@ const match = (difficulty, strategy = 'boom', seed = 3) => immortal(new Match({ 
 test('difficulty data matches the SPEC.md table', () => {
   const spec = readFileSync(new URL('../SPEC.md', import.meta.url), 'utf8');
   const row = (label) => spec.split('\n').find((l) => l.startsWith(`| ${label} |`)).split('|').slice(2, 5).map((c) => c.trim());
-  assert.deepEqual(row('Default strategy'), ['easy', 'normal', 'hard'].map((d) => STRATEGIES[DIFFICULTY[d].strategy].name));
+  // SPEC.md names strategies by their Phase 2 names; the ids are what the data holds.
+  const ID = { Rush: 'rush', 'Economy-Boom': 'boom', 'Turtle-and-Tech': 'turtle' };
+  assert.deepEqual(row('Default strategy').map((n) => ID[n]), ['easy', 'normal', 'hard'].map((d) => DIFFICULTY[d].strategy));
   assert.deepEqual(row('Decision interval'), ['easy', 'normal', 'hard'].map((d) => `${DIFFICULTY[d].decisionInterval} s`));
   assert.deepEqual(row('Reaction delay before a trigger takes effect'), ['easy', 'normal', 'hard'].map((d) => `${DIFFICULTY[d].reactionDelay} s`));
   assert.deepEqual(row('Worker factor (× worker target)'), ['easy', 'normal', 'hard'].map((d) => DIFFICULTY[d].workerFactor.toFixed(1)));

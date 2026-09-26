@@ -2,10 +2,11 @@ import { PLAYER } from '../sim/constants.js';
 import { supplyOf } from '../sim/supply.js';
 import { UNITS } from '../data/units.js';
 import { BUILDINGS } from '../data/buildings.js';
+import { UNIT_TEXT, unitName, buildingName } from '../theme/names.js';
 
 const GROUP_HOLD_MS = 500;
 
-const nameOf = (e) => (e.kind === 'unit' ? UNITS[e.type].name : e.kind === 'building' ? BUILDINGS[e.type].name : 'Lumen Crystal');
+const nameOf = (e) => (e.kind === 'unit' ? unitName(e.type) : e.kind === 'building' ? buildingName(e.type) : 'Lumen Crystal');
 
 // DOM HUD overlay. Reads world state; never mutates it.
 export class Hud {
@@ -97,7 +98,7 @@ export class Hud {
 
   // What the next tap will do, in words (touch only).
   armedText(ui, world) {
-    if (ui.placing) return `Drag to position the ${BUILDINGS[ui.placing].name}, lift your finger to build. ✕ cancels.`;
+    if (ui.placing) return `Drag to position the ${buildingName(ui.placing)}, lift your finger to build. ✕ cancels.`;
     if (ui.boxArmed) return '▭ Drag a box around your units';
     if (ui.armed === 'attack') return '⚔ Tap where to attack-move: units fight anything on the way';
     if (ui.armed === 'order') {
@@ -229,7 +230,7 @@ export class Hud {
   queueHtml(e) {
     if (e.kind !== 'building' || !e.queue?.length) return '';
     // The first slot's progress bar is updated in place by update().
-    return `<div class="queue">${e.queue.map((q, i) => `<button data-cancel="${i}" title="Cancel (full refund)">${UNITS[q.unit].name}${i === 0 ? '<i></i>' : ''}</button>`).join('')}</div>`;
+    return `<div class="queue">${e.queue.map((q, i) => `<button data-cancel="${i}" title="Cancel (full refund)">${unitName(q.unit)}${i === 0 ? '<i></i>' : ''}</button>`).join('')}</div>`;
   }
 
   // One line saying what the current selection can do (Phase 4 clarity).
@@ -271,11 +272,11 @@ export function tooltip(b) {
   if (verb === 'train' && UNITS[type]) {
     const u = UNITS[type];
     const range = u.range > 20 ? `range ${u.range}` : 'melee';
-    return `${u.name} (${b.key}): ${u.role}. ${u.cost} Lumen, ${u.supply} supply, ${u.trainTime}s. HP ${u.hp} ${u.armor}, ${u.damage} ${u.attack} / ${u.cooldown}s, ${range}.${COUNTER_HINTS[type] ? ` ${COUNTER_HINTS[type]}` : ''}`;
+    return `${unitName(type)} (${b.key}): ${UNIT_TEXT[type].role}. ${u.cost} Lumen, ${u.supply} supply, ${u.trainTime}s. HP ${u.hp} ${u.armor}, ${u.damage} ${u.attack} / ${u.cooldown}s, ${range}.${COUNTER_HINTS[type] ? ` ${COUNTER_HINTS[type]}` : ''}`;
   }
   if (verb === 'build' && BUILDINGS[type]) {
     const d = BUILDINGS[type];
-    return `${d.name} (${b.key}): ${BUILDING_HINTS[type](d)} ${d.cost} Lumen, ${d.buildTime}s, HP ${d.hp}.`;
+    return `${buildingName(type)} (${b.key}): ${BUILDING_HINTS[type](d)} ${d.cost} Lumen, ${d.buildTime}s, HP ${d.hp}.`;
   }
   return `${b.label} (${b.key})`;
 }

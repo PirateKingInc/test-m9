@@ -3,6 +3,7 @@
 import { PF } from '../helpers.js';
 import { Match } from '../../src/ai/match.js';
 import { DIFFICULTY } from '../../src/data/difficulty.js';
+import { difficultyName } from '../../src/theme/names.js';
 
 export const SEEDS = Array.from({ length: 12 }, (_, i) => i + 1);
 
@@ -35,7 +36,7 @@ export function winRate(tier, policy) {
     if (r.winner === 1) wins++; else if (r.winner === 2) losses++; else draws++;
   }
   const rate = wins / SEEDS.length;
-  console.error(`# ${DIFFICULTY[tier].name.padEnd(6)} AI (${DIFFICULTY[tier].strategy}) vs ${policy.padEnd(12)}: player wins ${wins}/${SEEDS.length} (${Math.round(rate * 100)}%), AI ${losses}, draws ${draws}; median length ${times.sort((a, b) => a - b)[6]}s`);
+  console.error(`# ${difficultyName(tier).padEnd(6)} AI (${DIFFICULTY[tier].strategy}) vs ${policy.padEnd(12)}: player wins ${wins}/${SEEDS.length} (${Math.round(rate * 100)}%), AI ${losses}, draws ${draws}; median length ${times.sort((a, b) => a - b)[6]}s`);
   return rate;
 }
 

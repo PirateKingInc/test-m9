@@ -1,8 +1,14 @@
-// Phase 4 freeze guard: Phase 4 is controls and visuals only. The sim, the AI
-// and every balance number must stay byte-identical to the Phase 3 release,
-// and fixed-seed matches (positions, HP, orders: collision, pathing and hit
-// detection) must play out exactly as they did. Any change to src/data,
-// src/sim or src/ai fails here.
+// Freeze guard. Phase 4 and Phase 5 are controls, visuals and names only: the
+// sim, the AI and every gameplay number must stay as the Phase 3 release
+// shipped them, and fixed-seed matches (positions, HP, orders: collision,
+// pathing and hit detection) must play out exactly as they did.
+//
+// Phase 5 moved display text (names, roles, descriptions) out of src/data into
+// src/theme (PHASE5_SPEC.md "Display text and gameplay data"). The guard now has
+// three locks: src/sim and src/ai byte-identical to Phase 3; src/data
+// byte-identical to its split form; and a canonical hash of every gameplay
+// value in src/data, recorded on the Phase 4 release *before* the split, so the
+// split provably moved no number and re-pinning file hashes cannot hide a change.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
@@ -10,16 +16,18 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { PF, makeWorld } from './helpers.js';
 import { Match } from '../src/ai/match.js';
 import { SandboxBot } from '../src/ai/engine.js';
+import { gameplayHash } from './gameplay-values.js';
 
 const sha = (buf) => createHash('sha256').update(buf).digest('hex');
 
-// sha256 of every file, as shipped by Phase 3 (commit 8649e39).
+// sha256 of every file: src/sim and src/ai as shipped by Phase 3 (commit
+// 8649e39); src/data as split in Phase 5 (display fields removed, no value changed).
 export const FROZEN = {
-  "src/data/buildings.js": "c027ad0ec6b94458c3be9a3cccefa2322e48b468f068ebb7186092d95e2512e0",
-  "src/data/difficulty.js": "90b0fcb91b33b562076558e742205efde6c33e266288ff4429766a1da471a5f8",
+  "src/data/buildings.js": "0176c4b3f71568db3421a3f661c96fbf64b9b78d7d3d2f812770307c8b204ec8",
+  "src/data/difficulty.js": "5edbe78a9ebb8172eed5c945f34732d549375eeb806df9265e684577b1a0ea6e",
   "src/data/map.js": "7ca9715b0b10d0d0a5659268c05bb7df451bda0306b21032a0fa5f13abc6436f",
-  "src/data/strategies.js": "7f120c0c275341cea79e5adb00766eb49f71b0c9da79eb2dcbf8cbda004b8957",
-  "src/data/units.js": "2b0e9ce9ab6cef3fc16f6c9db3ef7530587f6720817ede851f5f71e1d53322fe",
+  "src/data/strategies.js": "ce6e3cd4a084145f4ae7315103bf953ae76d6e6b5cfdc117aab6f966fe15e499",
+  "src/data/units.js": "b401f86514666b40bd0a2f8b5b1ac664563a6f33be2869391763c747f36a3ca0",
   "src/sim/combat.js": "c4282da4b4b60ae110d42dd176c2eb41bb32f8c0ae8f29c9131fae9457a1764b",
   "src/sim/constants.js": "5b908c2299440ddc070608d52ebc5ee3ab663c5eca24fdb209bbc782bdc845cd",
   "src/sim/construction.js": "ab8038d3cc615af3d15960b06d9b90ae79ccb0a0d0dadf97dca3e42778fbb6dd",
@@ -44,7 +52,7 @@ export const FROZEN = {
   "src/ai/scout.js": "fec0641a2a2114836b823d3f863ac7930b79a5f1ec3520588e0c4555db1eb29b"
 };
 
-test('src/data, src/sim and src/ai are byte-identical to Phase 3', () => {
+test('src/sim and src/ai are byte-identical to Phase 3, src/data to its Phase 5 split', () => {
   const now = {};
   for (const dir of ['data', 'sim', 'ai']) {
     const url = new URL(`../src/${dir}/`, import.meta.url);
@@ -52,6 +60,14 @@ test('src/data, src/sim and src/ai are byte-identical to Phase 3', () => {
   }
   assert.deepEqual(Object.keys(now).sort(), Object.keys(FROZEN).sort(), 'no files added or removed');
   for (const [f, h] of Object.entries(FROZEN)) assert.equal(now[f], h, `${f} changed`);
+});
+
+// Canonical gameplay values of src/data (test/gameplay-values.js), recorded on
+// the Phase 4 release (commit f08f2d8) before the Phase 5 split.
+export const GAMEPLAY_HASH = '9fd621ee00b78dd2e7123d0492c21ba28d79c1e80cf0b60046ad1f92a0f11900';
+
+test('every gameplay value in src/data is unchanged from the Phase 4 release', () => {
+  assert.equal(gameplayHash(), GAMEPLAY_HASH);
 });
 
 // A fingerprint of everything collision and combat touch: positions, HP, orders.
@@ -86,6 +102,6 @@ export const GOLDEN = {
   'boom-turtle-easy-3': '2aa5e3de88611963',
 };
 
-test('fixed-seed games play out exactly as in Phase 3 (collision, pathing, combat)', () => {
+test('fixed-seed games play out exactly as in Phase 3 and 4 (collision, pathing, combat)', () => {
   assert.deepEqual(fingerprints(), GOLDEN);
 });
