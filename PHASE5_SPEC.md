@@ -73,9 +73,10 @@ already neutral. The player's team is **Azure** (royal blue), the opponent's
   red-green colour-blind players, and both stand apart from the green ground.
 - **Architecture.** Stone for the Castle and Watchtower, timber and thatch for
   the Storehouse and Barracks. Every building carries a team banner or roof.
-  The four construction states from Phase 4 stay (foundation, framing,
-  nearly done, complete), redrawn as a staked plot, a scaffold, a roofless
-  structure and the finished building.
+  The three construction states from Phase 4 stay (foundation, frame,
+  complete), redrawn as a staked, roped-off plot marked with the building's
+  sign (a keep, a grain sack, crossed swords, a tower), the lower half going up
+  inside a timber scaffold, and the finished building.
 - **Units** keep one silhouette each, readable at the minimum zoom: the
   Horseman is long (a horse), the Archer is a thin figure with a bow arc,
   the Shield Knight is wide (a tower shield), the Dragon Rider has spread

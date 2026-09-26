@@ -1,9 +1,15 @@
-// The Phase 4 palette: one set of colours for every sprite, so the game reads
-// as one designed style. See PHASE4_SPEC.md "Art direction".
+// One palette for every sprite, so the game reads as one designed style.
+// Phase 5 made it medieval: stone, timber, thatch, iron and gold, with the team
+// colour on banners, roofs and tabards. See PHASE5_SPEC.md "Art direction".
 export const TEAM = {
-  1: { base: '#39d3c3', light: '#9ff5ea', dark: '#1d7f78', glow: '#c8fff8' }, // player: teal
-  2: { base: '#ff7a45', light: '#ffc09f', dark: '#a8431e', glow: '#ffe2cf' }, // AI: orange
+  1: { base: '#3f86e8', light: '#9cc4ff', dark: '#1f4f9a', glow: '#d6e8ff' }, // player: Azure
+  2: { base: '#e0472f', light: '#ff9f8a', dark: '#8e2415', glow: '#ffd9cf' }, // AI: Crimson
 };
+export const STONE = { base: '#8f897a', light: '#bdb6a3', dark: '#5f5a4e', deep: '#3b372f' };
+export const WOOD = { base: '#8a5a33', light: '#b07a48', dark: '#5c3b20', deep: '#3a2514' };
+export const THATCH = { base: '#c9a55a', light: '#e6cb8c', dark: '#8f7236' };
+export const GOLD = { base: '#f2c23a', light: '#fff0a8', dark: '#a8780f', glow: 'rgba(255, 210, 90, 0.35)' };
+export const DIRT = { base: '#6b5433', light: '#8c7248', dark: '#4a3a22' };
 
 export const INK = '#0b0f17'; // outlines
 export const METAL = { base: '#6b7788', light: '#aeb9c8', dark: '#3a4250', deep: '#232a35' };

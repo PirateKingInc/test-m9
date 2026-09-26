@@ -2,6 +2,7 @@
 // at low zoom (not just colour), and the two teams are told apart by colour.
 import { test, expect } from '@playwright/test';
 import { openGame } from './helpers.js';
+import { TEAM } from '../src/art/palette.js';
 
 // Compare textures inside the page: an alpha silhouette sampled at the size a
 // 64 px unit box is shown at the given zoom (0.5x -> 32x32 screen px, Phase 5's
@@ -57,8 +58,11 @@ test(`every unit sprite has its own silhouette, and teams differ by colour (at $
 });
 }
 
-// Share of opaque pixels near each team's hue (teal #39d3c3 / orange #ff7a45 families).
-const TEAL = [[57, 211, 195], [159, 245, 234], [29, 127, 120]], ORANGE = [[255, 122, 69], [255, 192, 159], [168, 67, 30]];
+// Share of opaque pixels near each team's hue (the palette's base/light/dark
+// swatches: Azure for team 1, Crimson for team 2 since Phase 5).
+const rgb = (c) => [1, 3, 5].map((i) => parseInt(c.slice(i, i + 2), 16));
+const swatches = (t) => [t.base, t.light, t.dark].map(rgb);
+const TEAL = swatches(TEAM[1]), ORANGE = swatches(TEAM[2]);
 const near = (px, i, set) => set.some(([r, g, b]) => Math.hypot(px[i] - r, px[i + 1] - g, px[i + 2] - b) < 45);
 function teamShare(sig) {
   let teal = 0, orange = 0, n = 0;

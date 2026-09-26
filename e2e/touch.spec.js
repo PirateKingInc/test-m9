@@ -300,7 +300,10 @@ test('first-run tutorial on touch: every hint teaches touch, and touch alone com
     expect(await page.evaluate(() => [...window.__game.scene.ui.selection.ids].map((id) => window.__game.world.get(id)?.type))).toEqual(['striker']);
   }).toPass({ timeout: 15000 });
   await arm(page, touch, 'attack');
-  s = await screenOf(page, st.x + 150, st.y);
+  // Attack-move far enough that the march outlasts the tutorial's 250 ms check
+  // at 8x speed (a 150 px march used to finish, and go idle, in between).
+  await centerOn(page, st.x + 250, st.y);
+  s = await screenOf(page, st.x + 500, st.y);
   await touch.tap(s.x, s.y);
   await expect.poll(step).toBe('done');
   await expect(page.locator('#tutorial-text')).toContainText('pinch to zoom');
