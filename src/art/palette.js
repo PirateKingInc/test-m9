@@ -15,8 +15,9 @@ export const INK = '#0b0f17'; // outlines
 export const METAL = { base: '#6b7788', light: '#aeb9c8', dark: '#3a4250', deep: '#232a35' };
 export const LUMEN = { base: '#b69bff', light: '#e4d8ff', dark: '#6a4fd0', glow: 'rgba(182, 155, 255, 0.35)' };
 export const WARM = { base: '#ffc24a', light: '#fff0b8', dark: '#b07a10' }; // lance, furnace, construction
-export const GROUND = { base: '#19212d', mottle: ['#1c2533', '#172029', '#1e2837'], grid: 'rgba(60, 78, 104, 0.18)' };
-export const ROCK = { base: '#3b3f4a', light: '#6f7584', dark: '#23262e', face: '#15171c', crack: '#2c3038' };
+// Meadow ground with earthy patches, and grey stone cliffs (Phase 5).
+export const GROUND = { base: '#3a5228', mottle: ['#445e2e', '#324823', '#4b6433', '#5a4c30'], grid: 'rgba(18, 28, 10, 0.22)', speck: ['#2a3c1c', '#56703a', '#6b5a3a'] };
+export const ROCK = { base: '#77726a', light: '#aaa497', dark: '#4a463f', face: '#2e2b26', crack: '#5a554d' };
 export const HAZARD = { yellow: '#ffd24a', black: '#1a1a1a' };
 
 // Hex colour -> Phaser integer.

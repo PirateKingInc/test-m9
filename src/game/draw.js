@@ -12,7 +12,7 @@ export function drawProgress(g, b) {
 }
 
 const SELECT = 0x7dffb0;
-const MARKER_COLORS = { move: 0x7dffb0, attack: 0xff5a5a, gather: 0xb69bff, build: 0xffc24a };
+const MARKER_COLORS = { move: 0x7dffb0, attack: 0xff5a5a, gather: 0xf2c23a, build: 0xffc24a };
 
 export function drawSelection(g, e, x, y) {
   g.lineStyle(2, e.team && e.team !== 1 ? 0xff5a5a : SELECT, 0.9);

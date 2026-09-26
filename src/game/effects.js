@@ -1,9 +1,11 @@
-// Render-only "juice": tracers, sparks, death bursts, floating text and screen
+// Render-only "juice": arrows, dragonfire, sparks, death bursts, floating text and screen
 // shake, spawned from sim events. Never touches sim state, so it can use
 // Math.random freely without affecting determinism.
-const LIFE = { tracer: 0.14, spark: 0.18, burst: 0.7, text: 0.9, ring: 0.5, flash: 0.12, shock: 1.1 };
-const TRACER_COLORS = { bolt: 0x9fe8ff, lance: 0xffc24a };
+import { TEAM, GOLD, hex } from '../art/palette.js';
+const LIFE = { arrow: 0.16, flame: 0.28, spark: 0.18, burst: 0.7, text: 0.9, ring: 0.5, flash: 0.12, shock: 1.1 };
 const MAX_EFFECTS = 400;
+const TEAM_FX = { 1: hex(TEAM[1].base), 2: hex(TEAM[2].base) };
+const GOLD_FX = hex(GOLD.base);
 
 export class Effects {
   constructor(scene) {
@@ -15,9 +17,9 @@ export class Effects {
   add(events, now) {
     for (const e of events) {
       if (e.type === 'attack') {
-        if (e.attack === 'bolt' || e.attack === 'lance') {
-          this.push({ kind: 'tracer', t: now, x: e.x, y: e.y, tx: e.tx, ty: e.ty, color: TRACER_COLORS[e.attack], w: e.attack === 'lance' ? 4 : 2 });
-        }
+        // Phase 5: Archers and Watchtowers loose arrows; the Dragon Rider breathes fire.
+        if (e.attack === 'bolt') this.push({ kind: 'arrow', t: now, x: e.x, y: e.y, tx: e.tx, ty: e.ty });
+        if (e.attack === 'lance') this.push({ kind: 'flame', t: now, x: e.x, y: e.y, tx: e.tx, ty: e.ty });
         this.push({ kind: 'spark', t: now, x: e.tx + (Math.random() - 0.5) * 10, y: e.ty + (Math.random() - 0.5) * 10, big: e.attack === 'crush' || e.attack === 'lance' });
         this.push({ kind: 'flash', t: now, id: e.target }); // the target blinks white when hit
       } else if (e.type === 'death' && e.unit === 'core') {
@@ -26,7 +28,7 @@ export class Effects {
           const a = Math.random() * Math.PI * 2, v = 60 + Math.random() * 260;
           return { vx: Math.cos(a) * v, vy: Math.sin(a) * v, r: 2 + Math.random() * 4 };
         });
-        this.push({ kind: 'burst', t: now, x: e.x, y: e.y, parts, color: e.team === 1 ? 0x39d3c3 : 0xff7a45 });
+        this.push({ kind: 'burst', t: now, x: e.x, y: e.y, parts, color: TEAM_FX[e.team] ?? TEAM_FX[2] });
         this.push({ kind: 'shock', t: now, x: e.x, y: e.y });
         this.scene.cameras.main.shake(700, 0.018);
         this.scene.cameras.main.flash(350, 255, 230, 200);
@@ -36,7 +38,7 @@ export class Effects {
           const a = Math.random() * Math.PI * 2, v = 40 + Math.random() * (e.kind === 'building' ? 160 : 90);
           return { vx: Math.cos(a) * v, vy: Math.sin(a) * v, r: 1.5 + Math.random() * 3 };
         });
-        this.push({ kind: 'burst', t: now, x: e.x, y: e.y, parts, color: e.team === 1 ? 0x39d3c3 : 0xff7a45 });
+        this.push({ kind: 'burst', t: now, x: e.x, y: e.y, parts, color: TEAM_FX[e.team] ?? TEAM_FX[2] });
         this.push({ kind: 'ring', t: now, x: e.x, y: e.y, r: e.kind === 'building' ? 70 : 26 });
         if (e.kind === 'building') this.scene.cameras.main.shake(260, 0.008);
       } else if (e.type === 'placed' && e.x !== undefined) {
@@ -47,15 +49,15 @@ export class Effects {
         });
         this.push({ kind: 'burst', t: now, x: e.x, y: e.y, parts, color: 0x8a7a66 });
       } else if (e.type === 'depleted') {
-        // A crystal runs dry and shatters.
+        // A gold mine runs dry and crumbles.
         const parts = Array.from({ length: 16 }, () => {
           const a = Math.random() * Math.PI * 2, v = 50 + Math.random() * 70;
           return { vx: Math.cos(a) * v, vy: Math.sin(a) * v, r: 1.5 + Math.random() * 2.5 };
         });
-        this.push({ kind: 'burst', t: now, x: e.x, y: e.y, parts, color: 0xb69bff });
-        this.floatText(e.x, e.y - 18, 'Depleted', '#b69bff');
+        this.push({ kind: 'burst', t: now, x: e.x, y: e.y, parts, color: GOLD_FX });
+        this.floatText(e.x, e.y - 18, 'Mined out', GOLD.light);
       } else if (e.type === 'dropoff' && e.team === 1) {
-        this.floatText(e.x, e.y - 14, `+${e.amount}`, '#c9b6ff');
+        this.floatText(e.x, e.y - 14, `+${e.amount}`, GOLD.base);
       } else if (e.type === 'built') {
         const b = this.scene.world.get(e.id);
         if (b) this.push({ kind: 'ring', t: now, x: b.x, y: b.y, r: Math.max(b.pw, b.ph) * 0.8, color: 0x7dffb0 });
@@ -80,11 +82,22 @@ export class Effects {
     this.list = this.list.filter((fx) => {
       const age = now - fx.t, life = LIFE[fx.kind], k = 1 - age / life;
       if (k <= 0) return false;
-      if (fx.kind === 'tracer') {
-        g.lineStyle(fx.w, fx.color, k);
-        g.lineBetween(fx.x, fx.y, fx.tx, fx.ty);
-        g.fillStyle(0xffffff, k);
-        g.fillCircle(fx.tx, fx.ty, fx.w + 1);
+      if (fx.kind === 'arrow') {
+        // A shaft flying from the shooter to the target.
+        const p = 1 - k, dx = fx.tx - fx.x, dy = fx.ty - fx.y, len = Math.hypot(dx, dy) || 1;
+        const hx = fx.x + dx * p, hy = fx.y + dy * p, ux = dx / len, uy = dy / len;
+        g.lineStyle(2, 0x6b4a2a, 1);
+        g.lineBetween(hx - ux * 12, hy - uy * 12, hx, hy);
+        g.fillStyle(0xd8dde4, 1);
+        g.fillTriangle(hx + ux * 4, hy + uy * 4, hx - uy * 2.5, hy + ux * 2.5, hx + uy * 2.5, hy - ux * 2.5);
+      } else if (fx.kind === 'flame') {
+        // A jet of dragonfire: puffs along the line, hottest at the mouth.
+        const dx = fx.tx - fx.x, dy = fx.ty - fx.y, reach = Math.min(1, (1 - k) * 3);
+        for (let i = 0; i <= 8; i++) {
+          const f = (i / 8) * reach;
+          g.fillStyle(i < 3 ? 0xfff0a0 : i < 6 ? 0xffa030 : 0xe0401a, k * 0.85);
+          g.fillCircle(fx.x + dx * f, fx.y + dy * f, 3 + f * 6);
+        }
       } else if (fx.kind === 'spark') {
         g.fillStyle(0xfff3c4, k);
         g.fillCircle(fx.x, fx.y, (fx.big ? 7 : 4) * k + 1);
