@@ -27,7 +27,7 @@ test('Command Core queue: Q trains Drones, clicking a slot cancels with a full r
   const errors = await openGame(page);
   const core = await toScreen(page, 10 * 32, 29 * 32);
   await page.mouse.click(core.x, core.y);
-  await expect(page.locator('#command-card button')).toHaveText(/Drone/);
+  await expect(page.locator('#command-card button')).toHaveText(/Peasant/);
   await page.keyboard.press('KeyQ');
   await page.keyboard.press('KeyQ');
   await expect(page.locator('#lumen')).toHaveText('150');

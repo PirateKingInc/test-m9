@@ -14,6 +14,6 @@ test('audio unlocks on the first gesture, plays for events, and M mutes', async 
   expect(after).toBe(0);
   // Rejected commands give feedback: queue a Command Core with too little Lumen.
   await page.evaluate(() => { const w = window.__game.world; const d = [...w.ofKind('unit')][0]; w.issue({ type: 'build', ids: [d.id], building: 'core', tx: 14, ty: 34 }); });
-  await expect(page.locator('#toast')).toHaveText('Not enough Lumen');
+  await expect(page.locator('#toast')).toHaveText('Not enough gold');
   expect(errors).toEqual([]);
 });

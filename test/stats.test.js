@@ -22,5 +22,5 @@ test('match stats add up: units, losses, kills and Lumen balance for both teams'
   assert.equal(t[2].kills, t[1].unitsLost + t[1].buildingsLost);
   const rows = stats.rows(1, 2);
   assert.equal(rows.length, 6);
-  assert.deepEqual(rows[0], ['Lumen gathered', t[1].lumen, t[2].lumen]);
+  assert.deepEqual(rows[0], ['Gold gathered', t[1].lumen, t[2].lumen]);
 });

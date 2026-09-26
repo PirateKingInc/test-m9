@@ -8,7 +8,7 @@ test('match mode: destroying the enemy Command Core shows Victory', async ({ pag
   expect(await page.evaluate(`!!${coreOf(2)}`)).toBe(true);
   await page.evaluate(`${coreOf(2)}.hp = 0`);
   await expect(page.locator('#result-title')).toHaveText('Victory');
-  await expect(page.locator('#result-detail')).toContainText('enemy Command Core is destroyed');
+  await expect(page.locator('#result-detail')).toContainText('enemy Castle has fallen');
   await expect(page.locator('#play-again')).toBeVisible();
   expect(errors).toEqual([]);
 });

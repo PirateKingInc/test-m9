@@ -24,7 +24,7 @@ test('drag-box selects the drones, control groups assign and recall, right-click
   await page.mouse.move(p2.x, p2.y, { steps: 5 });
   await page.mouse.up();
   expect(await selected(page)).toEqual(ids);
-  await expect(page.locator('#selection-panel')).toContainText('Drone ×4');
+  await expect(page.locator('#selection-panel')).toContainText('Peasant ×4');
 
   // Ctrl+1 assigns; click one drone; 1 recalls the group.
   await page.keyboard.press('Control+1');

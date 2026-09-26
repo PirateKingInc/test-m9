@@ -6,6 +6,7 @@ import { MatchStats } from './stats.js';
 import { bakeAll, TERRAIN_KEY } from '../art/atlas.js';
 import { SpriteLayer } from './sprites.js';
 import { zoomAbout, wheelZoom, hudBounds } from './camera.js';
+import { reasonText } from '../theme/names.js';
 
 const Phaser = globalThis.Phaser;
 const PAN_SPEED = 900; // px/s
@@ -129,13 +130,13 @@ export class GameScene extends Phaser.Scene {
       this.effects.add(events, this.world.time);
       this.stats.add(events);
       for (const e of events) {
-        if (e.type === 'rejected' && e.team === 1) this.hud?.toast(e.reason);
+        if (e.type === 'rejected' && e.team === 1) this.hud?.toast(reasonText(e.reason));
         // Under-attack cue: enemy fire hitting our units or buildings (throttled).
         if (e.type === 'attack' && e.team !== 1 && this.world.get(e.target)?.team === 1) {
           this.lastAttack = { x: e.tx, y: e.ty };
           if (this.world.time - (this.lastAlertAt ?? -Infinity) >= UNDER_ATTACK_COOLDOWN) {
             this.lastAlertAt = this.world.time;
-            this.hud?.toast(this.touchMode ? 'Your base is under attack! Tap here to jump there' : 'Your base is under attack! (Space to jump there)', { alert: true });
+            this.hud?.toast(this.touchMode ? 'Your lands are under attack! Tap here to ride there' : 'Your lands are under attack! (Space to jump there)', { alert: true });
             this.sfx?.ui('alert');
           }
         }
@@ -162,7 +163,7 @@ export class GameScene extends Phaser.Scene {
     for (const b of w.ofKind('building')) {
       if (b.hp < b.maxHp || sel.has(b.id)) drawHealth(g, b.x, b.y - b.ph / 2 - 6, b.pw - 12, b.hp / b.maxHp);
     }
-    if (this.ui.attackMode || this.ui.devSpawn) drawCrosshair(g, this.ui.hover, this.ui.devSpawn ? 0xff7a45 : 0xff5a5a);
+    if (this.ui.attackMode || this.ui.devSpawn) drawCrosshair(g, this.ui.hover, this.ui.devSpawn ? 0xe0472f : 0xff5a5a);
     if (this.ui.armed) { // touch: a pulsing ring on each selected unit while an order is armed
       const k = 0.5 + 0.5 * Math.sin(w.time * 8);
       g.lineStyle(3, this.ui.armed === 'attack' ? 0xff5a5a : 0xffd24a, 0.5 + 0.5 * k);
@@ -175,9 +176,9 @@ export class GameScene extends Phaser.Scene {
     this.ui.markers = this.ui.markers.filter((m) => drawMarker(g, m, w.time));
     const d = this.ui.drag;
     if (d?.moved) {
-      g.fillStyle(0x39d3c3, 0.08);
+      g.fillStyle(0x3f86e8, 0.1);
       g.fillRect(Math.min(d.wx, d.cx), Math.min(d.wy, d.cy), Math.abs(d.cx - d.wx), Math.abs(d.cy - d.wy));
-      g.lineStyle(1, 0x39d3c3, 0.9);
+      g.lineStyle(1, 0x9cc4ff, 0.9);
       g.strokeRect(Math.min(d.wx, d.cx), Math.min(d.wy, d.cy), Math.abs(d.cx - d.wx), Math.abs(d.cy - d.wy));
     }
   }

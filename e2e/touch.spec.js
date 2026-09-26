@@ -170,7 +170,7 @@ test('touch placement: build button, drag the ghost, lift to place; ✕ cancels 
   const { touch } = await openTouchGame(page);
   const ds = await selectDrones(page, touch);
   await touch.tapEl('#command-card button[data-action="build:depot"]');
-  await expect(page.locator('#armed-banner')).toContainText('Lumen Depot');
+  await expect(page.locator('#armed-banner')).toContainText('Storehouse');
   await touch.tapEl('[data-touch="cancel"]');
   await expect.poll(() => page.evaluate(() => window.__game.scene.ui.placing)).toBe(null);
   await touch.tapEl('#command-card button[data-action="build:depot"]');

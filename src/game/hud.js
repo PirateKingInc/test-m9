@@ -2,11 +2,11 @@ import { PLAYER } from '../sim/constants.js';
 import { supplyOf } from '../sim/supply.js';
 import { UNITS } from '../data/units.js';
 import { BUILDINGS } from '../data/buildings.js';
-import { UNIT_TEXT, unitName, buildingName } from '../theme/names.js';
+import { UNIT_TEXT, ATTACK_TEXT, ARMOR_TEXT, NODE_NAME, unitName, buildingName } from '../theme/names.js';
 
 const GROUP_HOLD_MS = 500;
 
-const nameOf = (e) => (e.kind === 'unit' ? unitName(e.type) : e.kind === 'building' ? buildingName(e.type) : 'Lumen Crystal');
+const nameOf = (e) => (e.kind === 'unit' ? unitName(e.type) : e.kind === 'building' ? buildingName(e.type) : NODE_NAME);
 
 // DOM HUD overlay. Reads world state; never mutates it.
 export class Hud {
@@ -105,7 +105,7 @@ export class Hud {
       const units = ui.ownSelected('unit');
       if (!units.length) return '➜ Tap where new units should gather (rally point)';
       return units.some((u) => u.type === 'drone')
-        ? '➜ Tap a spot to move, an enemy to attack, a crystal to mine or a site to build'
+        ? '➜ Tap a spot to move, an enemy to attack, a gold mine to dig or a site to build'
         : '➜ Tap a spot to move there, or an enemy to attack it';
     }
     return '';
@@ -139,8 +139,8 @@ export class Hud {
   showResult(r, doc = document) {
     this.shownResult = true;
     const title = r.winner === null ? 'Draw' : r.winner === PLAYER ? 'Victory' : 'Defeat';
-    const why = { 'core-destroyed': r.winner === PLAYER ? 'The enemy Command Core is destroyed.' : 'Your Command Core was destroyed.',
-      draw: 'Both Command Cores fell at the same moment.', 'time-limit': `Time limit reached: decided on score (${r.scores[1]} vs ${r.scores[2]}).` }[r.reason];
+    const why = { 'core-destroyed': r.winner === PLAYER ? 'The enemy Castle has fallen.' : 'Your Castle has fallen.',
+      draw: 'Both Castles fell at the same moment.', 'time-limit': `Time limit reached: decided on score (${r.scores[1]} vs ${r.scores[2]}).` }[r.reason];
     const mm = Math.floor(r.time / 60), ss = String(Math.floor(r.time % 60)).padStart(2, '0');
     doc.getElementById('result-title').textContent = title;
     doc.getElementById('result-title').className = title.toLowerCase();
@@ -236,16 +236,16 @@ export class Hud {
   // One line saying what the current selection can do (Phase 4 clarity).
   selectionHint(sel) {
     const t = this.touchMode;
-    if (!sel.length) return t ? 'Tap a unit or building to select it. Drag to look around, pinch to zoom.' : 'Nothing selected. Left-click or drag to select; right-click to command.';
+    if (!sel.length) return t ? 'Tap a unit or building to select it. Drag to look around, pinch to zoom.' : 'Nothing selected. Left-click or drag to select; right-click to command; mouse wheel zooms.';
     const e = sel[0];
-    if (e.kind === 'node') return 'Lumen crystal: Drones mine it for Lumen.';
+    if (e.kind === 'node') return 'Gold mine: Peasants dig gold here.';
     if (e.team && e.team !== PLAYER) return t ? 'Enemy. Select your units, tap ➜ Order, then tap it to attack.' : 'Enemy. Select your units and right-click it to attack.';
-    if (e.kind === 'building' && !e.built) return 'Under construction: a Drone must stay next to it.';
+    if (e.kind === 'building' && !e.built) return 'Under construction: a Peasant must stay next to it.';
     if (e.kind === 'building') {
-      if (!BUILDINGS[e.type].trains.length) return e.type === 'spire' ? 'Sentry Spire: shoots enemies in range.' : 'Lumen Depot: Drones bring Lumen here.';
+      if (!BUILDINGS[e.type].trains.length) return e.type === 'spire' ? 'Watchtower: shoots arrows at enemies in range.' : 'Storehouse: Peasants bring gold here.';
       return t ? 'Tap a unit button to train · ➜ Order sets the rally point.' : 'Q–R to train · right-click to set the rally point.';
     }
-    if (sel.some((u) => u.type === 'drone')) return t ? 'Tap a build button, or ➜ Order then a crystal to mine.' : 'Q–R to build · right-click a crystal to mine.';
+    if (sel.some((u) => u.type === 'drone')) return t ? 'Tap a build button, or ➜ Order then a gold mine to dig.' : 'Q–R to build · right-click a gold mine to dig.';
     return t ? '➜ Order: move or attack · ⚔ Attack: attack-move · hold a group slot to save.' : 'Right-click to move or attack · A to attack-move · Shift+1–9 saves a group.';
   }
 
@@ -254,9 +254,9 @@ export class Hud {
     if (!sel.length) return hint;
     if (sel.length === 1) {
       const e = sel[0];
-      const stat = e.kind === 'node' ? `${Math.ceil(e.amount)} / ${e.maxAmount} Lumen`
+      const stat = e.kind === 'node' ? `${Math.ceil(e.amount)} / ${e.maxAmount} gold`
         : `HP ${Math.ceil(e.hp)} / ${e.maxHp}${e.kind === 'unit' ? ` · ${e.order.type}` : ''}${e.carry ? ` · carrying ${e.carry}` : ''}`;
-      const team = e.team && e.team !== PLAYER ? ' <span class="enemy">(test target team)</span>' : '';
+      const team = e.team && e.team !== PLAYER ? ' <span class="enemy">(enemy)</span>' : '';
       const building = e.kind === 'building' && !e.built ? ` · building ${Math.floor(e.progress * 100)}%` : '';
       return `<div class="sel-name">${nameOf(e)}${team}</div><div class="dim">${stat}${building}</div>${hint}${this.queueHtml(e)}`;
     }
@@ -272,27 +272,27 @@ export function tooltip(b) {
   if (verb === 'train' && UNITS[type]) {
     const u = UNITS[type];
     const range = u.range > 20 ? `range ${u.range}` : 'melee';
-    return `${unitName(type)} (${b.key}): ${UNIT_TEXT[type].role}. ${u.cost} Lumen, ${u.supply} supply, ${u.trainTime}s. HP ${u.hp} ${u.armor}, ${u.damage} ${u.attack} / ${u.cooldown}s, ${range}.${COUNTER_HINTS[type] ? ` ${COUNTER_HINTS[type]}` : ''}`;
+    return `${unitName(type)} (${b.key}): ${UNIT_TEXT[type].role}. ${u.cost} gold, ${u.supply} supply, ${u.trainTime}s. HP ${u.hp} ${ARMOR_TEXT[u.armor]}, ${u.damage} ${ATTACK_TEXT[u.attack]} / ${u.cooldown}s, ${range}.${COUNTER_HINTS[type] ? ` ${COUNTER_HINTS[type]}` : ''}`;
   }
   if (verb === 'build' && BUILDINGS[type]) {
     const d = BUILDINGS[type];
-    return `${buildingName(type)} (${b.key}): ${BUILDING_HINTS[type](d)} ${d.cost} Lumen, ${d.buildTime}s, HP ${d.hp}.`;
+    return `${buildingName(type)} (${b.key}): ${BUILDING_HINTS[type](d)} ${d.cost} gold, ${d.buildTime}s, HP ${d.hp}.`;
   }
   return `${b.label} (${b.key})`;
 }
 
 const COUNTER_HINTS = {
-  drone: 'Mines Lumen and builds.',
-  striker: 'Beats Sparkers up close and Lancers.',
-  sparker: 'Beats Strikers at range and Lancers.',
-  bulwark: 'Beats Strikers and Sparkers; weak to Lancers.',
-  lancer: 'Beats Bulwarks; weak to Strikers and Sparkers.',
+  drone: 'Digs gold and builds.',
+  striker: 'Beats Archers up close and Dragon Riders.',
+  sparker: 'Beats Horsemen at range and Dragon Riders.',
+  bulwark: 'Beats Horsemen and Archers; weak to Dragon Riders.',
+  lancer: 'Its dragonfire melts Shield Knights; weak to Horsemen and Archers.',
 };
 const BUILDING_HINTS = {
-  core: (d) => `Your base: trains Drones, +${d.supply} supply. Lose every Core and you lose.`,
-  depot: (d) => `Drones drop Lumen here; +${d.supply} supply.`,
-  foundry: () => 'Trains Strikers, Sparkers, Bulwarks and Lancers.',
-  spire: (d) => `Defensive turret: ${d.weapon.damage} ${d.weapon.attack} / ${d.weapon.cooldown}s at range ${d.weapon.range}.`,
+  core: (d) => `Your seat: trains Peasants, +${d.supply} supply. Lose every Castle and you lose.`,
+  depot: (d) => `Peasants bring gold here; +${d.supply} supply.`,
+  foundry: () => 'Trains Horsemen, Archers, Shield Knights and Dragon Riders.',
+  spire: (d) => `Defensive tower: ${d.weapon.damage} ${ATTACK_TEXT[d.weapon.attack]} / ${d.weapon.cooldown}s at range ${d.weapon.range}.`,
 };
 
 // Fullscreen plus the Keyboard Lock API: in Chrome this makes Ctrl+1-9 reach the

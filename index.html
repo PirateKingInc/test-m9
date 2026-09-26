@@ -3,14 +3,14 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Prism Outpost</title>
+  <title>Dragonmarch</title>
   <link rel="stylesheet" href="src/game/hud.css">
 </head>
 <body>
   <div id="game"></div>
   <div id="hud-top" class="hud">
-    <span class="brand">PRISM OUTPOST</span>
-    <span>Lumen <b id="lumen">0</b></span>
+    <span class="brand">DRAGONMARCH</span>
+    <span>Gold <b id="lumen">0</b></span>
     <span id="units-readout">Units <b id="unit-count">0</b></span>
     <span>Supply <b id="supply">0/0</b></span>
     <span id="opponent" class="dim">Sandbox, no opponent · <kbd>`</kbd> dev panel</span>
@@ -28,8 +28,9 @@
   </div>
   <div id="menu" hidden>
     <div class="result-card menu-card">
-      <h1 class="brand-title">PRISM OUTPOST</h1>
-      <p class="dim">Destroy the enemy Command Core. Lose yours and you lose.</p>
+      <h1 class="brand-title">DRAGONMARCH</h1>
+      <p class="tagline">Knights, archers and dragons on the borderland march</p>
+      <p class="dim">Storm the enemy Castle. Lose yours and you lose.</p>
       <div class="menu-row">
         <button data-difficulty="easy">Easy</button>
         <button data-difficulty="normal">Normal</button>
@@ -39,9 +40,9 @@
       <label class="dim">AI strategy
         <select id="strategy">
           <option value="auto">Auto (by difficulty)</option>
-          <option value="rush">Rush</option>
-          <option value="boom">Economy-Boom</option>
-          <option value="turtle">Turtle-and-Tech</option>
+          <option value="rush">Warband Raid</option>
+          <option value="boom">Merchant Kingdom</option>
+          <option value="turtle">Stone Bastion</option>
         </select>
       </label>
       <p id="strategy-note" class="dim"></p>
@@ -63,18 +64,18 @@
     </div>
   </div>
   <div id="dev-panel" class="hud" hidden>
-    <div class="dev-title">DEV · test targets (verification only, not a game feature)</div>
+    <div class="dev-title">DEV · training dummies (verification only, not a game feature)</div>
     <p class="dim">Click a type, then click the map (Shift+click to place several). Team-2 units only fight back when in range; there is no AI.</p>
-    <button data-spawn="dummy">Test target</button><button data-spawn="drone">Drone</button><button data-spawn="striker">Striker</button>
-    <button data-spawn="sparker">Sparker</button><button data-spawn="bulwark">Bulwark</button><button data-spawn="lancer">Lancer</button>
+    <button data-spawn="dummy">Training Dummy</button><button data-spawn="drone">Peasant</button><button data-spawn="striker">Horseman</button>
+    <button data-spawn="sparker">Archer</button><button data-spawn="bulwark">Shield Knight</button><button data-spawn="lancer">Dragon Rider</button>
   </div>
   <div id="touchbar" class="hud" hidden>
-    <button data-touch="order" title="Order: then tap where to go, or an enemy, crystal or building">➜<span>Order</span></button>
+    <button data-touch="order" title="Order: then tap where to go, or an enemy, gold mine or building">➜<span>Order</span></button>
     <button data-touch="attack" title="Attack-move: then tap a spot; units fight anything on the way">⚔<span>Attack</span></button>
     <button data-touch="stop" title="Stop the selected units">■<span>Stop</span></button>
     <button data-touch="box" title="Box select: drag a box around your units">▭<span>Box</span></button>
     <button data-touch="cancel" title="Cancel the armed order or placement">✕<span>Cancel</span></button>
-    <button data-touch="base" title="Center the camera on your Command Core">⌂<span>Base</span></button>
+    <button data-touch="base" title="Center the camera on your Castle">⌂<span>Base</span></button>
   </div>
   <div id="groups" title="Control groups: click to select, Shift-click or right-click to assign the current selection (keys: Shift+1-9 assign, 1-9 select)"></div>
   <div id="hud-bottom" class="hud">

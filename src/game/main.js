@@ -34,6 +34,7 @@ function showMenu() {
   buttons.forEach((b) => b.addEventListener('click', () => { difficulty = b.dataset.difficulty; describe(); }));
   describe();
   const select = document.getElementById('strategy');
+  for (const o of select.options) if (STRATEGY_TEXT[o.value]) o.textContent = strategyName(o.value); // one source of truth: src/theme
   const describeStrategy = () => {
     const id = select.value === 'auto' ? DIFFICULTY[difficulty].strategy : select.value;
     document.getElementById('strategy-note').textContent = `${strategyName(id)}: ${STRATEGY_TEXT[id].description}`;

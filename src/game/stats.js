@@ -34,7 +34,7 @@ export class MatchStats {
   rows(player = 1, opponent = 2) {
     const a = this.teams[player], b = this.teams[opponent];
     return [
-      ['Lumen gathered', a.lumen, b.lumen],
+      ['Gold gathered', a.lumen, b.lumen],
       ['Units trained', a.trained, b.trained],
       ['Buildings completed', a.built, b.built],
       ['Enemies destroyed', a.kills, b.kills],

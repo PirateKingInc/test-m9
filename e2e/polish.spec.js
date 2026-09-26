@@ -6,7 +6,7 @@ test('first-run tutorial: hints advance with play, Skip hides it for good, Help 
   const panel = page.locator('#tutorial');
   await expect(panel).toBeVisible();
   await expect(page.locator('#tutorial-step')).toHaveText('1 / 6');
-  await expect(page.locator('#tutorial-text')).toContainText('Drones');
+  await expect(page.locator('#tutorial-text')).toContainText('Peasants');
   // Real input: drag a box around the starting Drones.
   const box = await page.evaluate(() => {
     const cam = window.__game.scene.cameras.main;
@@ -43,9 +43,9 @@ test('the game and tutorial still work when localStorage is blocked', async ({ p
 test('menu describes the chosen strategy', async ({ page }) => {
   await openGame(page, '?mode=match');
   await page.goto('/');
-  await expect(page.locator('#strategy-note')).toContainText('Rush'); // Normal's default (Phase 3)
+  await expect(page.locator('#strategy-note')).toContainText('Warband Raid'); // Normal's default (Phase 3): rush
   await page.locator('#strategy').selectOption('turtle');
-  await expect(page.locator('#strategy-note')).toContainText('Turtle-and-Tech');
+  await expect(page.locator('#strategy-note')).toContainText('Stone Bastion');
 });
 
 test('result screen shows match statistics; command buttons explain costs and counters', async ({ page }) => {
@@ -55,16 +55,16 @@ test('result screen shows match statistics; command buttons explain costs and co
     const drone = [...w.ofKind('unit')].find((u) => u.team === 1 && u.type === 'drone');
     ui.selection.set([drone.id]);
   });
-  await expect(page.locator('#command-card button').first()).toHaveAttribute('title', /Lumen/);
+  await expect(page.locator('#command-card button').first()).toHaveAttribute('title', /gold/);
   await page.evaluate(() => {
     const w = window.__game.world;
     const f = w.addBuilding('foundry', 1, 14, 34, { built: true });
     window.__game.scene.ui.selection.set([f.id]);
   });
-  await expect(page.locator('#command-card button[data-action="train:lancer"]')).toHaveAttribute('title', /Beats Bulwarks/);
+  await expect(page.locator('#command-card button[data-action="train:lancer"]')).toHaveAttribute('title', /melts Shield Knights/);
   await page.evaluate(() => { [...window.__game.world.ofKind('building')].find((b) => b.team === 2 && b.type === 'core').hp = 0; });
   await expect(page.locator('#result-title')).toHaveText('Victory');
-  await expect(page.locator('#result-stats')).toContainText('Lumen gathered');
+  await expect(page.locator('#result-stats')).toContainText('Gold gathered');
   await expect(page.locator('#result-stats')).toContainText('Buildings lost');
   expect(errors).toEqual([]);
 });
