@@ -59,10 +59,10 @@ test('pinch zooms in and out within limits, keeping the pinch center steady; Bas
   const midAfter = await page.evaluate(() => window.__game.scene.cameras.main.getWorldPoint(422, 195));
   expect(Math.hypot(midAfter.x - mid.x, midAfter.y - mid.y)).toBeLessThan(40);
   await touch.pinch(422, 195, 300, 40);
-  expect(await zoom()).toBe(0.5);
+  expect(await zoom()).toBe(0.35); // Phase 5 minimum (was 0.5);
   await touch.drag(200, 200, 600, 300);
   await touch.tapEl('#touchbar [data-touch="base"]');
-  // At 0.5x the camera is clamped at the map edge, so check the Core is on screen.
+  // At 0.35x the camera is clamped at the map edge, so check the Core is on screen.
   const onScreen = await page.evaluate(() => {
     const v = window.__game.scene.cameras.main.worldView;
     const core = [...window.__game.world.ofKind('building')].find((b) => b.team === 1 && b.type === 'core');
@@ -235,6 +235,10 @@ test('tapping the under-attack alert jumps the camera to the attack', async ({ p
 
 test('first-run tutorial on touch: every hint teaches touch, and touch alone completes all six steps', async ({ page }) => {
   const { errors, touch } = await openTouchGame(page, '?mode=match&difficulty=easy&seed=6&speed=8', { tutorial: true });
+  // Test setup: the opponent stays idle. At 8x speed its scout otherwise reaches
+  // the base mid-test, and a new Striker that auto-engages it finishes step 6
+  // before the player's own touch order does.
+  await page.evaluate(() => { window.__game.match.brains.length = 0; });
   const step = () => page.locator('#tutorial-step').textContent();
   await expect(page.locator('#tutorial')).toBeVisible();
   await expect(page.locator('#tutorial-text')).toContainText('Tap a');
@@ -285,11 +289,16 @@ test('first-run tutorial on touch: every hint teaches touch, and touch alone com
   // 6. attack: once the new Striker has stopped walking out of the Foundry,
   // tap it, arm Attack-move and tap the ground ahead.
   await expect.poll(() => page.evaluate(() => [...window.__game.world.ofKind('unit')].find((x) => x.team === 1 && x.type === 'striker')?.order.type), { timeout: 30000 }).toBe('idle');
-  const st = await page.evaluate(() => { const u = [...window.__game.world.ofKind('unit')].find((x) => x.team === 1 && x.type === 'striker'); return { x: u.x, y: u.y }; });
-  await centerOn(page, st.x, st.y);
-  s = await screenOf(page, st.x, st.y);
-  await touch.tap(s.x, s.y);
-  await expect.poll(() => sel(page)).toHaveLength(1);
+  // At 8x speed an idle unit can be nudged by passing Drones between reading its
+  // position and the tap landing, so read and tap again until the Striker itself is selected.
+  let st;
+  await expect(async () => {
+    st = await page.evaluate(() => { const u = [...window.__game.world.ofKind('unit')].find((x) => x.team === 1 && x.type === 'striker'); return { x: u.x, y: u.y }; });
+    await centerOn(page, st.x, st.y);
+    s = await screenOf(page, st.x, st.y);
+    await touch.tap(s.x, s.y);
+    expect(await page.evaluate(() => [...window.__game.scene.ui.selection.ids].map((id) => window.__game.world.get(id)?.type))).toEqual(['striker']);
+  }).toPass({ timeout: 15000 });
   await arm(page, touch, 'attack');
   s = await screenOf(page, st.x + 150, st.y);
   await touch.tap(s.x, s.y);

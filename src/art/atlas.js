@@ -9,9 +9,12 @@ export const ART_SCALE = 2;
 export const TEAMS = [1, 2];
 export const RING_R = 12; // world-px radius the ring texture is drawn for
 
-// Zoomed out, unit sprites are drawn up to 1.6x larger so they stay legible
-// (visual only: collision and picking use the sim's radius).
-export const unitBoost = (zoom) => Math.min(1.6, Math.max(1, 0.8 / zoom));
+// Zoomed out, unit sprites are drawn up to 2x larger so they stay legible
+// (visual only: collision and picking use the sim's radius). Phase 5 raised the
+// cap from 1.6x with the minimum zoom: a unit at 0.35x is drawn at 0.7x its 1x
+// screen size, close to the 0.8x it had at Phase 4's 0.5x minimum.
+export const UNIT_BOOST_MAX = 2;
+export const unitBoost = (zoom) => Math.min(UNIT_BOOST_MAX, Math.max(1, 0.8 / zoom));
 
 // Texture keys, shared with the renderer.
 export const unitKey = (type, team, carry = false) => `u-${type}-${team}${carry ? '-carry' : ''}`;

@@ -5,6 +5,7 @@ import { Effects } from './effects.js';
 import { MatchStats } from './stats.js';
 import { bakeAll, TERRAIN_KEY } from '../art/atlas.js';
 import { SpriteLayer } from './sprites.js';
+import { zoomAbout, wheelZoom, hudBounds } from './camera.js';
 
 const Phaser = globalThis.Phaser;
 const PAN_SPEED = 900; // px/s
@@ -36,7 +37,7 @@ export class GameScene extends Phaser.Scene {
     if (this.hud) this.hud.stats = this.stats;
 
     const cam = this.cameras.main;
-    cam.setBounds(0, -28, w.width, w.height + 28 + 104); // leave room under the HUD bars
+    this.fitBounds(); // leave room under the HUD bars
     this.centerOnCore();
 
     this.input.mouse.disableContextMenu();
@@ -57,10 +58,21 @@ export class GameScene extends Phaser.Scene {
       if (p.middleButtonDown()) this.midDrag = { x: p.x, y: p.y, sx: cam.scrollX, sy: cam.scrollY };
     });
     this.input.on('pointerup', () => { this.midDrag = null; });
+    // Desktop zoom (Phase 5): the mouse wheel zooms about the cursor, over the
+    // same range as pinch on touch.
+    this.input.on('wheel', (p, _objs, _dx, dy) => zoomAbout(cam, p.x, p.y, wheelZoom(cam.zoom, dy)));
     this.ui = new InputController(this, w);
     this.ui.on((name) => {
       if (name === 'select' || name === 'command') this.sfx?.ui(name);
     });
+  }
+
+  // Camera bounds follow the zoom and input mode (see camera.js hudBounds).
+  fitBounds() {
+    const cam = this.cameras.main, sig = `${cam.zoom}:${!!this.touchMode}`;
+    if (sig === this.boundsSig) return;
+    this.boundsSig = sig;
+    cam.setBounds(...hudBounds(cam.zoom, this.world.width, this.world.height, this.touchMode));
   }
 
   jumpToAttack() {
@@ -97,6 +109,7 @@ export class GameScene extends Phaser.Scene {
     const now = performance.now();
     const dt = Math.min(now - (this.lastNow ?? now), 250) / 1000;
     this.lastNow = now;
+    this.fitBounds();
     this.panCamera(dt);
     // ?speed=N runs the (unchanged) sim N times faster: for demos and the
     // mobile playthrough test. The sim still advances in fixed SIM_DT steps.

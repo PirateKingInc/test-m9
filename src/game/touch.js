@@ -4,13 +4,14 @@
 // only callers of world.issue(). See PHASE4_SPEC.md "The touch model".
 import { pickAt } from '../sim/selection.js';
 import { PLAYER } from '../sim/constants.js';
+import { ZOOM, zoomAbout } from './camera.js';
 
 export const TOUCH = {
   tapSlop: 10, // screen px a finger may wander and still count as a tap
   pickSlop: 22, // screen px of extra pick radius for a fingertip
   doubleTap: 0.4, // s (wall clock) between taps on the same unit type
-  minZoom: 0.5,
-  maxZoom: 1.6,
+  minZoom: ZOOM.min, // shared with the desktop mouse wheel (camera.js)
+  maxZoom: ZOOM.max,
 };
 
 export class TouchInput {
@@ -129,14 +130,7 @@ export class TouchInput {
     const pts = [...this.active.values()];
     if (pts.length < 2) return;
     const [a, b] = pts, g = this.gesture, cam = this.cam();
-    const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
-    const before = this.world(mx, my);
-    const z = Math.min(TOUCH.maxZoom, Math.max(TOUCH.minZoom, g.z0 * (Math.hypot(a.x - b.x, a.y - b.y) / g.d0)));
-    cam.setZoom(z);
-    cam.preRender(); // refresh the camera matrix so the world point below is current
-    const after = this.world(mx, my);
     // Keep the point between the fingers fixed on screen.
-    cam.scrollX += before.x - after.x;
-    cam.scrollY += before.y - after.y;
+    zoomAbout(cam, (a.x + b.x) / 2, (a.y + b.y) / 2, g.z0 * (Math.hypot(a.x - b.x, a.y - b.y) / g.d0));
   }
 }

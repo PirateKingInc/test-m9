@@ -4,11 +4,13 @@ import { test, expect } from '@playwright/test';
 import { openGame } from './helpers.js';
 
 // Compare textures inside the page: an alpha silhouette sampled at the size a
-// sprite is shown at 0.5x zoom (a 64 px unit box -> 32x32 screen px), plus the
-// mean colour.
-async function signatures(page, keys) {
-  return page.evaluate((keys) => {
-    const tm = window.__game.scene.textures, N = 32, out = {};
+// 64 px unit box is shown at the given zoom (0.5x -> 32x32 screen px, Phase 5's
+// minimum 0.35x -> 22x22), plus the mean colour. Conservative: the renderer
+// draws units up to 2x larger when zoomed out, and most buildings are bigger.
+const ZOOMS = [0.5, 0.35];
+async function signatures(page, keys, zoom) {
+  return page.evaluate(([keys, zoom]) => {
+    const tm = window.__game.scene.textures, N = Math.round(64 * zoom), out = {};
     for (const k of keys) {
       const src = tm.get(k).getSourceImage(), c = document.createElement('canvas');
       c.width = N; c.height = N;
@@ -24,7 +26,7 @@ async function signatures(page, keys) {
       out[k] = { mask, color: [r / n, g / n, b / n], coverage: n / (N * N), px: Array.from(d) };
     }
     return out;
-  }, keys);
+  }, [keys, zoom]);
 }
 
 // 1 - intersection/union of the two silhouettes (0 = identical, 1 = no overlap).
@@ -35,16 +37,17 @@ const silhouetteDiff = (a, b) => {
 };
 const colorDiff = (a, b) => Math.hypot(a.color[0] - b.color[0], a.color[1] - b.color[1], a.color[2] - b.color[2]);
 
-test('every unit sprite has its own silhouette, and teams differ by colour', async ({ page }) => {
+for (const zoom of ZOOMS) {
+test(`every unit sprite has its own silhouette, and teams differ by colour (at ${zoom}x)`, async ({ page }) => {
   const errors = await openGame(page);
   const types = ['drone', 'striker', 'sparker', 'bulwark', 'lancer'];
   const keys = [];
   for (const team of [1, 2]) for (const t of types) keys.push(`u-${t}-${team}`);
-  const sig = await signatures(page, keys);
+  const sig = await signatures(page, keys, zoom);
   for (const team of [1, 2]) {
     for (let i = 0; i < types.length; i++) for (let j = i + 1; j < types.length; j++) {
       const d = silhouetteDiff(sig[`u-${types[i]}-${team}`], sig[`u-${types[j]}-${team}`]);
-      expect(d, `${types[i]} vs ${types[j]} silhouettes overlap too much at 0.5x`).toBeGreaterThan(0.35);
+      expect(d, `${types[i]} vs ${types[j]} silhouettes overlap too much at ${zoom}x`).toBeGreaterThan(0.35);
     }
   }
   for (const t of types) expect(colorDiff(sig[`u-${t}-1`], sig[`u-${t}-2`]), `${t}: team colours differ (mean colour; white parts dilute it)`).toBeGreaterThan(45);
@@ -52,6 +55,7 @@ test('every unit sprite has its own silhouette, and teams differ by colour', asy
   expect(sig['u-drone-1'].coverage).toBeLessThan(sig['u-bulwark-1'].coverage);
   expect(errors).toEqual([]);
 });
+}
 
 // Share of opaque pixels near each team's hue (teal #39d3c3 / orange #ff7a45 families).
 const TEAL = [[57, 211, 195], [159, 245, 234], [29, 127, 120]], ORANGE = [[255, 122, 69], [255, 192, 159], [168, 67, 30]];
@@ -70,12 +74,13 @@ function teamShare(sig) {
 // Mean per-channel difference of two same-size textures sampled at 32x32 (0..255).
 const pixelDiff = (a, b) => a.px.reduce((s, v, i) => s + Math.abs(v - b.px[i]), 0) / a.px.length;
 
-test('every building differs in each construction state, types stay distinct, and teams differ', async ({ page }) => {
+for (const zoom of ZOOMS) {
+test(`every building differs in each construction state, types stay distinct, and teams differ (at ${zoom}x)`, async ({ page }) => {
   const errors = await openGame(page);
   const types = ['core', 'depot', 'foundry', 'spire'], states = ['foundation', 'frame', 'complete'];
   const keys = [];
   for (const team of [1, 2]) for (const t of types) for (const st of states) keys.push(`b-${t}-${team}-${st}`);
-  const sig = await signatures(page, keys);
+  const sig = await signatures(page, keys, zoom);
   for (const team of [1, 2]) {
     for (const t of types) {
       for (let i = 0; i < 3; i++) for (let j = i + 1; j < 3; j++) {
@@ -97,6 +102,7 @@ test('every building differs in each construction state, types stay distinct, an
   }
   expect(errors).toEqual([]);
 });
+}
 
 test('the visual reference sheet renders every sprite without errors', async ({ page }) => {
   const errors = [];

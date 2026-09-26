@@ -115,6 +115,7 @@ touch device an **action bar** appears on the right of the screen (see
 | Click a queue slot / **Backspace** | Cancel that item / the last queued item (100% refund) |
 | **X** | Cancel an unfinished building (75% refund) |
 | Arrow keys, screen edge, middle-drag | Pan the camera. **Home** recenters on the Core. |
+| Mouse wheel | Zoom in and out about the cursor (0.35×–1.6×, the same range as pinch on touch) |
 | **Space** | Jump the camera to where your base was last attacked |
 | **M** | Mute or unmute |
 | **Help** (top bar) | Show the first-run tutorial hints again |
@@ -130,7 +131,7 @@ bar**. Tap **➜ Order** (or **⚔ Attack**), then tap where to go.
 | **Tap** a unit or building | Select it. Tap empty ground to deselect. |
 | **Double-tap** one of your units | Select every unit of that type on screen |
 | **Drag** with one finger | Look around (pan the camera) |
-| **Pinch** | Zoom in and out (0.5×–1.6×) |
+| **Pinch** | Zoom in and out (0.35×–1.6×) |
 | **▭ Box**, then drag | Box-select your units |
 | **➜ Order**, then tap | The same smart order as a right-click: move there, attack the enemy you tapped, mine the crystal you tapped, help build a site, or set a Core/Foundry rally point |
 | **⚔ Attack**, then tap | Attack-move there |
@@ -247,7 +248,7 @@ live URL until it serves that exact commit.
 | `test/audio.test.js`, `test/stats.test.js`, `test/tutorial.test.js`, `e2e/polish.spec.js` | Every sim event has a sound; the result-screen stats add up; the first-run tutorial advances, persists, and works with storage blocked |
 | `test/freeze.test.js` | Phase 4 freeze: `src/data`, `src/sim` and `src/ai` are byte-identical to Phase 3, and fixed-seed games (positions, HP, orders) play out exactly as before |
 | `e2e/touch.spec.js` | Real touch events in mobile emulation: tap, double-tap, Box, pan, pinch, Order (move, attack, gather, rally), Attack-move, Stop, Cancel, placement, group hold/tap, the alert tap, and the whole touch tutorial |
-| `e2e/art.spec.js` | Unit silhouettes differ from each other at 0.5× zoom. Every building differs across its construction states, and Depot and Foundry differ in every state. Team colours are present and not mixed. The reference sheet renders. |
+| `e2e/art.spec.js` | Unit silhouettes differ from each other at 0.5× and 0.35× zoom (buildings too). Every building differs across its construction states, and Depot and Foundry differ in every state. Team colours are present and not mixed. The reference sheet renders. |
 | `e2e/mobile-playthrough.spec.js` (`npm run test:mobile`, its own CI job) | A whole match against the Easy AI played with touch events only, to its end. It uses every touch control: placement, training, rally, Box plus group hold, pinch, Order and Attack. This simple scripted player usually *loses*; the test proves touch can play a whole game, not that it wins one. |
 | `e2e/groups.spec.js` | Control groups without the browser's reserved Ctrl+1–8: Shift+digit, the HUD group bar, and Fullscreen with Keyboard Lock |
 
