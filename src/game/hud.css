@@ -1,15 +1,19 @@
-:root {
-  --bg: #0b0f17;
-  --panel: rgba(12, 18, 28, 0.88);
-  --edge: #2a3a52;
-  --text: #cfe8ff;
-  --dim: #7d93ad;
-  --accent: #39d3c3;
-  --lumen: #b69bff;
+:root { /* Phase 5: dark wood panels, parchment text, gold accents */
+  --bg: #15120d;
+  --panel: rgba(38, 27, 17, 0.92);
+  --edge: #6b4f2c;
+  --text: #f1e4c3;
+  --dim: #b8a37e;
+  --accent: #e8b64c;
+  --lumen: #f2c23a; /* the gold readout */
+  --button: #3a2a19;
+  --button-on: #4d3a1a;
+  --enemy: #ff8a6e;
 }
 html, body { margin: 0; height: 100%; background: var(--bg); overflow: hidden; }
-body { font: 13px/1.3 system-ui, -apple-system, "Segoe UI", sans-serif; color: var(--text); }
+body { font: 13px/1.3 "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif; color: var(--text); }
 #game { position: absolute; inset: 0; }
+button, select { font-family: inherit; }
 .hud { position: absolute; left: 0; right: 0; background: var(--panel); border-color: var(--edge);
   border-style: solid; border-width: 0; user-select: none; }
 #hud-top { top: 0; height: 28px; display: flex; gap: 20px; align-items: center; padding: 0 12px;
@@ -23,22 +27,22 @@ body { font: 13px/1.3 system-ui, -apple-system, "Segoe UI", sans-serif; color: v
 #selection-panel { flex: 1; overflow: hidden; }
 #command-card { display: grid; grid-template-columns: repeat(4, 64px); grid-auto-rows: 40px; gap: 4px; }
 .sel-name { font-weight: 600; font-size: 15px; margin-bottom: 4px; }
-.enemy { color: #ff7a45; font-weight: 400; font-size: 12px; }
-#command-card button { position: relative; background: #131c2a; color: var(--text); border: 1px solid var(--edge);
-  border-radius: 4px; font: 11px/1.1 system-ui, sans-serif; padding: 12px 2px 2px; cursor: pointer; }
+.enemy { color: var(--enemy); font-weight: 400; font-size: 12px; }
+#command-card button { position: relative; background: var(--button); color: var(--text); border: 1px solid var(--edge);
+  border-radius: 4px; font: 11px/1.1 Georgia, serif; padding: 12px 2px 2px; cursor: pointer; }
 #command-card button:hover:not(:disabled) { border-color: var(--accent); }
 #command-card button:disabled { opacity: 0.4; cursor: default; }
-#command-card button.active { border-color: #7dffb0; background: #16302a; }
+#command-card button.active { border-color: var(--accent); background: var(--button-on); }
 #command-card .key { position: absolute; left: 3px; top: 1px; color: var(--accent); font-weight: 700; }
 #command-card .cost { position: absolute; right: 3px; top: 1px; color: var(--lumen); }
 .queue { display: flex; gap: 4px; margin-top: 6px; }
-.queue button { position: relative; overflow: hidden; width: 74px; height: 26px; background: #131c2a; color: var(--text);
+.queue button { position: relative; overflow: hidden; width: 74px; height: 26px; background: var(--button); color: var(--text);
   border: 1px solid var(--edge); border-radius: 3px; font-size: 11px; cursor: pointer; }
 .queue button:hover { border-color: #ff5a5a; }
 .queue button i { position: absolute; left: 0; bottom: 0; height: 3px; background: var(--accent); }
 #dev-panel { top: 36px; left: auto; right: 8px; width: 260px; padding: 8px 10px; border-width: 1px; border-radius: 6px; }
 #dev-panel[hidden] { display: none; }
-#dev-panel .dev-title { color: #ff7a45; font-weight: 700; font-size: 11px; letter-spacing: 0.05em; }
+#dev-panel .dev-title { color: var(--enemy); font-weight: 700; font-size: 11px; letter-spacing: 0.05em; }
 #dev-panel p { margin: 4px 0 6px; font-size: 11px; }
 #dev-panel button { margin: 2px; background: #2a1a14; color: #ffd2bf; border: 1px solid #7a3b22; border-radius: 3px; cursor: pointer; font-size: 11px; }
 kbd { border: 1px solid var(--edge); border-radius: 3px; padding: 0 4px; font-size: 11px; }
@@ -54,28 +58,31 @@ kbd { border: 1px solid var(--edge); border-radius: 3px; padding: 0 4px; font-si
 #groups button:hover { border-color: var(--accent); opacity: 1; }
 #fullscreen { background: transparent; color: var(--dim); border: 1px solid var(--edge); border-radius: 3px; font-size: 11px;
   cursor: pointer; pointer-events: auto; }
-#supply.blocked { color: #ff7a45; }
+#supply.blocked { color: var(--enemy); }
 #result { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
-  background: rgba(5, 8, 14, 0.72); z-index: 20; }
+  background: rgba(12, 8, 4, 0.72); z-index: 20; }
 #result[hidden] { display: none; }
-.result-card { background: var(--panel); border: 1px solid var(--edge); border-radius: 10px; padding: 28px 40px; text-align: center; min-width: 320px; }
+.result-card { background: var(--panel); border: 2px solid var(--edge); box-shadow: inset 0 0 0 1px rgba(232, 182, 76, 0.25); border-radius: 10px; padding: 28px 40px; text-align: center; min-width: 320px; }
 .result-card h1 { margin: 0 0 8px; font-size: 44px; letter-spacing: 0.08em; }
-.result-card h1.victory { color: #7dffb0; }
-.result-card h1.defeat { color: #ff7a45; }
-.result-card h1.draw { color: var(--lumen); }
+.result-card h1.victory { color: var(--accent); }
+.result-card h1.defeat { color: var(--enemy); }
+.result-card h1.draw { color: var(--dim); }
 .result-actions { display: flex; gap: 10px; justify-content: center; margin-top: 18px; }
-.result-actions button { background: #131c2a; color: var(--text); border: 1px solid var(--edge); border-radius: 5px;
+.result-actions button { background: var(--button); color: var(--text); border: 1px solid var(--edge); border-radius: 5px;
   padding: 8px 16px; font-size: 14px; cursor: pointer; }
 .result-actions button:hover { border-color: var(--accent); }
-#menu { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: var(--bg); z-index: 30; }
+#menu { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 30;
+  background: radial-gradient(ellipse at 50% 30%, #3a2a17 0%, var(--bg) 70%); }
 #menu[hidden] { display: none; }
 .menu-card { min-width: 420px; }
-.brand-title { color: var(--accent); letter-spacing: 0.18em; font-size: 34px !important; }
+.brand-title { color: var(--accent); letter-spacing: 0.18em; font-size: 34px !important; text-shadow: 0 2px 0 #5a3a10, 0 0 18px rgba(232, 182, 76, 0.35); }
+#emblem { display: block; margin: 0 auto 4px; width: 132px; height: 140px; }
+.tagline { margin: 0 0 6px; color: var(--text); font-style: italic; }
 .menu-row { display: flex; gap: 8px; justify-content: center; margin: 14px 0 6px; }
-.menu-row button { background: #131c2a; color: var(--text); border: 1px solid var(--edge); border-radius: 5px; padding: 10px 22px;
+.menu-row button { background: var(--button); color: var(--text); border: 1px solid var(--edge); border-radius: 5px; padding: 10px 22px;
   font-size: 15px; cursor: pointer; }
-.menu-row button.active { border-color: var(--accent); background: #12302d; }
-#menu select { margin-left: 8px; background: #131c2a; color: var(--text); border: 1px solid var(--edge); border-radius: 4px; padding: 4px; }
+.menu-row button.active { border-color: var(--accent); background: var(--button-on); }
+#menu select { margin-left: 8px; background: var(--button); color: var(--text); border: 1px solid var(--edge); border-radius: 4px; padding: 4px; }
 #result-stats { margin: 14px auto 0; border-collapse: collapse; font-size: 13px; }
 #result-stats th { color: var(--dim); font-weight: 600; padding: 2px 14px; }
 #result-stats td { padding: 2px 14px; text-align: right; }
@@ -89,7 +96,7 @@ kbd { border: 1px solid var(--edge); border-radius: 3px; padding: 0 4px; font-si
 #tutorial .tut-head { display: flex; gap: 8px; align-items: center; font-size: 11px; }
 #tutorial .tut-title { color: var(--accent); font-weight: 700; letter-spacing: 0.1em; }
 #tutorial p { margin: 6px 0 2px; font-size: 13px; line-height: 1.4; }
-#tutorial-skip { margin-left: auto; background: #131c2a; color: var(--text); border: 1px solid var(--edge); border-radius: 3px;
+#tutorial-skip { margin-left: auto; background: var(--button); color: var(--text); border: 1px solid var(--edge); border-radius: 3px;
   font-size: 11px; cursor: pointer; }
 #tutorial-skip:hover { border-color: var(--accent); }
 /* ---- Phase 4: touch chrome ---- */
@@ -108,13 +115,13 @@ kbd { border: 1px solid var(--edge); border-radius: 3px; padding: 0 4px; font-si
   font-weight: 600; font-size: 14px; text-align: center; pointer-events: none; }
 #armed-banner[hidden] { display: none; }
 #touchbar button.pulse { animation: pulse 1.2s ease-out 2; }
-@keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(125, 255, 176, 0.8); } 100% { box-shadow: 0 0 0 14px rgba(125, 255, 176, 0); } }
+@keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(232, 182, 76, 0.8); } 100% { box-shadow: 0 0 0 14px rgba(232, 182, 76, 0); } }
 #toast.alert { pointer-events: auto; cursor: pointer; }
 #groups button { touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
 @keyframes holdfill { from { background-size: 100% 0%; } to { background-size: 100% 100%; } }
 #groups button.holding { background-image: linear-gradient(rgba(255, 210, 74, 0.55), rgba(255, 210, 74, 0.55));
   background-repeat: no-repeat; background-position: bottom; animation: holdfill 0.5s linear forwards; }
-#groups button.assigned { border-color: #7dffb0; box-shadow: 0 0 10px #7dffb0; }
+#groups button.assigned { border-color: var(--accent); box-shadow: 0 0 10px var(--accent); }
 body.touch #groups button { width: 40px; height: 40px; }
 /* ---- Phase 4: clarity and small screens ---- */
 #selection-panel .hint { color: #ffe9a6; font-size: 12px; margin-top: 3px; }
@@ -139,6 +146,7 @@ body.touch #groups button { width: 40px; height: 40px; }
   .result-card h1 { font-size: 30px; }
   #menu { align-items: flex-start; overflow-y: auto; }
   .menu-card { margin: 12px 0; }
+  #emblem { width: 84px; height: 90px; }
 }
 @media (max-height: 520px) {
   body.touch #groups button:nth-child(n+7) { display: none; } /* 1-6 fit above the bottom panel */
@@ -151,7 +159,7 @@ body.touch #command-card .key { display: none; } /* no keyboard on a phone */
   /* Portrait phone: selection above the command card, a row of group slots
      just above that, the action bar top-right and the banner beside it. */
   #hud-top { gap: 8px; }
-  #units-readout { display: none; } /* Lumen and supply are what matter on a narrow screen */
+  #units-readout { display: none; } /* gold and supply are what matter on a narrow screen */
   #hud-bottom { height: 112px; flex-direction: column; }
   #command-card { grid-template-columns: repeat(4, 1fr); }
   #groups { bottom: 118px; left: 6px; }

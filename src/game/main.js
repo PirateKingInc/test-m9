@@ -7,6 +7,7 @@ import { GameScene } from './scene.js';
 import { Hud } from './hud.js';
 import { Sfx } from './audio.js';
 import { Tutorial } from './tutorial.js';
+import { drawEmblem } from './emblem.js';
 
 const Phaser = globalThis.Phaser;
 const params = new URLSearchParams(location.search);
@@ -23,6 +24,7 @@ if (mode !== 'match' && mode !== 'sandbox') {
 function showMenu() {
   const menu = document.getElementById('menu');
   menu.hidden = false;
+  drawEmblem(document.getElementById('emblem'));
   let difficulty = 'normal';
   const buttons = menu.querySelectorAll('button[data-difficulty]');
   const describe = () => {
@@ -80,7 +82,7 @@ function start(mode) {
   const game = new Phaser.Game({
     type: Phaser.AUTO,
     parent: 'game',
-    backgroundColor: '#0b0f17',
+    backgroundColor: '#15120d',
     scale: { mode: Phaser.Scale.RESIZE, width: '100%', height: '100%' },
     scene,
     banner: false,

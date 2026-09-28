@@ -3,7 +3,7 @@ import { openGame } from './helpers.js';
 
 test('game boots, sim ticks, HUD shows the stockpile, no console errors', async ({ page }) => {
   const errors = await openGame(page);
-  await expect(page.locator('canvas')).toBeVisible();
+  await expect(page.locator('#game canvas')).toBeVisible();
   await expect(page.locator('#lumen')).toHaveText('250');
   const t0 = await page.evaluate(() => window.__game.world.time);
   await page.waitForTimeout(500);

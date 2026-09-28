@@ -8,13 +8,13 @@ const MIN_GAP = { alert0: 1, alert1: 1, attack: 0.07, death: 0.05, dropoff: 0.12
 // checks that each event type the sim emits has an entry here. "own" sounds
 // only play for the player's team; "positional" ones fade with camera distance.
 export const EVENT_SOUNDS = {
-  attack: 'weapon sound per attack type: sword swish, arrow twang, mace thud, dragonfire roar (positional)',
+  attack: 'weapon sound per attack type: a swish for swords, a zap for arrows, a thud for maces, a whine for dragonfire (positional)',
   death: 'explosion: small for units, bigger for buildings, a deep boom for a Castle (positional)',
   built: 'rising three-note chime (own)',
   trained: 'rising blip (own)',
   placed: 'construction thunk (own)',
   cancelled: 'falling blip (own)',
-  dropoff: 'soft gold clink (own, positional)',
+  dropoff: 'soft tick when gold is delivered (own, positional)',
   depleted: 'glassy falling chime when a gold mine runs dry (positional)',
   rejected: 'low buzz (own)',
   gameOver: 'victory fanfare, defeat stinger or draw chord',

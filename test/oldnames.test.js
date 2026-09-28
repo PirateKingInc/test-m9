@@ -37,7 +37,8 @@ test('UI sources show no old names', () => {
   for (const f of readdirSync(new URL('../src/game/', import.meta.url)).filter((x) => x.endsWith('.js'))) {
     for (const s of literals(read(`src/game/${f}`))) for (const n of oldNamesIn(s)) hits.push(`src/game/${f}: "${n}" in ${JSON.stringify(s.slice(0, 80))}`);
   }
-  for (const f of ['index.html']) for (const s of htmlText(read(f))) for (const n of oldNamesIn(s)) hits.push(`${f}: "${n}"`);
+  for (const s of literals(read('src/art/sheet.js'))) for (const n of oldNamesIn(s)) hits.push(`src/art/sheet.js: "${n}" in ${JSON.stringify(s.slice(0, 80))}`);
+  for (const f of ['index.html', 'sheet.html']) for (const s of htmlText(read(f))) for (const n of oldNamesIn(s)) hits.push(`${f}: "${n}"`);
   assert.deepEqual(hits, []);
 });
 

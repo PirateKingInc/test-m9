@@ -16,7 +16,7 @@ export const STEPS = [
   { id: 'select', text: 'Drag a box around your <b>Peasants</b> (or click one) to select them.',
     touch: 'Tap a <b>Peasant</b> to select it. Double-tap one to grab all of them.',
     done: (w, ui) => ui.selection.entities(w).some((e) => e.team === PLAYER && e.type === 'drone') },
-  { id: 'gather', text: '<b>Right-click a gold mine</b> to dig gold. Peasants carry it to a Storehouse (or the Castle).',
+  { id: 'gather', text: '<b>Right-click a gold mine</b> to dig gold. Peasants carry it to a Storehouse.',
     touch: 'Tap <b>➜ Order</b> (right), then tap a <b>gold mine</b> to dig gold.',
     done: (w) => mine(w, 'unit', 'drone').some((d) => d.order.type === 'gather') },
   { id: 'depot', text: 'With a Peasant selected, press <kbd>W</kbd> and click to place a <b>Storehouse</b> near the gold mines.',
