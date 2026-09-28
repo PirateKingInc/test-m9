@@ -28,8 +28,13 @@ export class World {
     this.tick = 0;
     this.nextId = 1;
     this.entities = new Map();
+    // Camps in play (Phase 6): the sandbox has the player's only; the 1v1 match
+    // the west and east starts; the free-for-all every camp on its map. Each
+    // camp is a team with its own stockpile, buildings and units.
+    this.camps = setup === 'ffa' ? map.camps : setup === 'match' ? [map.start, map.aiStart] : setup === 'start' ? [map.start] : [];
+    this.teams = this.camps.length ? this.camps.map((c) => c.team) : [PLAYER]; // an empty test world still has the player
     this.resources = { [PLAYER]: map.startingLumen };
-    this.mode = setup === 'match' ? 'match' : 'sandbox';
+    this.mode = setup === 'match' || setup === 'ffa' ? setup : 'sandbox';
     this.result = null; // set once a match is decided (SPEC.md Phase 2 "Win / lose")
     this.events = []; // drained by the renderer/audio each frame
 
@@ -37,10 +42,11 @@ export class World {
     this.spatial = new SpatialIndex();
     for (const [x, y, w, h] of map.rocks) this.grid.setRock(x, y, w, h);
     for (const [tx, ty] of map.nodes) this.addNode(tx, ty, map.nodeAmount);
-    if (setup === 'start' || setup === 'match') this.setupStart(map.start);
-    if (setup === 'match') {
-      this.setupStart(map.aiStart);
-      this.resources[map.aiStart.team] = map.startingLumen;
+    if (setup === 'start' || setup === 'match' || setup === 'ffa') {
+      for (const camp of this.camps) {
+        this.setupStart(camp);
+        this.resources[camp.team] = map.startingLumen;
+      }
     }
   }
 

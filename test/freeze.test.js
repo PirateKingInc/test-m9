@@ -20,8 +20,11 @@ import { gameplayHash } from './gameplay-values.js';
 
 const sha = (buf) => createHash('sha256').update(buf).digest('hex');
 
-// sha256 of every file: src/sim and src/ai as shipped by Phase 3 (commit
-// 8649e39); src/data as split in Phase 5 (display fields removed, no value changed).
+// sha256 of every file. src/data: as split in Phase 5 (display fields removed,
+// no value changed). src/sim and src/ai: byte-identical to Phase 3 until Phase
+// 6, which had to change them for N teams; they are re-pinned to the Phase 6
+// refactor, so any later change is deliberate. The proof that the refactor
+// changed no behaviour is the fingerprints below, not these pins.
 export const FROZEN = {
   "src/data/buildings.js": "0176c4b3f71568db3421a3f661c96fbf64b9b78d7d3d2f812770307c8b204ec8",
   "src/data/difficulty.js": "5edbe78a9ebb8172eed5c945f34732d549375eeb806df9265e684577b1a0ea6e",
@@ -43,16 +46,16 @@ export const FROZEN = {
   "src/sim/spatial.js": "9c8ca85c581fcb61e63338d7c19c286018ea01410272dfd4ba0bd79be1b8334d",
   "src/sim/steering.js": "b89ec8a54093853a66b8a4e7b4902fda00a36694565a369fb256b31c8c34c57f",
   "src/sim/supply.js": "3dafb9550ca87e902d153392eb319697a6559fa6b84c05d75cee160e1f0d6824",
-  "src/sim/victory.js": "ae0c086cf9d905e99bc48bd703b386e08b2921be1db24f719ce1203a9d613cc3",
-  "src/sim/world.js": "b140a77b657c30453532527df5082b25744910b00554f77e025edef1c8315e8d",
+  "src/sim/victory.js": "0b9212c943a4e1ec9150cce3ebc0394f971da57d02628598a4c3f1cd7040447c",
+  "src/sim/world.js": "69c28c1168668b317b613021418bdfb7026d074c6b06950adf56651bd5d1fd71",
   "src/ai/engine-types.js": "af5469d73733f3337336b5217b6a9186f1c3c0fd36e9623477c786b4f5b1c643",
-  "src/ai/engine.js": "04c2e07cd49736969dbb9797ec07c9403efd56529ddf4182cba697f89e95bc69",
+  "src/ai/engine.js": "0592aa9e82a5f11b8f825b6e7cab62cb3336fad0ad49e5c7b711bed4e43a45e4",
   "src/ai/match.js": "1bbc68ebbecdb720452be211e0cc3059d04cacca755f4908204adb4f788c2f54",
   "src/ai/readonly.js": "85d635a231882096209c77af1e34820ecae488fde5da79d390b5dfdee07850f7",
-  "src/ai/scout.js": "fec0641a2a2114836b823d3f863ac7930b79a5f1ec3520588e0c4555db1eb29b"
+  "src/ai/scout.js": "0f0a2bb8166f2d6e3f16013cfb06fc4283442c570b7e5591da8f1b8398df9a05"
 };
 
-test('src/sim and src/ai are byte-identical to Phase 3, src/data to its Phase 5 split', () => {
+test('src/data is byte-identical to its Phase 5 split; src/sim and src/ai to their pinned Phase 6 state', () => {
   const now = {};
   for (const dir of ['data', 'sim', 'ai']) {
     const url = new URL(`../src/${dir}/`, import.meta.url);
@@ -104,4 +107,50 @@ export const GOLDEN = {
 
 test('fixed-seed games play out exactly as in Phase 3 and 4 (collision, pathing, combat)', () => {
   assert.deepEqual(fingerprints(), GOLDEN);
+});
+
+// Phase 6 equivalence proof. The sim and the AI were refactored from two teams
+// to a list of N teams (PHASE6_SPEC.md "Team model"). These fingerprints were
+// recorded on the Phase 5 release (commit 1b1a22b) *before* that refactor: all
+// nine ordered strategy pairs across the three tiers, each played to its
+// result, the browser's AI-only match, and a match decided at the time limit.
+// The 1v1 match now runs through the N-team code and must reproduce every one:
+// the final state of every entity, the tick, both stockpiles and the result.
+function toResult(m) {
+  while (!m.world.result) m.step();
+  const r = m.world.result;
+  return `${fingerprint(m.world)} ${r.winner}/${r.reason}/${r.time.toFixed(2)}`;
+}
+
+export function phase5Fingerprints() {
+  const out = {};
+  const S = ['rush', 'boom', 'turtle'], T = ['easy', 'normal', 'hard'];
+  let i = 0;
+  for (const a of S) for (const b of S) {
+    const tier = T[i % 3], seed = 11 + i++;
+    const m = new Match({ seed, PF, player: { strategy: a, difficulty: tier }, ai: { strategy: b, difficulty: tier } });
+    out[`${a}-${b}-${tier}-${seed}`] = `${toResult(m)} ${JSON.stringify(m.world.result.scores)}`;
+  }
+  out['idlePlayer-rush-hard-5'] = toResult(new Match({ seed: 5, PF, ai: { strategy: 'rush', difficulty: 'hard' } }));
+  const tl = new Match({ seed: 7, PF, player: { strategy: 'sentinel', difficulty: 'hard' }, ai: { strategy: 'sentinel', difficulty: 'normal' } });
+  out['sentinel-sentinel-timeLimit-7'] = `${toResult(tl)} ${JSON.stringify(tl.world.result.scores)}`;
+  return out;
+}
+
+export const GOLDEN_PHASE5 = {
+  'rush-rush-easy-11': '36ee13c7915dbf76 2/core-destroyed/915.20 {"1":9564,"2":9271}',
+  'rush-boom-normal-12': 'b6ab9dff57239767 2/core-destroyed/691.55 {"1":2746,"2":5489}',
+  'rush-turtle-hard-13': '8759eeaa974aa053 1/core-destroyed/470.25 {"1":4694,"2":997}',
+  'boom-rush-easy-14': '8c7ca4cd9b9c6c35 1/core-destroyed/896.75 {"1":11200,"2":7602}',
+  'boom-boom-normal-15': 'b57d573828ee00bf 2/core-destroyed/438.30 {"1":5960,"2":6678}',
+  'boom-turtle-hard-16': '8ff6d9169fa5e6bd 2/core-destroyed/423.45 {"1":3926,"2":5733}',
+  'turtle-rush-easy-17': 'fe90e7f6d0fb833f 1/core-destroyed/490.55 {"1":5645,"2":3358}',
+  'turtle-boom-normal-18': '39f1e6649c9cc51e 2/core-destroyed/611.40 {"1":2424,"2":10270}',
+  'turtle-turtle-hard-19': 'd9e78765b7e09afc 2/core-destroyed/512.45 {"1":1456,"2":6089}',
+  'idlePlayer-rush-hard-5': '3af1e255e21bf12a 2/core-destroyed/267.45',
+  'sentinel-sentinel-timeLimit-7': '0338b34329f588de 1/time-limit/1800.05 {"1":13430,"2":12946}',
+};
+
+test('Phase 6 equivalence: 1v1 matches through the N-team code reproduce Phase 5 exactly', () => {
+  assert.deepEqual(phase5Fingerprints(), GOLDEN_PHASE5);
 });

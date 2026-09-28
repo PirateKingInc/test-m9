@@ -520,13 +520,55 @@ export class AiEngine {
 
   // ---- army control -------------------------------------------------------
 
-  enemyTeam() { return this.team === 1 ? 2 : 1; }
+  // Any team but ours is an enemy (Phase 6: N camps; in the 1v1 match that is
+  // the one other camp, and the sandbox's test targets). Entities without a
+  // team (gold mines) are nobody's.
+  isEnemyTeam(team) { return !!team && team !== this.team; }
 
-  // Both sides know the map, so both know where the enemy started.
-  enemyStart() {
-    const st = this.team === 1 ? this.w.map.aiStart : this.w.map.start;
+  // Where a camp's Castle started (everyone knows the map).
+  campStart(camp) {
     const T = this.w.grid.tile;
-    return { x: (st.core[0] + 2) * T, y: (st.core[1] + 2) * T };
+    return { x: (camp.core[0] + 2) * T, y: (camp.core[1] + 2) * T };
+  }
+
+  // Rival camps still in the game: they still have a completed Castle.
+  // (Which camps remain is public: the HUD shows it to the player too.)
+  livingRivals() {
+    const alive = new Set();
+    for (const b of this.w.ofKind('building')) if (b.type === 'core' && b.built && b.hp > 0) alive.add(b.team);
+    return this.w.camps.filter((c) => c.team !== this.team && alive.has(c.team));
+  }
+
+  // PLACEHOLDER TARGETING (Phase 6). Phase 7 replaces this with real
+  // multi-rival evaluation (threat, strength, opportunity). For now the AI
+  // simply goes after the nearest living rival camp: straight-line distance
+  // between Castle starts, ties to the lower team number. In the 1v1 match
+  // there is only one rival, so this is exactly the Phase 2-5 behaviour.
+  targetCamp() {
+    const own = this.w.camps.find((c) => c.team === this.team);
+    const rivals = this.livingRivals();
+    const pool = rivals.length ? rivals : this.w.camps.filter((c) => c.team !== this.team);
+    if (!own) return pool[0];
+    const from = this.campStart(own);
+    let best = null, bestD = Infinity;
+    for (const c of pool) {
+      const p = this.campStart(c), d = Math.hypot(p.x - from.x, p.y - from.y);
+      if (d < bestD || (d === bestD && c.team < best.team)) { bestD = d; best = c; }
+    }
+    return best;
+  }
+
+  enemyTeam() { return this.targetCamp().team; }
+
+  // The target camp's start. When the target changes (it was eliminated), what
+  // the scout learned about the old target's start no longer applies.
+  enemyStart() {
+    const camp = this.targetCamp();
+    if (this.lastTarget !== camp.team) {
+      if (this.lastTarget != null) { this.scout.startEmptyAt = null; this.searchIdx = 0; }
+      this.lastTarget = camp.team;
+    }
+    return this.campStart(camp);
   }
 
   // What to hit (Phase 3): the nearest enemy Command Core the scout knows of;
@@ -536,21 +578,22 @@ export class AiEngine {
   // the Core itself when one is known, otherwise a { x, y } point.
   attackTarget() {
     const home = this.core() || this.enemyStart();
-    const [known] = this.scout.knownCores(home);
+    const [known] = this.scout.knownCores(home, this.enemyTeam());
     if (known) {
       const live = this.w.get(known.id);
       return live && live.hp > 0 ? live : { x: known.x, y: known.y };
     }
     const start = this.enemyStart();
     if (this.scout.startEmptyAt == null) return start;
-    const seen = this.scout.knownBuildings()
+    const seen = this.scout.knownBuildings(undefined, this.enemyTeam())
       .sort((a, b) => Math.hypot(a.x - home.x, a.y - home.y) - Math.hypot(b.x - home.x, b.y - home.y));
     if (seen.length) return { x: seen[0].x, y: seen[0].y };
     // Nothing known: sweep the enemy half, moving on once a point is in sight.
     const pts = SCOUTING.searchPoints, T = this.w.grid.tile, cols = this.w.grid.cols;
+    const east = start.x > this.w.width / 2; // the points are written for the west half
     const at = (i) => {
       const [tx, ty] = pts[i % pts.length];
-      return { x: ((this.team === 1 ? cols - tx : tx)) * T, y: ty * T };
+      return { x: ((east ? cols - tx : tx)) * T, y: ty * T };
     };
     this.searchIdx ??= 0;
     for (let n = 0; n < pts.length && this.scout.sees(at(this.searchIdx).x, at(this.searchIdx).y); n++) this.searchIdx++;
@@ -572,7 +615,7 @@ export class AiEngine {
   intruders() {
     const out = [];
     for (const u of this.w.ofKind('unit')) {
-      if (u.team === this.enemyTeam() && COMBAT_TYPES.includes(u.type) && this.nearBase(u.x, u.y)) out.push(u);
+      if (this.isEnemyTeam(u.team) && COMBAT_TYPES.includes(u.type) && this.nearBase(u.x, u.y)) out.push(u);
     }
     return out;
   }
@@ -673,7 +716,7 @@ export class AiEngine {
       if (idle.length) this.issue({ type: 'attackMove', ids: idle.map((u) => u.id), x: core.x, y: core.y });
       return;
     }
-    const defended = [...this.w.ofKind('unit')].some((e) => e.team === this.enemyTeam() && COMBAT_TYPES.includes(e.type)
+    const defended = [...this.w.ofKind('unit')].some((e) => this.isEnemyTeam(e.team) && COMBAT_TYPES.includes(e.type)
       && Math.hypot(e.x - core.x, e.y - core.y) < ARMY.coreAssault + core.pw);
     const free = near.filter((u) => !(u.order.type === 'attack' && u.order.target === core.id) && u.order.type !== 'attack');
     if (!defended && free.length) {

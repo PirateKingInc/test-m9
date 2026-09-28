@@ -1,9 +1,9 @@
-// Win / lose (SPEC.md Phase 2): a team with no completed Command Core is defeated;
-// same-tick mutual loss is a draw; at the time limit the higher score wins.
+// Win / lose. SPEC.md Phase 2 (the 1v1 match): a team with no completed
+// Command Core is defeated; same-tick mutual loss is a draw; at the time limit
+// the higher score wins. Phase 6 generalizes this to world.teams (N camps);
+// the free-for-all's elimination and ranking rules are in PHASE6_SPEC.md.
 import { UNITS } from '../data/units.js';
 import { BUILDINGS } from '../data/buildings.js';
-
-export const TEAMS = [1, 2];
 
 export function hasCore(world, team) {
   for (const b of world.ofKind('building')) if (b.team === team && b.type === 'core' && b.built && b.hp > 0) return true;
@@ -22,8 +22,9 @@ export function score(world, team) {
 }
 
 function finish(world, winner, reason) {
-  const loser = winner === null ? null : TEAMS.find((t) => t !== winner);
-  world.result = { winner, loser, reason, time: world.time, scores: Object.fromEntries(TEAMS.map((t) => [t, score(world, t)])) };
+  const teams = world.teams;
+  const loser = winner === null || teams.length !== 2 ? null : teams.find((t) => t !== winner);
+  world.result = { winner, loser, reason, time: world.time, scores: Object.fromEntries(teams.map((t) => [t, score(world, t)])) };
   world.emit('gameOver', { ...world.result });
 }
 
@@ -31,11 +32,13 @@ function finish(world, winner, reason) {
 // once a Core is gone or time runs out, so a match can never end in limbo.
 export function checkResult(world) {
   if (world.mode !== 'match' || world.result) return;
-  const alive = TEAMS.filter((t) => hasCore(world, t));
+  const alive = world.teams.filter((t) => hasCore(world, t));
   if (alive.length === 0) return finish(world, null, 'draw');
   if (alive.length === 1) return finish(world, alive[0], 'core-destroyed');
   if (world.time >= world.map.timeLimit - 1e-9) {
-    const [a, b] = TEAMS.map((t) => score(world, t));
-    return finish(world, a === b ? null : a > b ? 1 : 2, 'time-limit');
+    const scores = world.teams.map((t) => score(world, t));
+    const best = Math.max(...scores);
+    const top = world.teams.filter((t, i) => scores[i] === best);
+    return finish(world, top.length === 1 ? top[0] : null, 'time-limit');
   }
 }

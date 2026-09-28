@@ -30,7 +30,7 @@ export class Scout {
   }
 
   scan() {
-    const now = this.e.w.time, enemy = this.e.enemyTeam();
+    const now = this.e.w.time;
     const eyes = this.eyes();
     const inView = (x, y) => {
       let seen = false, base = false;
@@ -41,16 +41,16 @@ export class Scout {
     };
     const seenNow = new Set();
     for (const t of this.e.w.entities.values()) {
-      if (t.team !== enemy || (t.kind !== 'unit' && t.kind !== 'building') || t.hp <= 0) continue;
+      if (!this.e.isEnemyTeam(t.team) || (t.kind !== 'unit' && t.kind !== 'building') || t.hp <= 0) continue;
       const v = inView(t.x, t.y);
       if (!v.seen) continue;
-      this.memory.set(t.id, { kind: t.kind, type: t.type, x: t.x, y: t.y, seenAt: now, nearBase: v.base });
-      if (t.type === 'core') { this.cores.set(t.id, { id: t.id, x: t.x, y: t.y, seenAt: now }); seenNow.add(t.id); }
+      this.memory.set(t.id, { kind: t.kind, type: t.type, team: t.team, x: t.x, y: t.y, seenAt: now, nearBase: v.base });
+      if (t.type === 'core') { this.cores.set(t.id, { id: t.id, team: t.team, x: t.x, y: t.y, seenAt: now }); seenNow.add(t.id); }
     }
     for (const [id, c] of this.cores) if (!seenNow.has(id) && inView(c.x, c.y).seen) this.cores.delete(id);
     const start = this.e.enemyStart();
     if (inView(start.x, start.y).seen) {
-      const there = [...this.cores.values()].some((c) => Math.hypot(c.x - start.x, c.y - start.y) < 200);
+      const there = [...this.cores.values()].some((c) => c.team === this.e.enemyTeam() && Math.hypot(c.x - start.x, c.y - start.y) < 200);
       this.startEmptyAt = there ? null : now;
     }
     // Unit sightings are remembered for `memory` seconds (even if that unit has
@@ -120,14 +120,14 @@ export class Scout {
     return false;
   }
 
-  // Enemy Cores we know of, nearest to `from` first.
-  knownCores(from) {
-    const out = [...this.cores.values()];
+  // Enemy Cores we know of (of one team, if given), nearest to `from` first.
+  knownCores(from, team) {
+    const out = [...this.cores.values()].filter((c) => team == null || c.team === team);
     if (from) out.sort((a, b) => Math.hypot(a.x - from.x, a.y - from.y) - Math.hypot(b.x - from.x, b.y - from.y));
     return out;
   }
 
-  knownBuildings(type) {
-    return [...this.memory.values()].filter((m) => m.kind === 'building' && (!type || m.type === type));
+  knownBuildings(type, team) {
+    return [...this.memory.values()].filter((m) => m.kind === 'building' && (!type || m.type === type) && (team == null || m.team === team));
   }
 }
