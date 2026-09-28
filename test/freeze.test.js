@@ -28,6 +28,7 @@ const sha = (buf) => createHash('sha256').update(buf).digest('hex');
 export const FROZEN = {
   "src/data/buildings.js": "0176c4b3f71568db3421a3f661c96fbf64b9b78d7d3d2f812770307c8b204ec8",
   "src/data/difficulty.js": "5edbe78a9ebb8172eed5c945f34732d549375eeb806df9265e684577b1a0ea6e",
+  "src/data/ffa.js": "eeb6bef76d991ecb9a07fa58e41a559585203faafaba31f8684e057302a3a282",
   "src/data/map.js": "7ca9715b0b10d0d0a5659268c05bb7df451bda0306b21032a0fa5f13abc6436f",
   "src/data/strategies.js": "ce6e3cd4a084145f4ae7315103bf953ae76d6e6b5cfdc117aab6f966fe15e499",
   "src/data/units.js": "b401f86514666b40bd0a2f8b5b1ac664563a6f33be2869391763c747f36a3ca0",

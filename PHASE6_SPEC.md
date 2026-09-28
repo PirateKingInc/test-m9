@@ -79,8 +79,12 @@ others', and each unit's dominant team colour is its own, at 0.5× and 0.35×.
   each pair of neighbouring camps, and the Centre. Each has a gold field in
   the middle: four mines (the 1v1 middle-field layout) in the four edge zones,
   six in the Centre.
-- **Stone walls** run along the zone borders with an 8-tile gap in the middle
-  of every border, so armies move from zone to zone through gates.
+- **Stone walls** run along the zone borders with a gate in every border, so
+  armies move from zone to zone through gates. A camp's gates sit beside its
+  Castle and just past the end of its gold-mine arc (as the 1v1 map's
+  chokepoints do): a first layout with the gate behind the middle of the arc
+  made armies squeeze between the mines, and the travel measurement caught
+  Shield Knights wedged there.
 - The map is mirror-symmetric in both axes.
 
 ```
@@ -98,10 +102,35 @@ others', and each unit's dominant team colour is its own, at 0.5× and 0.35×.
 
 ### Spacing, measured by travel time
 
-Placement was checked with the sim's own pathfinding, not straight-line
-distance: `test/travel.test.js` (and `node tools/travel.mjs`) send a full army
-from one Castle to the nearest rival Castle and back and time the last unit
-home. The numbers and why they are enough are in "Results" below.
+Placement was checked with the sim's own pathfinding, steering and gates,
+not straight-line distance. `test/travel.test.js` (and `node
+tools/travel.mjs`) form a **full army** in front of one Castle (20 units, five
+of each combat type, so the slowest, the 50 px/s Shield Knight, sets the
+pace), march it to just outside a rival Castle and back, and time the last
+unit to arrive each way. A second measurement puts a **Warband Raid first
+wave** (6 Horsemen, 6 Archers, 2 Dragon Riders) at an undefended Castle and
+times how long the Castle lasts.
+
+| Route | Path | There | Back | Round trip |
+|---|---|---|---|---|
+| NW – SW (nearest pair) | 61 tiles | 41.2 s | 40.7 s | **81.9 s** |
+| NE – SE (its mirror) | 61 tiles | | | 84.4 s |
+| NW – NE | 75 tiles | 49.9 s | 48.1 s | 98.0 s |
+| NW – SE (diagonal) | 100 tiles | 65.8 s | 65.4 s | 131.2 s |
+| 1v1 map, west – east (for comparison) | 57 tiles | | | 73.5 s |
+
+An undefended Castle lasts **9.0 s** against that raid.
+
+**Why that is enough.** An army that marches on the nearest rival is away
+from home for about 82 s. A raid of the size the Warband Raid script sends
+first razes an undefended Castle in 9 s, so the attacker's own Castle could
+fall nine times over while its army is out, and the outbound leg alone (41 s)
+is 4.5 Castle lifetimes. Attacking is therefore a real gamble: the raider can
+come home to nothing if a third camp notices. It is also not so far that
+matches become marching: the nearest round trip is only 11 % longer than the
+1v1 map's, which the Phase 3 balance was tuned on. The test asserts the
+nearest round trip is at least 5× the Castle's lifetime, each leg at least
+3×, the mirror pairs match within 3 s, and nothing takes more than 2 minutes.
 
 ## Territory
 
