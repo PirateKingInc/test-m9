@@ -9,7 +9,7 @@ test('PROJECT.md records all phases and the project-wide out-of-scope list', () 
   for (const phase of ['Phase', '1 — Sandbox', '2 — Scripted AI opponent', '3 — Balance & polish', '4 — Mobile & art', '5 — Fantasy reskin & zoom']) {
     assert.ok(doc.includes(phase), `missing "${phase}"`);
   }
-  for (const banned of ['Fog of war', 'More than one faction', 'at most 2 tech tiers', 'Multiplayer', 'More than one map', 'Adaptive or learning AI']) {
+  for (const banned of ['Fog of war', 'More than one faction', 'at most 2 tech tiers', 'Multiplayer', 'Map editors or procedural maps', 'Adaptive or learning AI']) {
     assert.ok(doc.includes(banned), `out-of-scope list missing "${banned}"`);
   }
 });

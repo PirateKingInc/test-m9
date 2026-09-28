@@ -18,7 +18,10 @@ PHASE5_SPEC.md.
 
 - **One faction.** The player and any future opponent use the same units and
   buildings. There are no asymmetric races.
-- **One map.** There is no fog of war: the whole map is always visible.
+- **No fog of war:** the whole map is always visible. (Phases 1–5 had one
+  map. Phase 6 was asked to add a larger free-for-all map; that request
+  changed this pillar and the out-of-scope list below on purpose. The 1v1
+  map is unchanged.)
 - **One resource**, *Lumen*. Drones gather it from fixed crystal nodes and
   carry it back to a Lumen Depot, which adds it to the stockpile.
 - **Four buildings:** Command Core (base, trains Drones), Lumen Depot
@@ -37,6 +40,7 @@ PHASE5_SPEC.md.
 | **3 — Balance & polish** | Headless simulated matches between the strategies to tune the unit and building data. The Phase 2 fairness harness is the starting point. Then polish: UX, feedback, performance and accessibility. | done |
 | **4 — Mobile & art** | Not in the original plan. It was added after playtest feedback: the right-click controls don't work on a phone, everything renders as plain blocks, and a new player finds the game unclear. It adds a **touch control scheme** alongside the unchanged mouse/keyboard one; the two share the same command layer, so every order still ends in `world.issue()`. It replaces the placeholder shapes with **sprite art generated in code**: every unit, every building in each construction state, the crystals and the terrain. And it adds a light **clarity pass**: a tutorial for each input mode and readouts that work on a small screen. **Sim, AI and balance are frozen** at their Phase 3 state. See [PHASE4_SPEC.md](PHASE4_SPEC.md). | done |
 | **5 — Fantasy reskin & zoom** | Not in the original plan. It was added after playtest feedback: the game should read as a **fantasy game of knights and dragons**, and the camera should zoom out far enough to see a whole base. A **reskin only**: every unit, building and strategy keeps its exact stats, costs, times, counters and behaviour; only names, descriptions and code-drawn art change. Display text moves out of `src/data` into `src/theme`, so the gameplay data files stay byte-identical from here on, and the freeze guard adds a hash of every gameplay value on top of its file pins. The minimum zoom drops to 0.35× (measured: a fully built base fits a phone in landscape), with mouse-wheel zoom added on desktop so the range applies to both. **Sim, AI and balance stay frozen.** See [PHASE5_SPEC.md](PHASE5_SPEC.md). | done |
+| **6 — Free-for-all foundation** | Not in the original plan. Player feedback wanted free-for-all play. Adds a **free-for-all mode**: **4 camps** on a larger 96×96 map, each with a home zone, plus 5 neutral zones with gold mines. Every zone has an owner (a camp or neutral), shown as a tint in the owner's colour; military control of a zone takes it. Destroying a camp's last Castle eliminates it, and the camp that landed the killing blow takes its banked gold and every zone it owned. Last camp standing wins; at the time limit, most zones (then score) wins. The sim's team model becomes a list of N teams, and the classic 1v1 match runs through the same code with its Phase 5 fixed-seed fingerprints unchanged. AI camps run the existing scripts with an explicitly **placeholder** targeting rule (attack the nearest living rival); real multi-rival AI is Phase 7. Also fixes native double-tap-to-zoom on phones. See [PHASE6_SPEC.md](PHASE6_SPEC.md). | in progress |
 
 ## Explicitly OUT OF SCOPE for the whole project
 
@@ -47,7 +51,9 @@ the project small:
 - More than one faction or asymmetric races
 - Deep tech trees. There are **at most 2 tech tiers, ever**. Phase 1 has one tier.
 - Multiplayer, networking or lockstep netcode
-- More than one map, map editors or procedural maps
+- Map editors or procedural maps. (Until Phase 6 this read "more than one
+  map". Phase 6's request added a second, hand-made map for the free-for-all
+  mode, so the rule now bans map editors and generated maps only.)
 - Adaptive or learning AI (ML, self-play training, online adaptation). The
   Phase 2 AI is scripted.
 
