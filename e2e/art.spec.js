@@ -30,6 +30,28 @@ async function signatures(page, keys, zoom) {
   }, [keys, zoom]);
 }
 
+// Share of opaque pixels near each team's colour (the palette's base/light/dark
+// swatches: Azure, Crimson, and since Phase 6 Rose and Ivory). Each pixel
+// counts for the team with the nearest swatch, if within 45.
+const rgb = (c) => [1, 3, 5].map((i) => parseInt(c.slice(i, i + 2), 16));
+const TEAMS = [1, 2, 3, 4];
+const SWATCHES = Object.fromEntries(TEAMS.map((t) => [t, [TEAM[t].base, TEAM[t].light, TEAM[t].dark].map(rgb)]));
+function teamShare(sig) {
+  const count = Object.fromEntries(TEAMS.map((t) => [t, 0]));
+  let n = 0;
+  for (let i = 0; i < sig.px.length; i += 4) {
+    if (sig.px[i + 3] < 200) continue;
+    n++;
+    let best = null, bestD = 45;
+    for (const t of TEAMS) for (const [r, g, b] of SWATCHES[t]) {
+      const d = Math.hypot(sig.px[i] - r, sig.px[i + 1] - g, sig.px[i + 2] - b);
+      if (d < bestD) { bestD = d; best = t; }
+    }
+    if (best) count[best]++;
+  }
+  return Object.fromEntries(TEAMS.map((t) => [t, count[t] / n]));
+}
+
 // 1 - intersection/union of the two silhouettes (0 = identical, 1 = no overlap).
 const silhouetteDiff = (a, b) => {
   let inter = 0, union = 0;
@@ -43,36 +65,26 @@ test(`every unit sprite has its own silhouette, and teams differ by colour (at $
   const errors = await openGame(page);
   const types = ['drone', 'striker', 'sparker', 'bulwark', 'lancer'];
   const keys = [];
-  for (const team of [1, 2]) for (const t of types) keys.push(`u-${t}-${team}`);
+  for (const team of TEAMS) for (const t of types) keys.push(`u-${t}-${team}`);
   const sig = await signatures(page, keys, zoom);
-  for (const team of [1, 2]) {
+  for (const team of TEAMS) {
     for (let i = 0; i < types.length; i++) for (let j = i + 1; j < types.length; j++) {
       const d = silhouetteDiff(sig[`u-${types[i]}-${team}`], sig[`u-${types[j]}-${team}`]);
       expect(d, `${types[i]} vs ${types[j]} silhouettes overlap too much at ${zoom}x`).toBeGreaterThan(0.35);
     }
   }
+  // Phase 4's check between the first two teams, then (Phase 6) for all four:
+  // each unit's most common team colour is its own, clearly ahead of the rest.
   for (const t of types) expect(colorDiff(sig[`u-${t}-1`], sig[`u-${t}-2`]), `${t}: team colours differ (mean colour; white parts dilute it)`).toBeGreaterThan(45);
+  for (const t of types) for (const team of TEAMS) {
+    const share = teamShare(sig[`u-${t}-${team}`]);
+    expect(share[team], `${t} of team ${team} shows its colour`).toBeGreaterThan(0.05);
+    for (const other of TEAMS) if (other !== team) expect(share[other], `${t} of team ${team} vs team ${other}`).toBeLessThan(share[team] / 3);
+  }
   // Size ranks match the roster: the Drone is the smallest, the Bulwark the biggest body.
   expect(sig['u-drone-1'].coverage).toBeLessThan(sig['u-bulwark-1'].coverage);
   expect(errors).toEqual([]);
 });
-}
-
-// Share of opaque pixels near each team's hue (the palette's base/light/dark
-// swatches: Azure for team 1, Crimson for team 2 since Phase 5).
-const rgb = (c) => [1, 3, 5].map((i) => parseInt(c.slice(i, i + 2), 16));
-const swatches = (t) => [t.base, t.light, t.dark].map(rgb);
-const TEAL = swatches(TEAM[1]), ORANGE = swatches(TEAM[2]);
-const near = (px, i, set) => set.some(([r, g, b]) => Math.hypot(px[i] - r, px[i + 1] - g, px[i + 2] - b) < 45);
-function teamShare(sig) {
-  let teal = 0, orange = 0, n = 0;
-  for (let i = 0; i < sig.px.length; i += 4) {
-    if (sig.px[i + 3] < 200) continue;
-    n++;
-    if (near(sig.px, i, TEAL)) teal++;
-    else if (near(sig.px, i, ORANGE)) orange++;
-  }
-  return { teal: teal / n, orange: orange / n };
 }
 
 // Mean per-channel difference of two same-size textures sampled at 32x32 (0..255).
@@ -83,9 +95,9 @@ test(`every building differs in each construction state, types stay distinct, an
   const errors = await openGame(page);
   const types = ['core', 'depot', 'foundry', 'spire'], states = ['foundation', 'frame', 'complete'];
   const keys = [];
-  for (const team of [1, 2]) for (const t of types) for (const st of states) keys.push(`b-${t}-${team}-${st}`);
+  for (const team of TEAMS) for (const t of types) for (const st of states) keys.push(`b-${t}-${team}-${st}`);
   const sig = await signatures(page, keys, zoom);
-  for (const team of [1, 2]) {
+  for (const team of TEAMS) {
     for (const t of types) {
       for (let i = 0; i < 3; i++) for (let j = i + 1; j < 3; j++) {
         expect(pixelDiff(sig[`b-${t}-${team}-${states[i]}`], sig[`b-${t}-${team}-${states[j]}`]), `${t}: ${states[i]} vs ${states[j]}`).toBeGreaterThan(12);
@@ -96,13 +108,11 @@ test(`every building differs in each construction state, types stay distinct, an
     // stencil differs there (measured ~7.4 vs >= 19 between states).
     for (const st of states) expect(pixelDiff(sig[`b-depot-${team}-${st}`], sig[`b-foundry-${team}-${st}`]), `depot vs foundry (${st})`).toBeGreaterThan(st === 'foundation' ? 5 : 8);
   }
-  // Allegiance: each team's buildings carry its own colour and not the other's.
-  for (const t of types) for (const st of states) {
-    const c1 = teamShare(sig[`b-${t}-1-${st}`]), c2 = teamShare(sig[`b-${t}-2-${st}`]);
-    expect(c1.teal, `${t} ${st}: team 1 shows teal`).toBeGreaterThan(0.03);
-    expect(c1.orange, `${t} ${st}: team 1 shows no orange`).toBeLessThan(0.01);
-    expect(c2.orange, `${t} ${st}: team 2 shows orange`).toBeGreaterThan(0.03);
-    expect(c2.teal, `${t} ${st}: team 2 shows no teal`).toBeLessThan(0.01);
+  // Allegiance: each team's buildings carry its own colour and no other team's.
+  for (const t of types) for (const st of states) for (const team of TEAMS) {
+    const share = teamShare(sig[`b-${t}-${team}-${st}`]);
+    expect(share[team], `${t} ${st}: team ${team} shows its colour`).toBeGreaterThan(0.03);
+    for (const other of TEAMS) if (other !== team) expect(share[other], `${t} ${st}: team ${team} shows no team ${other} colour`).toBeLessThan(0.01);
   }
   expect(errors).toEqual([]);
 });

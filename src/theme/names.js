@@ -42,6 +42,9 @@ export const STRATEGY_TEXT = {
   sentinel: { name: 'Sentinel (test player script)' },
 };
 
+// Team (camp) colour names (Phase 6: four free-for-all camps).
+export const TEAM_TEXT = { 1: 'Azure', 2: 'Crimson', 3: 'Rose', 4: 'Jade' };
+
 export const DIFFICULTY_TEXT = {
   easy: { name: 'Easy' },
   normal: { name: 'Normal' },

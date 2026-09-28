@@ -6,7 +6,7 @@ import { BUILDINGS } from '../data/buildings.js';
 import { paintTerrain, drawCrystal, CRYSTAL_STAGES, CRYSTAL_BOX } from './terrain.js';
 
 export const ART_SCALE = 2;
-export const TEAMS = [1, 2];
+export const TEAMS = [1, 2, 3, 4]; // Phase 6: four free-for-all camps
 export const RING_R = 12; // world-px radius the ring texture is drawn for
 
 // Zoomed out, unit sprites are drawn up to 2x larger so they stay legible

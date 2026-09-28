@@ -199,7 +199,12 @@ function foundation(ctx, w, h, t, type) {
   rr(ctx, -w / 2 + 3, -h / 2 + 3, w - 6, h - 6, 5); fs(ctx, type === 'depot' ? DIRT.light : DIRT.base, null);
   ctx.setLineDash([7, 4]); ctx.lineWidth = 2.5; ctx.strokeStyle = t.base; ctx.stroke(); ctx.setLineDash([]);
   for (const [sx, sy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) { // corner stakes
-    circle(ctx, (sx * (w - 12)) / 2, (sy * (h - 12)) / 2, 3.5); fs(ctx, WOOD.light, INK, 1.2);
+    const x = (sx * (w - 12)) / 2, y = (sy * (h - 12)) / 2;
+    if (sy < 0) { // the two back stakes fly claim pennants in the team colour
+      ctx.beginPath(); ctx.moveTo(x, y - 1); ctx.lineTo(x + sx * -11, y + 3); ctx.lineTo(x, y + 8); ctx.closePath();
+      fs(ctx, t.base, INK, 1);
+    }
+    circle(ctx, x, y, 3.5); fs(ctx, WOOD.light, INK, 1.2);
   }
   // Bold enough to read zoomed out: a translucent fill plus a thick outline.
   ctx.lineWidth = 5; ctx.strokeStyle = t.base; ctx.fillStyle = t.base;

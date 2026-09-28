@@ -4,7 +4,7 @@
 import { TEAM, GOLD, hex } from '../art/palette.js';
 const LIFE = { arrow: 0.16, flame: 0.28, spark: 0.18, burst: 0.7, text: 0.9, ring: 0.5, flash: 0.12, shock: 1.1 };
 const MAX_EFFECTS = 400;
-const TEAM_FX = { 1: hex(TEAM[1].base), 2: hex(TEAM[2].base) };
+const TEAM_FX = Object.fromEntries(Object.entries(TEAM).map(([t, c]) => [t, hex(c.base)]));
 const GOLD_FX = hex(GOLD.base);
 
 export class Effects {

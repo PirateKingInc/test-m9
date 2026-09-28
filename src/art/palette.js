@@ -4,6 +4,10 @@
 export const TEAM = {
   1: { base: '#3f86e8', light: '#9cc4ff', dark: '#1f4f9a', glow: '#d6e8ff' }, // player: Azure
   2: { base: '#e0472f', light: '#ff9f8a', dark: '#8e2415', glow: '#ffd9cf' }, // AI: Crimson
+  // Phase 6 free-for-all camps. Chosen for the largest worst-case difference
+  // from the others under normal and simulated colour-blind vision (PHASE6_SPEC.md).
+  3: { base: '#d45aa8', light: '#f3a8d6', dark: '#8a2e6a', glow: '#ffe0f2' }, // Rose
+  4: { base: '#40d0a0', light: '#a8f0d4', dark: '#1f7a5c', glow: '#dcfff0' }, // Jade
 };
 export const STONE = { base: '#8f897a', light: '#bdb6a3', dark: '#5f5a4e', deep: '#3b372f' };
 export const WOOD = { base: '#8a5a33', light: '#b07a48', dark: '#5c3b20', deep: '#3a2514' };

@@ -37,14 +37,19 @@ browser's double-tap-to-zoom.
 | 1 | Azure | `#3f86e8` | north-west (the player) |
 | 2 | Crimson | `#e0472f` | north-east |
 | 3 | Rose | `#d45aa8` | south-east |
-| 4 | Ivory | `#ece6d0` | south-west |
+| 4 | Jade | `#40d0a0` | south-west |
 
-Azure and Crimson are the Phase 5 colours, unchanged. Rose and Ivory were
+Azure and Crimson are the Phase 5 colours, unchanged. Rose and Jade were
 chosen by searching candidate colours for the largest worst-case difference
 (CIELAB ΔE) between any two teams under normal vision and simulated
 protanopia, deuteranopia and tritanopia (Machado 2009): the worst pair is
-ΔE 26, and every team colour is at least ΔE 15 from the grass and the stone.
-The art distinctness test checks all four teams the way Phase 4 checked two.
+ΔE 26 (Azure vs Rose under protanopia), and Jade is at least ΔE 15 from the
+grass, the stone, the thatch and the gold. An ivory white scored as well on
+paper and was tried first, but in the sprites it could not be told apart
+from lit steel and stone highlights, so the art test rejected it; Jade has a
+hue of its own. The art distinctness test checks all four teams the way
+Phase 4 checked two: each team's buildings carry its colour and none of the
+others', and each unit's dominant team colour is its own, at 0.5× and 0.35×.
 
 ## Team model
 
@@ -87,7 +92,7 @@ The art distinctness test checks all four teams the way Phase 4 checked two.
 |  field   |  field   |  field   |
 +---  ---- +---  ---- +---  -----+
 | SW camp  |  South   | SE camp  |
-|  Ivory   |  field   |  Rose    |
+|   Jade   |  field   |  Rose    |
 +----------+----------+----------+
 ```
 
@@ -151,7 +156,7 @@ home. The numbers and why they are enough are in "Results" below.
 ## AI in the free-for-all (placeholder targeting)
 
 - Camps 2–4 run the existing scripts: **NE Crimson = Warband Raid, SE Rose =
-  Merchant Kingdom, SW Ivory = Stone Bastion**, at the chosen difficulty.
+  Merchant Kingdom, SW Jade = Stone Bastion**, at the chosen difficulty.
 - **PLACEHOLDER — Phase 7 replaces this.** Each AI attacks, scouts and
   rallies toward the **nearest living rival camp** (straight-line distance
   between Castle positions, ties to the lower team number). When that camp is

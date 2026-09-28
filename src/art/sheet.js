@@ -7,7 +7,7 @@ import { UNIT_TYPES } from './units.js';
 import { BUILDING_TYPES, STATES } from './buildings.js';
 import { CRYSTAL_STAGES } from './terrain.js';
 import { UNITS } from '../data/units.js';
-import { GAME_TITLE, unitName, buildingName } from '../theme/names.js';
+import { GAME_TITLE, TEAM_TEXT, unitName, buildingName } from '../theme/names.js';
 
 const Phaser = globalThis.Phaser;
 const W = 1800;
@@ -27,7 +27,7 @@ class Sheet extends Phaser.Scene {
     this.add.text(20, y, `${GAME_TITLE}: sprite reference sheet, all art drawn in code. Columns: in-game zoom 1x, 0.5x and 0.35x (the minimum), units with the zoom-out enlargement.`, HEAD);
     y += 40;
     for (const team of TEAMS) {
-      this.add.text(20, y, `Units, team ${team} (${team === 1 ? 'player, Azure' : 'AI, Crimson'})`, HEAD); y += 30;
+      this.add.text(20, y, `Units, team ${team} (${TEAM_TEXT[team]}${team === 1 ? ', the player' : ''})`, HEAD); y += 30;
       for (const [zoom, x0, dx] of COLS) {
         UNIT_TYPES.filter((t) => t !== 'dummy').concat(['drone-carry']).forEach((t, i) => {
           const type = t === 'drone-carry' ? 'drone' : t, cx = x0 + 50 + i * dx, cy = y + 50;
@@ -42,7 +42,7 @@ class Sheet extends Phaser.Scene {
       y += 136;
     }
     for (const team of TEAMS) {
-      this.add.text(20, y, `Buildings, team ${team}: foundation / frame / complete`, HEAD); y += 30;
+      this.add.text(20, y, `Buildings, team ${team} (${TEAM_TEXT[team]}): foundation / frame / complete`, HEAD); y += 30;
       for (const [zoom, x0, , bx, by] of COLS) {
         this.add.text(x0, y - 4, `${zoom}x`, LABEL);
         BUILDING_TYPES.forEach((type, i) => STATES.forEach((st, j) => {

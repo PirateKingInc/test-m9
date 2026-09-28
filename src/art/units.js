@@ -34,7 +34,7 @@ function sheen(ctx, x, y, r, alpha = 0.35) {
   ctx.fill();
 }
 
-const SKIN = '#e0b48a', HAIR = '#5a3a1e';
+const SKIN = '#c99d78', HAIR = '#5a3a1e';
 const BODY = { dragon: '#6b5a3c', dragonLight: '#9c8558', dragonDark: '#3e3322', horse: '#7a5230', horseDark: '#4a311c' };
 
 function line(ctx, x0, y0, x1, y1, color, width) {
