@@ -123,6 +123,13 @@ about the cursor, with the same 0.35×–1.6× range. It is the only control
 change, and it only adds the zoom range; every existing mouse and keyboard
 binding is unchanged.
 
+**Camera bounds.** The camera may scroll a little past the map edges so the
+HUD never hides them. Those margins were fixed world pixels (28 above, 104
+below), which at 0.35× no longer covered the HUD. They are now the HUD's
+screen size divided by the zoom (identical to Phase 4 at 1×), plus the width
+of the touch action bar on touch devices. The phone base-fits test found this:
+without it the east base stayed partly under the action bar.
+
 **Legibility.** Units are drawn larger when zoomed out (visual only, from
 Phase 4). The enlargement cap rises from 1.6× to 2×, so at 0.35× a unit
 covers about as many screen pixels as it did at 0.5× in Phase 4. The Phase 4
@@ -169,6 +176,32 @@ them once, as its first slice:
   Foundry, Spire, Crystal, Prism Outpost, and the old strategy names).
 - `docs/reference-sheet.png` is regenerated.
 - The headless bot playthrough and the mobile touch playthrough re-run.
+
+## Results
+
+- **Gameplay unchanged.** The canonical gameplay hash
+  `9fd621ee00b78dd2e7123d0492c21ba28d79c1e80cf0b60046ad1f92a0f11900` was
+  recorded on the Phase 4 release (f08f2d8) before the split and still
+  matches; `src/sim` and `src/ai` match their Phase 3 hashes; the fixed-seed
+  fingerprints are unchanged (`sandboxBot 109126657f0ba006`,
+  `rush-boom-hard-1 bf6f9c44c89a7af7`, `turtle-rush-normal-2 aa2d62efa10a9089`,
+  `boom-turtle-easy-3 2aa5e3de88611963`). The fairness table is the same as
+  Phase 4 (Easy 100/50/0, Normal 100/17/0, Hard 67/0/0).
+- **Zoom.** A real AI-built base (600 s, Hard) fits the free screen at 0.35×
+  on a 1280 × 720 desktop (wheel) and an 844 × 390 phone (pinch);
+  `test/footprint.test.js` keeps every strategy's base inside 832 × 704.
+- **Distinctness at 0.35×.** Unit silhouettes, building states, Storehouse vs
+  Barracks and team colours pass the Phase 4 thresholds unchanged.
+- **Old names.** None in the UI sources, the HTML, the theme strings, the
+  translated sim messages, the running game's screens or the README.
+- **Playthroughs.** The headless bot playthrough (`test/bot.test.js`) and the
+  mobile touch playthrough (`npm run test:mobile`) pass. The touch bot still
+  usually loses to Easy, which is the Phase 4 finding kept in BACKLOG.md.
+- **Also fixed.** The touch tutorial e2e test had two timing races at 8×
+  speed (reproduced on the Phase 4 code): the opponent's scout made a new
+  Striker auto-attack before the touch order, and a short attack-move could
+  finish between two tutorial checks. The test now idles the opponent (setup
+  only), retries the unit tap, and marches farther.
 
 ## Slices
 

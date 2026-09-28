@@ -57,6 +57,18 @@ test('every display string in src/theme is free of old names, including translat
   assert.deepEqual(hits, []);
 });
 
+test('README.md uses the fantasy names outside its internal-names table and code', () => {
+  const md = read('README.md')
+    .replace(/<!-- internal-names -->[\s\S]*?<!-- \/internal-names -->/, '')
+    .replace(/\\`/g, '') // an escaped backtick is text, not a code span
+    .replace(/```[\s\S]*?```/g, '')
+    .replace(/`[^`\n]*`/g, '')
+    .replace(/\]\([^)]*\)/g, ']'); // link targets (file names)
+  assert.match(read('README.md'), /<!-- internal-names -->/, 'the table is marked');
+  assert.match(md, /The single resource is/, 'prose survives the stripping');
+  assert.deepEqual(oldNamesIn(md), []);
+});
+
 test('the scan catches old names (self-check)', () => {
   assert.deepEqual(oldNamesIn('Build a Lumen Depot near the crystal'), ['Lumen', 'Depot', 'crystal']);
   assert.deepEqual(oldNamesIn('Train Strikers at the Foundry'), ['Strikers', 'Foundry']);

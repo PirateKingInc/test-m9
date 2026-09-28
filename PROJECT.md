@@ -1,4 +1,4 @@
-# Prism Outpost — Project Overview
+# Dragonmarch — Project Overview
 
 A small real-time strategy game that runs in the browser as a static site
 (Phaser + PathFinding.js from a CDN, no build step, all art and audio made in code).
@@ -10,6 +10,12 @@ counter design every phase relies on. Phase-specific numbers are in
 
 ## Fixed design pillars (all phases)
 
+This document, SPEC.md and BALANCE.md use the **internal codenames** from
+Phases 1–4 (Lumen, Drone, Command Core, ...), which are also the ids in the
+code and data. Since Phase 5 the player sees fantasy names instead (Gold,
+Peasant, Castle, ...): the mapping is in README.md, "Internal names", and in
+PHASE5_SPEC.md.
+
 - **One faction.** The player and any future opponent use the same units and
   buildings. There are no asymmetric races.
 - **One map.** There is no fog of war: the whole map is always visible.
@@ -19,7 +25,8 @@ counter design every phase relies on. Phase-specific numbers are in
   (drop-off), Foundry (the one unit-production building) and Sentry Spire
   (defensive turret). Each has a cost and a construction time.
 - **Five unit types with clear counters.** They are listed in the table below.
-- Original theme, names and art. We use no existing IP.
+- Original theme, names and art. We use no existing IP. (Phase 5 reskinned
+  the theme to knights and dragons; the rules did not change.)
 
 ## Phases
 
@@ -29,7 +36,7 @@ counter design every phase relies on. Phase-specific numbers are in
 | **2 — Scripted AI opponent** | An opponent that plays with the same rules and roster. It picks one of three scripted strategies (**rush**, **economy boom**, **turtle-and-tech**) and reacts to what it scouts. For example, it builds Lancers after seeing Bulwarks, or adds Spires after seeing an early rush. It adds a population (supply) cap for both sides and the win/lose condition: **destroying the enemy Command Core wins**, and losing your own loses. The player picks a difficulty, which selects the strategy and how tightly its script is timed. | done |
 | **3 — Balance & polish** | Headless simulated matches between the strategies to tune the unit and building data. The Phase 2 fairness harness is the starting point. Then polish: UX, feedback, performance and accessibility. | done |
 | **4 — Mobile & art** | Not in the original plan. It was added after playtest feedback: the right-click controls don't work on a phone, everything renders as plain blocks, and a new player finds the game unclear. It adds a **touch control scheme** alongside the unchanged mouse/keyboard one; the two share the same command layer, so every order still ends in `world.issue()`. It replaces the placeholder shapes with **sprite art generated in code**: every unit, every building in each construction state, the crystals and the terrain. And it adds a light **clarity pass**: a tutorial for each input mode and readouts that work on a small screen. **Sim, AI and balance are frozen** at their Phase 3 state. See [PHASE4_SPEC.md](PHASE4_SPEC.md). | done |
-| **5 — Fantasy reskin & zoom** | Not in the original plan. It was added after playtest feedback: the game should read as a **fantasy game of knights and dragons**, and the camera should zoom out far enough to see a whole base. A **reskin only**: every unit, building and strategy keeps its exact stats, costs, times, counters and behaviour; only names, descriptions and code-drawn art change. Display text moves out of `src/data` into `src/theme`, so the gameplay data files stay byte-identical from here on and the freeze guard hashes gameplay values only. The minimum zoom drops to 0.35× (measured: a fully built base fits a phone in landscape), with mouse-wheel zoom added on desktop so the range applies to both. **Sim, AI and balance stay frozen.** See [PHASE5_SPEC.md](PHASE5_SPEC.md). | in progress |
+| **5 — Fantasy reskin & zoom** | Not in the original plan. It was added after playtest feedback: the game should read as a **fantasy game of knights and dragons**, and the camera should zoom out far enough to see a whole base. A **reskin only**: every unit, building and strategy keeps its exact stats, costs, times, counters and behaviour; only names, descriptions and code-drawn art change. Display text moves out of `src/data` into `src/theme`, so the gameplay data files stay byte-identical from here on, and the freeze guard adds a hash of every gameplay value on top of its file pins. The minimum zoom drops to 0.35× (measured: a fully built base fits a phone in landscape), with mouse-wheel zoom added on desktop so the range applies to both. **Sim, AI and balance stay frozen.** See [PHASE5_SPEC.md](PHASE5_SPEC.md). | done |
 
 ## Explicitly OUT OF SCOPE for the whole project
 
@@ -81,7 +88,10 @@ Bulwark. Every unit has at least one counter.
 
 - `index.html` loads Phaser 3 and PathFinding.js from jsDelivr, then
   `src/game/main.js` as an ES module.
-- `src/data/*.js`: readable data for units, buildings and the map.
+- `src/data/*.js`: readable data for units, buildings and the map: gameplay
+  values only since Phase 5.
+- `src/theme/*.js`: every player-facing name and description (Phase 5), keyed
+  by the internal ids, so a reskin never touches `src/data`.
 - `src/sim/*.js`: **pure game logic** with no Phaser or DOM code. It uses a
   fixed timestep (`SIM_DT = 0.05 s`) and a seeded RNG, so it runs headless in
   Node for tests and in the future for Phase 2 and 3 simulations. The world
