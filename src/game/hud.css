@@ -44,10 +44,15 @@ button, select { font-family: inherit; }
   border: 1px solid var(--edge); border-radius: 3px; font-size: 11px; cursor: pointer; }
 .queue button:hover { border-color: #ff5a5a; }
 .queue button i { position: absolute; left: 0; bottom: 0; height: 3px; background: var(--accent); }
-#dev-panel { top: 36px; left: auto; right: 8px; width: 260px; padding: 8px 10px; border-width: 1px; border-radius: 6px; }
+#dev-panel { top: 36px; left: auto; right: 8px; width: min(340px, 92vw); padding: 8px 10px; border-width: 1px; border-radius: 6px; }
 #dev-panel[hidden] { display: none; }
 #dev-panel .dev-title { color: var(--enemy); font-weight: 700; font-size: 11px; letter-spacing: 0.05em; }
 #dev-panel p { margin: 4px 0 6px; font-size: 11px; }
+#dev-ai { max-height: 60vh; overflow-y: auto; font-size: 11px; }
+#dev-ai .dev-ai-camp { margin-top: 6px; border-top: 1px solid #5a3a2a; padding-top: 4px; }
+#dev-ai ol { margin: 2px 0 0; padding-left: 18px; }
+#dev-ai li.pick { font-weight: 700; }
+#dev-ai .score { font-variant-numeric: tabular-nums; }
 #dev-panel button { margin: 2px; background: #2a1a14; color: #ffd2bf; border: 1px solid #7a3b22; border-radius: 3px; cursor: pointer; font-size: 11px; }
 kbd { border: 1px solid var(--edge); border-radius: 3px; padding: 0 4px; font-size: 11px; }
 #toast { position: absolute; left: 50%; bottom: 120px; transform: translateX(-50%); color: #ffd2bf; font-weight: 600;

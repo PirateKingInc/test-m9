@@ -25,7 +25,7 @@ jobs:
     # Phase 4 verification (f): a whole match against the AI played with touch
     # events only, in mobile emulation. Runs in parallel with the other jobs.
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 35 # the Phase 7 free-for-all runs longer (16.5 min seen)
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

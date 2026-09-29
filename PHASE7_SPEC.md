@@ -123,12 +123,21 @@ With no intel at all (the opening minutes) every rival scores
 `1.0 · 0 − 0.01 · T_r`, so the target is the nearest by measured travel time:
 the same camp the Phase 6 placeholder picked.
 
-The ranking is re-evaluated every decision round. When the target changes
-while a wave is out, the wave is redirected at the new target (an
-attack-move from where it stands). When a wave's target becomes clearly
-stronger mid-march, the wave is redirected to the best remaining target, or
-to a claim if there is none. The strategies' own wave sizes, retreat rules
-and reinforcement rules are untouched.
+**Hysteresis.** A rival that reached `R ≥ 1.5` stays *avoided* until its
+`R` drops below **1.2**, so a ratio hovering around the line does not flip
+the decision every scan.
+
+The ranking is re-evaluated every decision round. A wave that is out
+changes rival only when (a) its target fell, (b) its target became clearly
+stronger (avoided), or (c) the new pick scores at least **0.75** more (about
+one "engaged" bonus) and the wave has held its target for at least **20 s**.
+It is then redirected by an attack-move from where it stands; when no rival
+is left to attack it turns to a claim, or with nothing to claim it comes
+home. The strategies' own wave sizes, retreat rules and reinforcement rules
+are untouched. (These three numbers were added after the first full
+playthroughs showed waves turning round every few seconds as "hitting us"
+and seen strengths flickered; `switchMargin`, `commitTime` and
+`cautionRelease` in `RIVALS`.)
 
 ### Caution: claim instead of attack
 

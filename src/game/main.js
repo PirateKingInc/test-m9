@@ -71,6 +71,7 @@ function start(mode) {
     world = new World({ seed, PF: globalThis.PF, setup: 'start' });
   }
   const hud = new Hud();
+  hud.brains = match ? match.brains : null; // the dev panel's targeting view (Phase 7)
   const touch = setupInputMode(); // Phase 4: touch chrome when the device is touch-first
   const sfx = new Sfx();
   const scene = new GameScene(world, hud, sfx, match ? () => match.step() : () => world.step());

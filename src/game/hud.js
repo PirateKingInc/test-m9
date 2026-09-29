@@ -1,3 +1,4 @@
+import { targetingHtml } from './devai.js';
 import { PLAYER } from '../sim/constants.js';
 import { supplyOf } from '../sim/supply.js';
 import { UNITS } from '../data/units.js';
@@ -60,6 +61,7 @@ export class Hud {
     fs.addEventListener('click', () => enterFullscreenWithKeyLock(doc));
     doc.addEventListener('fullscreenchange', () => { fs.textContent = doc.fullscreenElement ? 'Exit fullscreen' : 'Fullscreen'; });
     this.dev = doc.getElementById('dev-panel');
+    this.el.devAi = doc.getElementById('dev-ai');
     doc.addEventListener('keydown', (ev) => { if (ev.code === 'Backquote') this.dev.hidden = !this.dev.hidden; });
     this.dev.addEventListener('click', (ev) => {
       const btn = ev.target.closest('button[data-spawn]');
@@ -241,6 +243,11 @@ export class Hud {
     this.el.supply.classList.toggle('blocked', sup.free <= 0);
     this.el.fps.textContent = `${Math.round(fps)} fps`;
     if (world.zones) this.updateFreeForAll(world);
+    if (world.zones && this.brains && !this.dev.hidden && now - (this.aiRefresh || 0) >= 500) { // Phase 7 dev view
+      this.aiRefresh = now;
+      const html = targetingHtml(this.brains);
+      if (html !== this.aiHtml) { this.aiHtml = html; this.el.devAi.innerHTML = html; }
+    }
     if (world.result && !this.shownResult) this.showResult(world.result);
     if (!ui) return;
     this.ui = ui;

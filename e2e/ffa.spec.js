@@ -112,3 +112,34 @@ test('the start screen starts a free-for-all', async ({ page }) => {
   expect(page.url()).toContain('mode=ffa');
   expect(page.url()).toContain('difficulty=easy');
 });
+
+// Phase 7 (PHASE7_SPEC.md "Dev panel: targeting view"): behind the dev panel
+// toggle, each AI camp's rival ranking; never in the normal HUD.
+test('dev panel shows each AI camp\'s rival ranking and why (free-for-all only)', async ({ page }) => {
+  const errors = await openGame(page, '?mode=ffa&seed=4&difficulty=hard&speed=8');
+  await expect(page.locator('#dev-panel')).toBeHidden();
+  await page.waitForFunction(() => window.__game.world.time > 20); // the AI camps have scanned
+  await page.keyboard.press('Backquote');
+  await expect(page.locator('#dev-panel')).toBeVisible();
+  const camps = page.locator('#dev-ai .dev-ai-camp');
+  await expect(camps).toHaveCount(3);
+  for (const [i, name, nearest] of [[0, 'Crimson', 'Rose'], [1, 'Rose', 'Crimson'], [2, 'Jade', 'Azure']]) {
+    const c = camps.nth(i);
+    await expect(c.locator('b').first()).toHaveText(name);
+    await expect(c.locator('li')).toHaveCount(3); // every living rival, ranked
+    await expect(c.locator('li.pick b')).toHaveText(nearest); // no intel yet: the nearest by travel
+    await expect(c.locator('li').first()).toContainText(/unscouted|R \d/);
+    await expect(c.locator('li').first()).toContainText(/s away/);
+  }
+  await page.keyboard.press('Backquote');
+  await expect(page.locator('#dev-panel')).toBeHidden();
+  await expect(page.locator('#hud-top')).not.toContainText('unscouted'); // not in the normal HUD
+  expect(errors).toEqual([]);
+});
+
+test('dev panel targeting view stays empty outside the free-for-all', async ({ page }) => {
+  await openGame(page, '?mode=match&seed=4');
+  await page.keyboard.press('Backquote');
+  await expect(page.locator('#dev-panel')).toBeVisible();
+  await expect(page.locator('#dev-ai')).toBeEmpty();
+});
