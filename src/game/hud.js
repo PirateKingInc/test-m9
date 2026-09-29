@@ -164,10 +164,10 @@ export class Hud {
     if (table) table.innerHTML = '';
     const watch = doc.getElementById('watch-on');
     watch.hidden = false;
-    watch.onclick = () => { doc.getElementById('result').hidden = true; };
+    watch.onclick = settled(() => { doc.getElementById('result').hidden = true; });
     doc.getElementById('result').hidden = false;
-    doc.getElementById('play-again').onclick = () => location.reload();
-    doc.getElementById('change-difficulty').onclick = () => { location.search = '?menu'; };
+    doc.getElementById('play-again').onclick = settled(() => location.reload());
+    doc.getElementById('change-difficulty').onclick = settled(() => { location.search = '?menu'; });
   }
 
   // A line for the free-for-all's big moments (the scene passes sim events).
@@ -208,8 +208,8 @@ export class Hud {
         + this.stats.rows(PLAYER, PLAYER === 1 ? 2 : 1).map(([k, a, b]) => `<tr><td>${k}</td><td>${a}</td><td>${b}</td></tr>`).join('');
     }
     doc.getElementById('result').hidden = false;
-    doc.getElementById('play-again').onclick = () => location.reload();
-    doc.getElementById('change-difficulty').onclick = () => { location.search = '?menu'; };
+    doc.getElementById('play-again').onclick = settled(() => location.reload());
+    doc.getElementById('change-difficulty').onclick = settled(() => { location.search = '?menu'; });
   }
 
   setMuted(muted) {
@@ -320,6 +320,15 @@ export class Hud {
     for (const e of sel) counts[nameOf(e)] = (counts[nameOf(e)] || 0) + 1;
     return `<div class="sel-name">${sel.length} selected</div><div class="dim">${Object.entries(counts).map(([n, c]) => `${n} ×${c}`).join(' · ')}</div>${hint}`;
   }
+}
+
+// The result and fall cards pop up in the middle of play. A tap that was
+// already on its way (to the map or a unit) must not land on "Play again", so
+// the card's buttons ignore taps for their first CARD_SETTLE seconds (Phase 6).
+export const CARD_SETTLE = 0.8;
+function settled(fn) {
+  const shown = performance.now();
+  return () => { if (performance.now() - shown >= CARD_SETTLE * 1000) fn(); };
 }
 
 // Command-card tooltip: name, hotkey, cost and the stats that matter (from data).

@@ -82,6 +82,15 @@ test('the HUD shows your zones and the camps left; your fall and the final stand
   await expect(page.locator('#result')).toBeVisible();
   await expect(page.locator('#result-detail')).toContainText('Jade took your lands');
   await expect(page.locator('#watch-on')).toBeVisible();
+  // A tap in the card's first 0.8 s is ignored (it may have been meant for the
+  // map): clicked in the same instant the card is shown, nothing happens.
+  expect(await page.evaluate(() => {
+    const { scene } = window.__game;
+    scene.hud.showFall({ team: 1, by: 4, gold: 0, zones: [] });
+    document.getElementById('watch-on').click();
+    return document.getElementById('result').hidden;
+  })).toBe(false);
+  await page.waitForTimeout(900);
   await page.locator('#watch-on').click();
   await expect(page.locator('#result')).toBeHidden();
   // The last two fall: Rose to Jade, and Jade is the last camp standing.

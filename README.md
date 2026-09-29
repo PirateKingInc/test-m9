@@ -6,8 +6,9 @@ Riders, and **storm the enemy Castle** before the scripted AI opponent takes
 yours. The **sandbox** (no opponent) is still available from the start screen.
 See [PROJECT.md](PROJECT.md) for the roadmap and scope. It was built in phases:
 a sandbox, an AI opponent, balance and polish, touch controls with sprite art
-drawn in code (Phase 4), and the fantasy reskin with a wider zoom range
-(Phase 5).
+drawn in code (Phase 4), the fantasy reskin with a wider zoom range
+(Phase 5), and a **four-camp free-for-all** with territory and conquest
+(Phase 6).
 
 **Play:** https://piratekinginc.github.io/test-m8/ (desktop with mouse and keyboard, or a phone/tablet with touch; landscape recommended)
 
@@ -94,6 +95,40 @@ on score.
     and adds a Watchtower.
   - **Massing** one unit type (5+ of it, and a majority of what it has seen) makes
     70% of its production that type's counter from the counter table.
+
+## Free-for-all (Phase 6)
+
+Pick **Free-for-all (4 camps)** on the start screen. You are one of four camps
+on a larger map; the other three are AI camps at the chosen difficulty.
+
+- **The map.** 96 × 96 tiles, a 3 × 3 grid of zones walled off from each other
+  with gates. The four camps sit in the corners, each laid out like the 1v1
+  base: you are **Azure** (north-west), **Crimson** (north-east) plays Warband
+  Raid, **Rose** (south-east) plays Merchant Kingdom, **Jade** (south-west)
+  plays Stone Bastion. The five other zones are neutral, each with a gold field
+  (four mines on the edges, six in the Centre).
+- **Territory.** Every zone has an owner, shown as a tint and border in the
+  owner's colour with a banner (visible down to the 0.35× zoom). Your home zone
+  is yours while your Castle stands. Any other zone becomes yours once you are
+  the **only** camp with military presence there (soldiers, a finished
+  Watchtower or a Castle; Peasants don't count) for **5 seconds**. A zone with
+  two camps in it is contested and flashes; an empty zone keeps its owner.
+- **Conquest and loot.** A camp whose last Castle falls is eliminated: its
+  units and buildings are razed. The camp that landed the killing blow on that
+  Castle **takes its banked gold and every zone it owned**, at once. (Taking
+  buildings intact or turning units is not in the game yet.)
+- **Winning.** The last camp standing wins. At **30:00** the camp with the most
+  zones wins, then the higher score; a tie on both is a draw. If your camp falls,
+  the match goes on without you: watch the rest or play again.
+- **The top bar** shows your zones and how many camps remain; toasts announce
+  zones you take or lose and every fall, with the loot.
+- **Spacing.** The nearest camps are an 82-second round trip apart for a full
+  army (measured with the game's own pathfinding), while an undefended Castle
+  falls to a 14-unit raid in 9 seconds: marching out leaves home open.
+  Details in [PHASE6_SPEC.md](PHASE6_SPEC.md).
+- **The AI's targeting is a placeholder.** Each AI camp simply attacks the
+  nearest rival camp still standing. It does not yet weigh threats or pile on a
+  weakened camp; that is Phase 7.
 
 ## Controls
 
@@ -273,7 +308,8 @@ npm run serve        # http://localhost:8080 (or open index.html via any static 
 ```bash
 npm test             # headless sim tests (node --test)
 npm run test:e2e     # Playwright browser tests, desktop and mobile emulation (npx playwright install chromium first)
-npm run test:mobile  # the full-match touch playthrough (its own CI job)
+npm run test:mobile  # the touch-only playthroughs, 1v1 and free-for-all (their own CI job)
+node tools/travel.mjs  # the free-for-all camp spacing measurement
 ```
 
 Add `?speed=N` to the URL to run the game N× faster (up to 16×). The mobile
@@ -320,7 +356,15 @@ exact commit.
 | `test/footprint.test.js`, `e2e/zoom.spec.js` | Every strategy's full base fits the measured footprint; the wheel zooms about the cursor between 0.35× and 1.6×; at 0.35× a real AI-built base fits the free screen on a 1280 × 720 desktop and an 844 × 390 phone |
 | `e2e/touch.spec.js` | Real touch events in mobile emulation: tap, double-tap, Box, pan, pinch, Order (move, attack, gather, rally), Attack-move, Stop, Cancel, placement, group hold/tap, the alert tap, and the whole touch tutorial |
 | `e2e/art.spec.js` | Unit silhouettes differ from each other at 0.5× and 0.35× zoom. Every building differs across its construction states, and Storehouse and Barracks differ in every state. Team colours are present and not mixed. The reference sheet renders. |
-| `e2e/mobile-playthrough.spec.js` (`npm run test:mobile`, its own CI job) | A whole match against the Easy AI played with touch events only, to its end. It uses every touch control: placement, training, rally, Box plus group hold, pinch, Order and Attack. This simple scripted player usually *loses*; the test proves touch can play a whole game, not that it wins one. |
+| `e2e/mobile-playthrough.spec.js` (`npm run test:mobile`, its own CI job) | A whole match against the Easy AI played with touch events only, to its end, in the 1v1 and in the free-for-all (where the bot watches the rest if its camp falls). It uses every touch control: placement, training, rally, Box plus group hold, pinch, Order and Attack. This simple scripted player usually *loses*; the test proves touch can play a whole game, not that it wins one. |
+| `test/teams.test.js` | The team model is a list: a three-way fight resolves; the AI treats every other team as a rival and retargets when its target falls |
+| `test/freeze.test.js` (Phase 6 part) | The 1v1 match run through the N-team code reproduces eleven full-match fingerprints recorded on the Phase 5 code before the refactor |
+| `test/ffa-map.test.js`, `test/travel.test.js` | The free-for-all map: size, symmetry in both axes, no overlaps, everything reachable; the nearest camps' army round trip is at least 5 times an undefended Castle's lifetime |
+| `test/territory.test.js`, `e2e/ffa.spec.js` | Zone capture by sole military presence after 5 s, contested zones, empty zones keep their owner, Peasants don't capture, home zones locked; the overlay shows each owner's colour at 1× and 0.35×; the free-for-all HUD, fall screen and standings |
+| `test/capture.test.js` | Eliminating a camp with X gold and Y zones gives the conqueror exactly +X gold and +Y zones, and no other camp anything |
+| `test/ffa-win.test.js` | Last camp standing, simultaneous falls, and every time-limit case end with a declared result |
+| `test/ffa-playthrough.test.js` | A full four-camp free-for-all, every camp scripted, played to its result with eliminations that capture land and loot |
+| `e2e/tapzoom.spec.js` | Rapid taps never trigger the browser's double-tap zoom and each counts; the game's pinch still works |
 | `e2e/groups.spec.js` | Control groups without the browser's reserved Ctrl+1–8: Shift+digit, the HUD group bar, and Fullscreen with Keyboard Lock |
 
 ### Fairness: can the AI be beaten?

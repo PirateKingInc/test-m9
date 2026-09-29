@@ -180,7 +180,9 @@ nearest round trip is at least 5× the Castle's lifetime, each leg at least
   declared result, with a ranking of every camp.
 - The player's camp is one of the four, treated like the others. If the
   player is eliminated the match goes on without them; the screen says so
-  and offers to watch the rest or play again.
+  and offers to watch the rest or play again. That card pops up mid-play, so
+  its buttons ignore taps for their first 0.8 s: a tap meant for the map must
+  not restart the game (the touch playthrough once did exactly that in CI).
 
 ## AI in the free-for-all (placeholder targeting)
 
@@ -222,6 +224,40 @@ f) Win: last camp standing; the time limit always gives a result.
 g) A full scripted 4-camp free-for-all, with at least one elimination and
    capture, run to its result in CI.
 h) The touch-only bot plays the free-for-all to its end.
+
+## Results
+
+- **Equivalence (a).** Eleven fingerprints recorded on the Phase 5 code before
+  any refactor (all nine strategy pairs across the three tiers played to their
+  result, the browser's AI-only match, and a match decided at 30:00) are
+  reproduced exactly by the N-team code, as are the Phase 3 fingerprints and
+  the gameplay-values hash. The fairness table is unchanged (Easy 100/50/0,
+  Normal 100/17/0, Hard 67/0/0).
+- **Tap-to-zoom (b).** Four rapid taps on a train button queue four units;
+  six on the map select; page and camera zoom never change; pinch still zooms.
+- **Spacing (c).** Nearest round trip 81.9 s against a 9.0 s Castle
+  lifetime (table above).
+- **Territory (d).** Capture after 5 s of sole presence, contested and empty
+  zones, Peasants and home locks are tested in the sim; in the browser the
+  border of each owned zone reads as its owner's colour (nearest of the four,
+  within ΔRGB 90) at 1× and 0.35×, and a neutral border reads as no team.
+- **Capture and loot (e).** 777 gold and 3 zones went to the conqueror
+  exactly; the two other camps' gold and land were untouched; a same-tick
+  double fall loses the loot and neutralises the land.
+- **Win (f).** Last camp standing, simultaneous falls, and every time-limit
+  case (land beats gold, score breaks land ties, full tie is a draw, three
+  camps alive) end with a declared, ranked result.
+- **Full free-for-all (g).** Seed 1, all four camps scripted at Hard (the
+  player's camp plays Merchant Kingdom), through the read-only AI guard:
+  14 zone captures; Jade fell to Azure at 441 s (958 gold and its home zone
+  taken), Crimson fell to Rose at 591 s, Azure fell to Rose at 783 s (5,262
+  gold and five zones); Rose won as the last camp standing. About 13 s of CI
+  time.
+- **Touch (h).** The touch-only bot plays the free-for-all on an emulated
+  phone: builds its base, sends a wave, defends, saves a group by
+  press-and-hold, pinches; Jade's first wave takes its Castle at about 7
+  minutes, the bot taps "Watch on", and the match runs to Jade's
+  last-standing win. As in Phases 4 and 5, it is not expected to win.
 
 ## Slices
 

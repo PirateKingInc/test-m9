@@ -10,7 +10,8 @@
   --button-on: #4d3a1a;
   --enemy: #ff8a6e;
 }
-html, body { margin: 0; height: 100%; background: var(--bg); overflow: hidden; }
+html, body { margin: 0; height: 100%; background: var(--bg); overflow: hidden;
+  overscroll-behavior: none; } /* no pull-to-refresh or swipe-back navigation mid-game (Phase 6) */
 body { font: 13px/1.3 "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif; color: var(--text); }
 #game { position: absolute; inset: 0; }
 /* Phase 6: no native double-tap-to-zoom anywhere (rapid taps are game input);

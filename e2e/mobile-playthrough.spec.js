@@ -26,7 +26,11 @@ test('mobile playthrough: touch controls alone play a four-camp free-for-all to 
 
 async function play(page, query, ffa) {
   const { errors, touch } = await openTouchGame(page, query);
-  const state = () => page.evaluate(() => {
+  // A touch gesture must never navigate the page away (swipe-back, pull-to-refresh).
+  const navigations = [];
+  page.on('framenavigated', (f) => { if (f === page.mainFrame()) navigations.push(f.url()); });
+  const state = () => readState().catch((e) => { throw navigations.length ? new Error(`a touch gesture navigated the page to ${navigations.join(', ')}`) : e; });
+  const readState = () => page.evaluate(() => {
     const w = window.__game.world, cam = window.__game.scene.cameras.main;
     const pick = (e) => ({ id: e.id, type: e.type, team: e.team, x: e.x, y: e.y, built: e.built, order: e.order?.type, queue: e.queue?.length ?? 0, carry: e.carry, hp: e.hp, maxHp: e.maxHp });
     return {
@@ -40,8 +44,12 @@ async function play(page, query, ffa) {
   });
   const toScreen = (s, x, y) => ({ x: (x - s.cam.x) * s.cam.zoom, y: (y - s.cam.y) * s.cam.zoom });
   const actions = { taps: 0, drags: 0, holds: 0, pinches: 0 };
-  const tap = async (x, y) => { actions.taps++; await touch.tap(x, y); };
-  const drag = async (a, b, c, d) => { actions.drags++; await touch.drag(a, b, c, d); };
+  // A player stops playing when a result or fall card comes up: never tap or
+  // drag onto one (its buttons would restart the game).
+  const cardUp = () => page.evaluate(() => !document.getElementById('result').hidden);
+  const tap = async (x, y) => { if (await cardUp()) return; actions.taps++; await touch.tap(x, y); };
+  const drag = async (a, b, c, d) => { if (await cardUp()) return; actions.drags++; await touch.drag(a, b, c, d); };
+  const tapEl = async (sel) => { if (await cardUp()) return; await touch.tapEl(sel); };
 
   // Pan with one-finger drags until world (x, y) is inside the safe area; returns its screen point.
   async function view(x, y) {
@@ -57,7 +65,7 @@ async function play(page, query, ffa) {
   const tapWorld = async (x, y) => { const p = await view(x, y); await tap(p.x, p.y); };
   async function arm(mode) {
     for (let i = 0; i < 3; i++) {
-      await touch.tapEl(`[data-touch="${mode}"]`); actions.taps++;
+      await tapEl(`[data-touch="${mode}"]`); actions.taps++;
       try { await expect.poll(async () => (await state()).armed, { timeout: 2000 }).toBe(mode); return true; } catch { /* retry */ }
     }
     return false;
@@ -68,7 +76,7 @@ async function play(page, query, ffa) {
   async function cardTap(action, times = 1) {
     for (let i = 0; i < times; i++) {
       if (!(await enabled(action))) return i;
-      await touch.tapEl(`#command-card button[data-action="${action}"]`); actions.taps++;
+      await tapEl(`#command-card button[data-action="${action}"]`); actions.taps++;
       await page.waitForTimeout(80);
     }
     return times;
@@ -110,7 +118,7 @@ async function play(page, query, ffa) {
     if (!got) return false;
     await page.waitForTimeout(150); // the command card refreshes every 100 ms
     if (!(await enabled(`build:${type}`))) return false;
-    await touch.tapEl(`#command-card button[data-action="build:${type}"]`); actions.taps++;
+    await tapEl(`#command-card button[data-action="build:${type}"]`); actions.taps++;
     const before = mine(s, 'buildings', type).length;
     const p = await view(spot.x, spot.y);
     await drag(p.x - 20, p.y, p.x, p.y); // the ghost follows the finger; lifting places it
@@ -231,6 +239,7 @@ async function play(page, query, ffa) {
   if (fell) { // our camp fell: watch the rest of the free-for-all
     log.push(`${Math.round(fell.time)}s our Castle fell to team ${fell.by}`);
     await expect(page.locator('#watch-on')).toBeVisible();
+    await page.waitForTimeout(1000); // the card's buttons ignore taps for their first 0.8 s
     await touch.tapEl('#watch-on'); actions.taps++;
     await expect(page.locator('#result')).toBeHidden();
     await expect.poll(async () => !!(await state()).result, { timeout: 12 * 60_000, intervals: [2000] }).toBe(true);
@@ -240,6 +249,7 @@ async function play(page, query, ffa) {
   console.log(`mobile playthrough result: ${s.result ? `${s.result.winner === 1 ? 'player (touch) wins' : s.result.winner ? `AI camp ${s.result.winner} wins` : 'draw'} by ${s.result.reason} at ${Math.round(s.result.time)}s game time` : `no result by ${Math.round(s.time)}s`}; max army ${maxArmy}, waves ${wave}, defences ${defends}; touch actions: ${JSON.stringify(actions)}`);
   // The claim is that touch alone can play a whole match to its end, not that
   // this simple scripted player beats the AI (it usually loses; see README).
+  expect(navigations, 'no gesture navigated the page').toEqual([]);
   expect(s.result, 'the match reached a declared result').toBeTruthy();
   for (const type of ['depot', 'foundry', 'spire']) expect(placed.has(type), `placed a ${type} by touch`).toBe(true);
   expect(maxArmy, 'trained an army by touch').toBeGreaterThanOrEqual(ffa ? 6 : 10);

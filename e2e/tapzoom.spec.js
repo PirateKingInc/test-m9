@@ -35,6 +35,8 @@ test('no element outside the canvas allows double-tap zoom, and the page cannot 
   expect(bad).toEqual([]);
   expect(await page.evaluate(() => getComputedStyle(document.querySelector('#game')).touchAction)).toBe('none');
   expect(await page.getAttribute('meta[name="viewport"]', 'content')).toMatch(/user-scalable=no/);
+  // Nor can a swipe navigate away (pull-to-refresh, swipe-back).
+  expect(await page.evaluate(() => [getComputedStyle(document.documentElement).overscrollBehaviorX, getComputedStyle(document.body).overscrollBehaviorY])).toEqual(['none', 'none']);
   // A cancelable iOS gesture event is cancelled.
   expect(await page.evaluate(() => { const e = new Event('gesturestart', { cancelable: true }); document.dispatchEvent(e); return e.defaultPrevented; })).toBe(true);
 });

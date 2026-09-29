@@ -43,6 +43,16 @@ These shipped in Phase 5:
   landscape, and mouse-wheel zoom on desktop (the `[P4]` wheel-zoom item)
 * the title screen with a code-drawn dragon emblem, and the medieval UI look
 
+## Phase 6: Free-for-all foundation (done)
+
+These shipped in Phase 6:
+* the N-team sim and AI, proven equivalent on the 1v1 match by fingerprints
+* a four-camp free-for-all map with measured spacing, zones and territory
+* elimination with capture of gold and land, last-camp-standing and a
+  time-limit ranking
+* four team colours, the territory overlay and the free-for-all HUD
+* no more native double-tap-to-zoom on phones
+
 ## Post-project (not scheduled)
 
 The project's phases are complete. These ideas were deliberately not
@@ -78,3 +88,11 @@ Phase 3.
 - [P5] Animated sprites: walking legs and hooves, beating dragon wings, flags that wave. Units are single rotated sprites.
 - [P5] The design docs (SPEC.md, BALANCE.md, PROJECT.md and the Phase 2-4 specs) still use the internal codenames; README.md has the mapping table. Renaming them would touch every table the tests cross-check against the data.
 - [P5] Zoomed right out (0.35x), buildings and gold mines are small; a simplified far-zoom icon set (or a minimap) would help on phones.
+- [P7] **Real multi-rival AI targeting.** Phase 6's AI camps use a deliberate placeholder: attack the nearest living rival camp (`AiEngine.targetCamp()`). Phase 7 should weigh each rival's strength, threat and distance, pile on a weakened camp, avoid being the third party that softens a target for someone else, and defend against two attackers at once.
+- [P7] AI awareness of territory: take and hold zones on purpose (today zones change hands only as a side effect of expansions and waves), and value a rival's banked gold and land as loot when choosing a target.
+- [P8] **N-way balance.** No tuning was done for four camps: seed 1 at Hard ends with Rose (Merchant Kingdom) last standing at 13 minutes, and the idle-player browser match loses its Castle to Jade's first wave at about 7 minutes. Strategy strength, the camp-to-strategy assignment and the 30:00 limit all need measuring for four camps, as Phase 3 did for two.
+- [P8] Side symmetry for four camps: the pathfinder's mirror frame is east-west only (Phase 3), so tie-breaks are not mirrored north-south; the NE-SE army round trip is 2.5 s longer than NW-SW.
+- [P6] **Capturing intact enemy structures.** Buildings of an eliminated camp are razed; taking them over (and turning surviving units) was out of scope.
+- [P6] Spectating after your camp falls: the match runs on, but there is no camp-follow camera, speed-up or skip to the result.
+- [P6] Zone income or upkeep: owning land only matters for loot and the time-limit ranking; a per-zone bonus could make territory matter during the match.
+- [P6] More than four camps or other free-for-all maps (the map data format supports it; colours and symmetry would need new work).
