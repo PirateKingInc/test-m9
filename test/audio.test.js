@@ -78,7 +78,7 @@ test('every event type the sim emits has a sound mapping', () => {
   // ...and each mapped event actually makes a sound.
   for (const type of emitted) {
     const sfx = unlocked();
-    const e = { type, team: 1, x: 0, y: 0, kind: 'unit', unit: 'striker', attack: 'blade', winner: 1, reason: 'core-destroyed' };
+    const e = { type, team: 1, x: 0, y: 0, kind: 'unit', unit: 'striker', attack: 'blade', winner: 1, reason: 'core-destroyed', to: 1, from: null };
     sfx.handle([e], 0, 0, 1);
     assert.ok(sfx.played > 0, `"${type}" played nothing`);
   }

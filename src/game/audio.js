@@ -2,7 +2,7 @@
 // Driven by the sim's event stream plus UI notifications. Rate-limited per
 // sound and capped in total voices so 40 units fighting never clip.
 
-const MIN_GAP = { alert0: 1, alert1: 1, attack: 0.07, death: 0.05, dropoff: 0.12, select: 0.05, command: 0.05, rejected: 0.3, built: 0.2, trained: 0.15, placed: 0.1, cancelled: 0.1, depleted: 0.3, core: 0.5 };
+const MIN_GAP = { alert0: 1, alert1: 1, attack: 0.07, death: 0.05, dropoff: 0.12, select: 0.05, command: 0.05, rejected: 0.3, built: 0.2, trained: 0.15, placed: 0.1, cancelled: 0.1, depleted: 0.3, core: 0.5, zone: 0.5, bell: 1 };
 
 // What every sim event sounds like (Phase 3 audio pass). test/audio.test.js
 // checks that each event type the sim emits has an entry here. "own" sounds
@@ -18,6 +18,8 @@ export const EVENT_SOUNDS = {
   depleted: 'glassy falling chime when a gold mine runs dry (positional)',
   rejected: 'low buzz (own)',
   gameOver: 'victory fanfare, defeat stinger or draw chord',
+  zoneCaptured: 'free-for-all: a rising two-note call when your camp takes a zone, falling when you lose one (own)',
+  eliminated: 'free-for-all: a deep bell toll when a camp falls (heard everywhere)',
 };
 const MAX_VOICES = 14;
 const HEARING = 1400; // px from the camera center at which world sounds fade out
@@ -176,6 +178,14 @@ export class Sfx {
           break;
         case 'gameOver':
           this.stinger(e, team);
+          break;
+        case 'zoneCaptured': // Phase 6: only zones that change hands to or from us
+          if (e.to === team) [440, 660].forEach((f, i) => this.tone(`zone${i}`, { freq: f, type: 'triangle', dur: 0.14, vol: 0.25, delay: i * 0.12 }));
+          else if (e.from === team) [660, 440].forEach((f, i) => this.tone(`zone${i}`, { freq: f, type: 'triangle', dur: 0.14, vol: 0.25, delay: i * 0.12 }));
+          break;
+        case 'eliminated':
+          this.tone('bell', { freq: 98, to: 92, dur: 1.6, vol: 0.4 });
+          this.tone('bell', { freq: 196, to: 190, dur: 1.2, vol: 0.2 });
           break;
         default:
       }

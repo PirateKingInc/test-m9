@@ -13,6 +13,7 @@ import { updateCombat } from './combat.js';
 import { separate } from './steering.js';
 import { checkResult } from './victory.js';
 import { SpatialIndex } from './spatial.js';
+import { setupZones, updateTerritory } from './territory.js';
 
 // The headless game state. No Phaser/DOM here: the renderer reads entities,
 // and everything that changes the world goes through issue(cmd).
@@ -48,6 +49,7 @@ export class World {
         this.resources[camp.team] = map.startingLumen;
       }
     }
+    if (setup === 'ffa') setupZones(this, map.zones); // territory (Phase 6)
   }
 
   setupStart(start) {
@@ -143,6 +145,7 @@ export class World {
     updateCombat(this, SIM_DT);
     this.time += SIM_DT;
     this.tick++;
+    updateTerritory(this); // free-for-all only: no zones, no work
     checkResult(this);
   }
 
