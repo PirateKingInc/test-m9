@@ -28,8 +28,9 @@ const sha = (buf) => createHash('sha256').update(buf).digest('hex');
 export const FROZEN = {
   "src/data/buildings.js": "0176c4b3f71568db3421a3f661c96fbf64b9b78d7d3d2f812770307c8b204ec8",
   "src/data/difficulty.js": "5edbe78a9ebb8172eed5c945f34732d549375eeb806df9265e684577b1a0ea6e",
-  "src/data/ffa.js": "eeb6bef76d991ecb9a07fa58e41a559585203faafaba31f8684e057302a3a282",
+  "src/data/ffa.js": "b252f244cbe9fdd42ec6597388213463873ea13e453d8af7a6d01a6d1f079803",
   "src/data/map.js": "7ca9715b0b10d0d0a5659268c05bb7df451bda0306b21032a0fa5f13abc6436f",
+  "src/data/rivals.js": "8673ec540854ad32e2abcbeb749ee4f7cbb7bfb785be5ce6046e806ad3cb9d9f",
   "src/data/strategies.js": "ce6e3cd4a084145f4ae7315103bf953ae76d6e6b5cfdc117aab6f966fe15e499",
   "src/data/units.js": "b401f86514666b40bd0a2f8b5b1ac664563a6f33be2869391763c747f36a3ca0",
   "src/sim/combat.js": "da57ab0604b8f60a2e22584091abdd17c220982fb00a86bf4b2b8d38fcc6f10b",
@@ -54,7 +55,8 @@ export const FROZEN = {
   "src/ai/engine.js": "0a0369c3bf5c238b9b0965f9be4416d78032c4a74f109f4c0997e984a1092299",
   "src/ai/match.js": "c833058cc4533c4e947693dfaf25602c02b16b24772b21d2f2c6a57565747442",
   "src/ai/readonly.js": "85d635a231882096209c77af1e34820ecae488fde5da79d390b5dfdee07850f7",
-  "src/ai/scout.js": "0f0a2bb8166f2d6e3f16013cfb06fc4283442c570b7e5591da8f1b8398df9a05"
+  "src/ai/rivals.js": "460a083c95471fc7a5d234dbd4f670fe24fabb1b8d90b9b4cdb2dad4276203b2",
+  "src/ai/scout.js": "81d9e1d3402400ec8d54799de4bc447adca1a4513a213602e13f1af1071e765b"
 };
 
 test('src/data is byte-identical to its Phase 5 split; src/sim and src/ai to their pinned Phase 6 state', () => {

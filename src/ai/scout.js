@@ -19,6 +19,11 @@ export class Scout {
     this.scoutSentAt = null;
     this.scoutDone = false;
     this.scoutArrivedAt = null;
+    // Phase 7 (PHASE7_SPEC.md "What an AI camp knows about a rival"): fights we
+    // witnessed. team -> { at, with } for a fight with a third camp; team -> time
+    // for an attack on us.
+    this.engaged = new Map();
+    this.hitUs = new Map();
   }
 
   // Where our eyes are: base watch circles around buildings, sight around units.
@@ -44,8 +49,9 @@ export class Scout {
       if (!this.e.isEnemyTeam(t.team) || (t.kind !== 'unit' && t.kind !== 'building') || t.hp <= 0) continue;
       const v = inView(t.x, t.y);
       if (!v.seen) continue;
-      this.memory.set(t.id, { kind: t.kind, type: t.type, team: t.team, x: t.x, y: t.y, seenAt: now, nearBase: v.base });
-      if (t.type === 'core') { this.cores.set(t.id, { id: t.id, team: t.team, x: t.x, y: t.y, seenAt: now }); seenNow.add(t.id); }
+      this.memory.set(t.id, { kind: t.kind, type: t.type, team: t.team, x: t.x, y: t.y, seenAt: now, nearBase: v.base, health: t.hp / t.maxHp });
+      if (t.type === 'core') { this.cores.set(t.id, { id: t.id, team: t.team, x: t.x, y: t.y, seenAt: now, health: t.hp / t.maxHp }); seenNow.add(t.id); }
+      this.witness(t, now);
     }
     for (const [id, c] of this.cores) if (!seenNow.has(id) && inView(c.x, c.y).seen) this.cores.delete(id);
     const start = this.e.enemyStart();
@@ -58,8 +64,22 @@ export class Scout {
     // Buildings don't move, so one is forgotten only once its spot is back in
     // view without it (Phase 3).
     for (const [id, m] of this.memory) {
+      // A unit whose last spot is in view again without it: we saw it die or leave.
+      if (m.kind === 'unit' && m.seenAt < now && !m.gone && inView(m.x, m.y).seen) m.gone = true;
       if (m.kind === 'building' ? m.seenAt < now && inView(m.x, m.y).seen : now - m.seenAt > this.cfg.memory) this.memory.delete(id);
     }
+  }
+
+  // A visible rival entity that is attacking: who it is fighting (its current
+  // order's target, or a Tower's target, which is within its weapon range and
+  // so in view too). Fights between two other camps mark both as engaged.
+  witness(t, now) {
+    const id = t.kind === 'unit' ? (t.order.type === 'attack' || t.order.type === 'attackMove' ? t.order.target : null) : t.target;
+    const victim = id != null ? this.e.w.get(id) : null;
+    if (!victim || !victim.team || victim.team === t.team) return;
+    if (victim.team === this.e.team) { this.hitUs.set(t.team, now); return; }
+    this.engaged.set(t.team, { at: now, with: victim.team });
+    this.engaged.set(victim.team, { at: now, with: t.team });
   }
 
   // The scout Drone: sent once at the strategy's scoutAt, walks to the enemy

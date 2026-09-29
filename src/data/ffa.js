@@ -90,3 +90,9 @@ export const TERRITORY = {
 
 // The AI camps' scripts in the free-for-all (camp team -> strategy id).
 export const FFA_STRATEGIES = { 2: 'rush', 3: 'boom', 4: 'turtle' };
+
+// Measured one-way march time in seconds between two camps' Castles (Phase 7,
+// PHASE7_SPEC.md "Travel time"): the round trip of a 14-unit army from
+// test/travel.js, halved. test/rivals.test.js re-measures it.
+export const CAMP_TRAVEL = { '1-2': 49.0, '1-3': 65.6, '1-4': 41.0, '2-3': 42.2, '2-4': 65.6, '3-4': 48.1 };
+export const campTravel = (a, b) => CAMP_TRAVEL[a < b ? `${a}-${b}` : `${b}-${a}`];
