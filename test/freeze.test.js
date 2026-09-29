@@ -17,6 +17,7 @@ import { PF, makeWorld } from './helpers.js';
 import { Match } from '../src/ai/match.js';
 import { SandboxBot } from '../src/ai/engine.js';
 import { gameplayHash } from './gameplay-values.js';
+import { FFA_MAP, FFA_STRATEGIES } from '../src/data/ffa.js';
 
 const sha = (buf) => createHash('sha256').update(buf).digest('hex');
 
@@ -30,7 +31,7 @@ export const FROZEN = {
   "src/data/difficulty.js": "5edbe78a9ebb8172eed5c945f34732d549375eeb806df9265e684577b1a0ea6e",
   "src/data/ffa.js": "b252f244cbe9fdd42ec6597388213463873ea13e453d8af7a6d01a6d1f079803",
   "src/data/map.js": "7ca9715b0b10d0d0a5659268c05bb7df451bda0306b21032a0fa5f13abc6436f",
-  "src/data/rivals.js": "8673ec540854ad32e2abcbeb749ee4f7cbb7bfb785be5ce6046e806ad3cb9d9f",
+  "src/data/rivals.js": "e8c5c4f39fa27dc54fc20db6d03eda09ca31790675345a70ec59cdff179c32e8",
   "src/data/strategies.js": "ce6e3cd4a084145f4ae7315103bf953ae76d6e6b5cfdc117aab6f966fe15e499",
   "src/data/units.js": "b401f86514666b40bd0a2f8b5b1ac664563a6f33be2869391763c747f36a3ca0",
   "src/sim/combat.js": "da57ab0604b8f60a2e22584091abdd17c220982fb00a86bf4b2b8d38fcc6f10b",
@@ -52,10 +53,10 @@ export const FROZEN = {
   "src/sim/victory.js": "22f80deadc6acb54862bd1c8ab11ddafb550102af8261f8a8bbed1c0948c9a42",
   "src/sim/world.js": "0d7002d5226dc8f0d485f4fb57921b03de81b33c2039e8e096fb5ff213978a33",
   "src/ai/engine-types.js": "af5469d73733f3337336b5217b6a9186f1c3c0fd36e9623477c786b4f5b1c643",
-  "src/ai/engine.js": "0a0369c3bf5c238b9b0965f9be4416d78032c4a74f109f4c0997e984a1092299",
+  "src/ai/engine.js": "d85b97695350a9cdde0c11360fb5df5223ea06f7d5057f4a549ed07b9f2fafc9",
   "src/ai/match.js": "c833058cc4533c4e947693dfaf25602c02b16b24772b21d2f2c6a57565747442",
   "src/ai/readonly.js": "85d635a231882096209c77af1e34820ecae488fde5da79d390b5dfdee07850f7",
-  "src/ai/rivals.js": "460a083c95471fc7a5d234dbd4f670fe24fabb1b8d90b9b4cdb2dad4276203b2",
+  "src/ai/rivals.js": "cca552e99ef174b0b9e9c32da51ddf596a882eb4061f51a917bcd753bc7accb2",
   "src/ai/scout.js": "81d9e1d3402400ec8d54799de4bc447adca1a4513a213602e13f1af1071e765b"
 };
 
@@ -157,4 +158,42 @@ export const GOLDEN_PHASE5 = {
 
 test('Phase 6 equivalence: 1v1 matches through the N-team code reproduce Phase 5 exactly', () => {
   assert.deepEqual(phase5Fingerprints(), GOLDEN_PHASE5);
+});
+
+// Phase 7 equivalence proof (PHASE7_SPEC.md "What stays the same"). The new
+// multi-rival targeting only decides where armies go; the strategies' build
+// and train logic and the economy are untouched. The free-for-all's
+// production log (every build and train order every camp issued, with its
+// tick) was recorded on the Phase 6 release (commit b1a9c0c), before any
+// Phase 7 change, for three seeds over the first 10 minutes. With the Phase 6
+// placeholder targeting switched back on (`targeting: 'nearest'`), the Phase 7
+// engine must reproduce every order at the same tick.
+export function ffaProductionLogs({ targeting = 'nearest', until = 600 } = {}) {
+  const out = {};
+  for (const seed of [1, 2, 3]) {
+    const camps = Object.fromEntries(Object.entries(FFA_STRATEGIES).map(([t, s]) => [t, { strategy: s, difficulty: 'hard', targeting }]));
+    const m = new Match({ seed, PF, ffa: { map: FFA_MAP, camps }, player: { strategy: 'boom', difficulty: 'hard', targeting } });
+    const log = [];
+    for (const b of m.brains) {
+      const orig = b.issueFn;
+      b.issueFn = (cmd) => {
+        const r = orig(cmd);
+        if (r.ok && (cmd.type === 'build' || cmd.type === 'train')) log.push(`${m.world.tick}:${cmd.team}:${cmd.type}:${cmd.building}:${cmd.unit ?? ''}`);
+        return r;
+      };
+    }
+    while (m.world.time < until && !m.world.result) m.step();
+    out[`seed${seed}-${until}s`] = `${createHash('sha256').update(log.join('|')).digest('hex').slice(0, 16)} (${log.length} build/train orders)`;
+  }
+  return out;
+}
+
+export const GOLDEN_PHASE6_FFA = {
+  'seed1-600s': '4f4318ddf6ec1937 (450 build/train orders)',
+  'seed2-600s': 'd929da210827d0d8 (423 build/train orders)',
+  'seed3-600s': 'c24196fc992e9861 (515 build/train orders)',
+};
+
+test('Phase 7 equivalence: with placeholder targeting, the free-for-all builds and trains exactly as in Phase 6', () => {
+  assert.deepEqual(ffaProductionLogs(), GOLDEN_PHASE6_FFA);
 });

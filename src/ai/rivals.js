@@ -59,9 +59,18 @@ export function scoreRival(a, current) {
 
 // Every living rival, best first (ties: lower team), and the pick: the best
 // rival that is not clearly stronger, or null (cautious).
-export function rankRivals(e, current = null) {
+// `avoid` (a Set the engine keeps) holds the rivals we have backed off from as
+// clearly stronger: one stays avoided until its R drops below cautionRelease,
+// so a ratio hovering around the caution line doesn't flip the decision.
+export function rankRivals(e, current = null, avoid = new Set()) {
   const ranking = [...e.livingRivals()].map((c) => scoreRival(assessRival(e, c), current))
     .sort((a, b) => b.score - a.score || a.team - b.team);
-  const pick = ranking.find((r) => r.R < RIVALS.caution) || null;
+  for (const r of ranking) {
+    if (r.R >= RIVALS.caution) avoid.add(r.team);
+    else if (r.R < RIVALS.cautionRelease) avoid.delete(r.team);
+    r.avoided = avoid.has(r.team);
+    if (r.avoided && !r.why.includes('clearly stronger')) r.why.unshift('avoided: was clearly stronger');
+  }
+  const pick = ranking.find((r) => !r.avoided) || null;
   return { at: e.w.time, ranking, target: pick ? pick.team : null, cautious: !pick && ranking.length > 0 };
 }

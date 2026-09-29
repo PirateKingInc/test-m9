@@ -27,10 +27,10 @@ test('combat treats every other team as an enemy, whatever the team count', () =
   assert.ok(hitTeams.size >= 2, 'more than one team took hits');
 });
 
-test('the AI sees every other team as a rival and targets the nearest living camp (placeholder rule)', () => {
+test('the AI sees every other team as a rival; the Phase 6 placeholder rule (targeting: nearest) picks the nearest living camp', () => {
   const w = threeTeams();
   for (const c of w.camps) w.addBuilding('core', c.team, c.core[0], c.core[1], { built: true });
-  const ai = new AiEngine(w, { team: 1, strategy: 'rush', difficulty: 'hard' });
+  const ai = new AiEngine(w, { team: 1, strategy: 'rush', difficulty: 'hard', targeting: 'nearest' });
   assert.equal(ai.isEnemyTeam(2), true);
   assert.equal(ai.isEnemyTeam(3), true);
   assert.equal(ai.isEnemyTeam(1), false);

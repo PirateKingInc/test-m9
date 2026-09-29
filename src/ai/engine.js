@@ -13,6 +13,8 @@ import { BUILDINGS } from '../data/buildings.js';
 import { UNITS } from '../data/units.js';
 import { STRATEGIES, SPOTS, ARMY, SCOUTING, EXPANSION } from '../data/strategies.js';
 import { Scout } from './scout.js';
+import { rankRivals } from './rivals.js';
+import { RIVALS } from '../data/rivals.js';
 import { DIFFICULTY } from '../data/difficulty.js';
 import { canPlace } from '../sim/construction.js';
 import { supplyOf } from '../sim/supply.js';
@@ -31,8 +33,11 @@ export { COMBAT_TYPES };
 export class AiEngine {
   // world: the real World (only its issue() is used); opts.view: what the engine
   // reads (defaults to the world itself).
-  constructor(world, { team = 1, strategy = 'sandbox', difficulty = 'hard', view = world, seed = 1 } = {}) {
+  constructor(world, { team = 1, strategy = 'sandbox', difficulty = 'hard', view = world, seed = 1, targeting = 'assess' } = {}) {
     this.w = view;
+    // Phase 7: 'assess' ranks rivals (PHASE7_SPEC.md); 'nearest' keeps the
+    // Phase 6 placeholder. Only matters with more than one rival.
+    this.targeting = targeting;
     this.team = team;
     this.issueFn = (cmd) => world.issue(cmd);
     this.d = typeof difficulty === 'string' ? DIFFICULTY[difficulty] : difficulty;
@@ -565,12 +570,35 @@ export class AiEngine {
     return this.w.camps.filter((c) => c.team !== this.team && alive.has(c.team));
   }
 
-  // PLACEHOLDER TARGETING (Phase 6). Phase 7 replaces this with real
-  // multi-rival evaluation (threat, strength, opportunity). For now the AI
-  // simply goes after the nearest living rival camp: straight-line distance
-  // between Castle starts, ties to the lower team number. In the 1v1 match
-  // there is only one rival, so this is exactly the Phase 2-5 behaviour.
+  // More than one rival (the free-for-all) with Phase 7 targeting on. In the
+  // 1v1 match this is false and every decision is the Phase 2-6 one.
+  multi() { return this.targeting === 'assess' && this.w.camps.length > 2; }
+
+  // This round's rival ranking (PHASE7_SPEC.md "Priority formula"), computed
+  // once per scan/decision time. Stickiness goes to the target we last had.
+  intel() {
+    if (!this.intelCache || this.intelCache.at !== this.w.time) this.intelCache = rankRivals(this, this.lastTarget ?? null, this.avoid ??= new Set());
+    return this.intelCache;
+  }
+
+  // Which rival camp we are aiming at. Phase 7 (free-for-all): the top of the
+  // ranking that is not clearly stronger; when cautious, the top of the
+  // ranking all the same (for the rally point and scouting only: no wave goes
+  // there). Otherwise the Phase 6 rule.
   targetCamp() {
+    if (this.multi()) {
+      const i = this.intel(), team = i.target ?? i.ranking[0]?.team;
+      const camp = team != null && this.w.camps.find((c) => c.team === team);
+      if (camp) return camp;
+    }
+    return this.nearestCamp();
+  }
+
+  // The Phase 6 placeholder rule: the nearest living rival camp by
+  // straight-line distance between Castle starts, ties to the lower team
+  // number. In the 1v1 match there is only one rival, so this is exactly the
+  // Phase 2-5 behaviour.
+  nearestCamp() {
     const own = this.w.camps.find((c) => c.team === this.team);
     const rivals = this.livingRivals();
     const pool = rivals.length ? rivals : this.w.camps.filter((c) => c.team !== this.team);
@@ -582,6 +610,31 @@ export class AiEngine {
       if (d < bestD || (d === bestD && c.team < best.team)) { bestD = d; best = c; }
     }
     return best;
+  }
+
+  // Caution (PHASE7_SPEC.md "Caution: claim instead of attack"): the nearest
+  // non-home zone we don't own that no rival is seen holding, or null.
+  claimZone() {
+    const core = this.core();
+    if (!core || !this.w.zones) return null;
+    let best = null, bestD = Infinity;
+    for (const z of this.w.zones) {
+      if (!z.field || z.owner === this.team) continue;
+      const f = this.zoneField(z);
+      if (this.contested(f)) continue;
+      const d = Math.hypot(f.center.x - core.x, f.center.y - core.y);
+      if (d < bestD) { bestD = d; best = { id: z.id, x: f.center.x, y: f.center.y }; }
+    }
+    return best;
+  }
+
+  // What an attack wave is for, in the free-for-all: a rival camp, a zone to
+  // claim, or (cautious with nothing to claim) nothing: hold at home.
+  waveGoal() {
+    const i = this.intel();
+    if (!i.cautious) return { key: `camp ${i.target}`, team: i.target };
+    const z = this.claimZone();
+    return z ? { key: `claim ${z.id}`, claim: z } : { key: 'hold' };
   }
 
   enemyTeam() { return this.targetCamp().team; }
@@ -603,6 +656,7 @@ export class AiEngine {
   // half (SCOUTING.searchPoints). Returns
   // the Core itself when one is known, otherwise a { x, y } point.
   attackTarget() {
+    if (this.multi() && this.goal?.claim) return this.goal.claim;
     const home = this.core() || this.enemyStart();
     const [known] = this.scout.knownCores(home, this.enemyTeam());
     if (known) {
@@ -686,6 +740,7 @@ export class AiEngine {
         this.wave = [];
         return;
       }
+      if (this.multi() && this.retarget(rally)) return;
       // Reinforcements travel in groups so they aren't fed in one at a time.
       if (s.reinforce && home.length >= (s.reinforceMin ?? 1) && !threats.length) {
         this.joinWave(home);
@@ -704,6 +759,12 @@ export class AiEngine {
     const homeSupply = home.reduce((n, u) => n + UNITS[u.type].supply, 0);
     const ready = needSupply != null ? homeSupply >= needSupply : home.length >= need;
     if (!threats.length && ready) {
+      if (this.multi()) { // Phase 7: attack the pick, claim land, or hold
+        this.goal = this.waveGoal();
+        this.goalSince = this.w.time;
+        if (this.goal.key === 'hold') { this.posture('holding', 'every rival is clearly stronger and no free zone to claim'); return; }
+        this.posture(this.goal.claim ? `claiming ${this.goal.claim.id}` : `attacking camp ${this.goal.team}`, this.goalWhy());
+      }
       this.mode = 'attack';
       this.waveFactor = null; // the next wave draws a new threshold
       this.waveSize = home.length;
@@ -711,6 +772,62 @@ export class AiEngine {
       this.note(`wave ${this.stats.waves}: ${home.length} units attack`);
       this.joinWave(home);
     }
+  }
+
+  // Why the current goal (the top reasons from the ranking).
+  goalWhy() {
+    const i = this.intel();
+    if (this.goal?.team != null) return i.ranking.find((r) => r.team === this.goal.team)?.why.join(', ') || '';
+    return i.ranking.map((r) => `camp ${r.team}: ${r.why[0]}`).join('; ');
+  }
+
+  // A posture change is logged as a reaction (tests, the dev panel).
+  posture(p, why) {
+    if (this.stance === p) return;
+    this.stance = p;
+    this.react(p.startsWith('attacking') ? 'target' : p.startsWith('claiming') ? 'cautious-claim' : 'cautious-hold', why ? `${p}: ${why}` : p);
+  }
+
+  // A wave in the field follows the ranking: a new pick, a claim instead of a
+  // rival that turned out clearly stronger, or home if there is nothing to do.
+  // Returns true when the wave was pulled home.
+  retarget(rally) {
+    const g = this.waveGoal();
+    if (g.key === this.goal?.key || this.keepTarget(g)) return false;
+    const was = this.goal?.key, prev = this.goal;
+    this.goal = g;
+    this.goalSince = this.w.time;
+    if (g.key === 'hold') {
+      this.issue({ type: 'move', ids: this.wave, ...rally });
+      this.mode = 'gather'; this.wave = [];
+      this.react('retarget', `${was} -> hold: every rival is clearly stronger`);
+      this.stance = 'holding';
+      return true;
+    }
+    const t = this.attackTarget();
+    this.issue({ type: 'attackMove', ids: this.wave, x: t.x, y: t.y });
+    this.stance = g.claim ? `claiming ${g.claim.id}` : `attacking camp ${g.team}`;
+    this.react('retarget', `${was} -> ${g.key}: ${this.goalWhy()}${this.leftBecause(prev, g)}`);
+    return false;
+  }
+
+  // A wave marching on a rival keeps it unless that rival fell, turned out
+  // clearly stronger, or the new pick scores switchMargin better: armies don't
+  // turn round on every change in the numbers.
+  keepTarget(g) {
+    if (this.goal?.team == null || g.team == null) return false;
+    const rank = this.intel().ranking, cur = rank.find((r) => r.team === this.goal.team), next = rank.find((r) => r.team === g.team);
+    if (!cur || cur.avoided) return false;
+    return next.score - cur.score < RIVALS.switchMargin || this.w.time - (this.goalSince ?? -Infinity) < RIVALS.commitTime;
+  }
+
+  // Why a wave left its old rival, for the log.
+  leftBecause(prev, g) {
+    if (prev?.team == null) return '';
+    const rank = this.intel().ranking, cur = rank.find((r) => r.team === prev.team), next = rank.find((r) => r.team === g.team);
+    if (!cur) return ` (camp ${prev.team} fell)`;
+    if (cur.avoided) return ` (camp ${prev.team} clearly stronger, R ${cur.R.toFixed(2)})`;
+    return next ? ` (scores ${(next.score - cur.score).toFixed(2)} above camp ${prev.team})` : '';
   }
 
   joinWave(units) {
@@ -759,7 +876,7 @@ export class AiEngine {
     this.gatherIdle();
     const opened = this.runOpening();
     if (this.s.noMacro) return; // the Phase 1 sandbox script is opening-only
-    if (this.s.scouting !== false && this.scout.update()) this.evaluateTriggers();
+    if (this.s.scouting !== false && this.scout.update()) { this.intelCache = null; this.evaluateTriggers(); }
     if (opened) this.macro();
     this.commandArmy();
   }

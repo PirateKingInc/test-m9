@@ -7,6 +7,9 @@ export const RIVALS = {
   engagedMemory: 45, // s a witnessed fight with a third camp counts
   hitMemory: 45, // s a witnessed attack on us counts
   caution: 1.5, // a rival with R at or above this is clearly stronger: never the target
+  cautionRelease: 1.2, // ...and once avoided, it must drop below this to be a target again
+  switchMargin: 0.75, // a wave in the field changes rival only for a pick this much better...
+  commitTime: 20, // ...and not within this many s of its last change of target
   weights: {
     weakness: 1.0, // x (1 - min(R, 2))
     overmatch: 1.2, // x max(0, R - 1), subtracted
