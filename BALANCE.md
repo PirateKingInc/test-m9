@@ -534,3 +534,42 @@ Rush), but decisions are much closer to even (Rush 1.9× Turtle, was 2.8×).
 earlier and more, so Rush is less often the one caught out), Boom fell from 42%
 to 31% (its early opportunity waves cost it: out 2 minutes sooner on
 average), Turtle is unchanged at 45%. Both targets are still met.
+
+### The tuning pass (one pass, rejected)
+
+After Parts C and D both targets were met (worst strategy Turtle 45%, worst
+corner 28%), so the stop condition did not require tuning. The one tuning
+pass allowed by the procedure was used on the remaining spread (Turtle 45% /
+Boom 31% / Rush 24%, 21 points), under a rule fixed **before** measuring:
+keep the pass only if the targets stay met **and** the strategy spread
+narrows; otherwise revert to the Part C/D values. Three changes in one batch,
+each with its hypothesis:
+
+1. **Boom's opportunity threshold 16 → 22 supply.** Its early opportunity
+   waves cost it: after Part C it fell 2 minutes sooner and its win share
+   dropped from 42% to 31%.
+2. **A known Tower counts 2 army value in a rival's strength instead of 3.**
+   Turtle's visible Towers make rivals rate it "clearly stronger" and leave it
+   alone to grow.
+3. **Rush retreats at 35% of its wave in the free-for-all** (it never
+   retreats in the 1v1): throwing its army away leaves it open to two rivals.
+
+`balance/ffa-tuning-pass.json`, the same 900 seeds:
+
+| Strategy | Before the pass (C+D) | After the pass |
+|---|---|---|
+| Rush | 24% | 20% |
+| Boom | 31% | **50%** |
+| Turtle | 45% | 31% |
+| Spread | 21 points | **30 points** |
+
+Corners after the pass: NW 27%, NE 20%, SE 23%, SW 29%.
+
+**Rejected.** Both targets were technically still met, but Boom landed exactly
+on the ~50% ceiling and the spread widened from 21 to 30 points: change 1
+overshot (Boom +19 points; it is by far the most sensitive lever measured),
+and Rush did not gain from retreating. The pass was reverted in full; the
+shipped values are the Part C/D ones above. Since both targets are met with
+them, the procedure's "up to 3 further adjustments" step (which applies only
+to a missed target) was not triggered, and tuning stopped here, as the stop
+condition requires. No open-ended search was run.

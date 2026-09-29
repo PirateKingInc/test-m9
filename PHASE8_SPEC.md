@@ -210,3 +210,27 @@ least one attack in the median match, without changing what it builds.
   scans, return to mining), not a new vision system.
 
 All numbers are in `RIVALS` (`src/data/rivals.js`).
+
+## Results
+
+### Part B: balance, against the stop condition
+
+| Measurement (900 matches, Hard) | Rush | Boom | Turtle | Worst corner | Targets |
+|---|---|---|---|---|---|
+| Baseline (Part A only) | 14% | 42% | 44% | SW 29% | met |
+| After Parts C and D (**shipped**) | 24% | 31% | 45% | NW/SW 28% | met |
+| The tuning pass (rejected) | 20% | 50% | 31% | SW 29% | met, spread wider |
+
+The baseline already met both targets. The one tuning pass (three
+hypothesis-driven changes, BALANCE.md) widened the strategy spread and put
+Boom on the ceiling, so it was reverted under the rule fixed before
+measuring; with both targets met, no further adjustment was allowed or
+needed. Details and every table are in BALANCE.md.
+
+### Part C: attacks per camp, before → after
+
+| Strategy | Mean | Median | Camps attacking at least once | Target changes per camp |
+|---|---|---|---|---|
+| Rush | 2.09 → 1.76 | 2 → 2 | 100% → 99% | 3.13 → 2.33 |
+| Boom | 1.87 → 4.06 | 1 → 3 | 73% → 100% | 0.93 → 1.23 |
+| Turtle | 1.91 → 4.36 | 2 → 4 | 84% → 99% | 1.10 → 1.83 |
