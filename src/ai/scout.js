@@ -24,6 +24,11 @@ export class Scout {
     // for an attack on us.
     this.engaged = new Map();
     this.hitUs = new Map();
+    // Phase 8 (PHASE8_SPEC.md "Part D"): when we last saw any unit or building
+    // of each rival team, and the Peasant out re-scouting, if any.
+    this.lastSeen = new Map();
+    this.rescout = null; // { id, team, sentAt, arrivedAt }
+    this.nextRescoutAt = 0;
   }
 
   // Where our eyes are: base watch circles around buildings, sight around units.
@@ -50,6 +55,7 @@ export class Scout {
       const v = inView(t.x, t.y);
       if (!v.seen) continue;
       this.memory.set(t.id, { kind: t.kind, type: t.type, team: t.team, x: t.x, y: t.y, seenAt: now, nearBase: v.base, health: t.hp / t.maxHp });
+      this.lastSeen.set(t.team, now);
       if (t.type === 'core') { this.cores.set(t.id, { id: t.id, team: t.team, x: t.x, y: t.y, seenAt: now, health: t.hp / t.maxHp }); seenNow.add(t.id); }
       this.witness(t, now);
     }
@@ -110,7 +116,48 @@ export class Scout {
   }
 
   // The Drone currently out scouting (gatherIdle leaves it alone).
-  activeScout() { return this.scoutDone ? null : this.scoutId; }
+  activeScout() { return this.scoutDone ? (this.rescout?.id ?? null) : this.scoutId; }
+
+  // Seconds since we last saw any unit or building of `team` (Infinity: never).
+  intelAge(team) {
+    const t = this.lastSeen.get(team);
+    return t == null ? Infinity : this.e.w.time - t;
+  }
+
+  // Re-scouting (Phase 8, free-for-all only): once the first scout is back,
+  // send a Peasant to look again at the rival whose intel is stalest (our
+  // current target first) once it is older than rescoutAfter, one at a time,
+  // at most every rescoutEvery seconds. The same walk-loiter-return as the
+  // first scout.
+  runRescout(cfg) {
+    const now = this.e.w.time, r = this.rescout;
+    if (r) {
+      const d = this.e.w.get(r.id);
+      if (!d) { this.rescout = null; this.e.react('rescout-lost', `camp ${r.team}`); return; }
+      if (d.order.type === 'idle') r.arrivedAt ??= now;
+      const looked = r.arrivedAt != null && now - r.arrivedAt >= 2 * this.cfg.interval;
+      if (looked || now - r.sentAt > cfg.rescoutGiveUp) {
+        if (d.order.type !== 'idle') this.e.issue({ type: 'stop', ids: [d.id] });
+        this.rescout = null; // gatherIdle puts it back to work
+        this.e.note(`re-scout of camp ${r.team} done`);
+      }
+      return;
+    }
+    if (!this.scoutDone || now < this.nextRescoutAt) return;
+    const target = this.e.lastTarget;
+    const stale = [...this.e.livingRivals()].filter((c) => this.intelAge(c.team) > cfg.rescoutAfter)
+      .sort((a, b) => (b.team === target) - (a.team === target) || this.intelAge(b.team) - this.intelAge(a.team) || a.team - b.team);
+    if (!stale.length) return;
+    const d = this.e.mine('unit', 'drone').find((u) => u.order.type === 'gather' && u.carry === 0);
+    if (!d) return;
+    const camp = stale[0], p = this.e.campStart(camp);
+    this.e.issue({ type: 'move', ids: [d.id], x: p.x, y: p.y });
+    this.rescout = { id: d.id, team: camp.team, sentAt: now, arrivedAt: null };
+    this.nextRescoutAt = now + cfg.rescoutEvery;
+    this.e.stats.scouts = (this.e.stats.scouts || 0) + 1;
+    const age = this.intelAge(camp.team);
+    this.e.react('rescout', `camp ${camp.team}: intel ${age === Infinity ? 'never gathered' : `${Math.round(age)} s old`}`);
+  }
 
   update() {
     this.runScout();

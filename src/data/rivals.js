@@ -20,6 +20,14 @@ export const RIVALS = {
     travel: 0.01, // x one-way travel s, subtracted
     stick: 0.2, // current target
   },
+  // Intel freshness and re-scouting (Phase 8, PHASE8_SPEC.md "Part D").
+  intel: {
+    freshFor: 45, // s a rival's intel is fully trusted after we last saw any of its units or buildings
+    staleAt: 150, // s at which it has fallen to "assumed equal" (confidence 0)
+    rescoutAfter: 120, // s of age after which the camp sends a Peasant to look again
+    rescoutEvery: 120, // s between re-scouts (one at a time)
+    rescoutGiveUp: 90, // s before a re-scouting Peasant goes back to work regardless
+  },
   // Zone holding (PHASE7_SPEC.md "Zone holding").
   hold: {
     squadMax: 4,

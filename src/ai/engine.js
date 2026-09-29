@@ -973,6 +973,7 @@ export class AiEngine {
     this.gatherIdle();
     const opened = this.runOpening();
     if (this.s.noMacro) return; // the Phase 1 sandbox script is opening-only
+    if (this.s.scouting !== false && this.multi()) this.scout.runRescout(RIVALS.intel); // Phase 8
     if (this.s.scouting !== false && this.scout.update()) { this.intelCache = null; this.evaluateTriggers(); }
     if (opened) this.macro();
     this.commandArmy();

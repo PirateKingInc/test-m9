@@ -18,16 +18,23 @@ export function assessRival(e, camp, now = e.w.time) {
   const seen = armyValue(sightings.filter((m) => !m.gone)) + cfg.spireValue * spires;
   const own = armyValue(e.army().map((u) => ({ type: u.type, health: u.hp / u.maxHp })));
   const scouted = sightings.length > 0 || spires > 0;
-  const R = scouted ? (seen + cfg.smoothing) / (own + cfg.smoothing) : 1;
+  // Phase 8 (PHASE8_SPEC.md "Part D"): intel is trusted for freshFor seconds
+  // after we last saw anything of this rival, then blends linearly toward
+  // "assumed equal" until staleAt.
+  const age = scout.intelAge ? scout.intelAge(team) : 0;
+  const { freshFor, staleAt } = cfg.intel;
+  const confidence = age <= freshFor ? 1 : Math.max(0, 1 - (age - freshFor) / (staleAt - freshFor));
+  const Rseen = scouted ? (seen + cfg.smoothing) / (own + cfg.smoothing) : 1;
+  const R = 1 + confidence * (Rseen - 1);
   const fight = scout.engaged.get(team);
   const engaged = fight && now - fight.at <= cfg.engagedMemory ? fight.with : null;
   const hit = scout.hitUs.get(team);
   const hitting = hit != null && now - hit <= cfg.hitMemory;
   const cores = [...scout.cores.values()].filter((c) => c.team === team);
-  const castle = cores.length ? 1 - Math.max(...cores.map((c) => c.health ?? 1)) : 0;
+  const castle = confidence * (cores.length ? 1 - Math.max(...cores.map((c) => c.health ?? 1)) : 0);
   const zones = e.w.zones ? [...e.w.zones].filter((z) => z.owner === team).length : 0;
   const travel = campTravel(e.team, team) ?? 0;
-  return { team, scouted, seen, own, R, engaged, hitting, castle, zones, travel };
+  return { team, scouted, seen, own, R, Rseen, age, confidence, engaged, hitting, castle, zones, travel };
 }
 
 // P_r (PHASE7_SPEC.md "Priority formula") and the reasons behind it.
@@ -45,6 +52,7 @@ export function scoreRival(a, current) {
   };
   const score = Object.values(parts).reduce((x, y) => x + y, 0);
   const why = [];
+  if (a.scouted && a.confidence < 1) why.push(a.confidence === 0 ? `stale intel (${Math.round(a.age)} s): assumed equal` : `stale intel (${Math.round(a.age)} s)`);
   if (!a.scouted) why.push('unscouted');
   else if (a.R >= RIVALS.caution) why.push('clearly stronger');
   else if (a.R < 0.8) why.push('weaker');

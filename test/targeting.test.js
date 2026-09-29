@@ -19,6 +19,7 @@ function ready() {
     for (let i = 0; i < n; i++) {
       s.ai.scout.memory.set(`fake-${team}-${type}-${i}`, { kind: 'unit', type, team, x: tx * T, y: ty * T, seenAt: s.w.time, nearBase: false, health: 1 });
     }
+    s.ai.scout.lastSeen.set(team, s.w.time); // just seen: fresh intel (Phase 8)
   };
   return s;
 }
