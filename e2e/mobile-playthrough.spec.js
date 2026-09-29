@@ -49,7 +49,14 @@ async function play(page, query, ffa) {
   const cardUp = () => page.evaluate(() => !document.getElementById('result').hidden);
   const tap = async (x, y) => { if (await cardUp()) return; actions.taps++; await touch.tap(x, y); };
   const drag = async (a, b, c, d) => { if (await cardUp()) return; actions.drags++; await touch.drag(a, b, c, d); };
-  const tapEl = async (sel) => { if (await cardUp()) return; await touch.tapEl(sel); };
+  // A command-card button can vanish between checking it and tapping it (the
+  // card re-renders when the selection changes, e.g. the building is destroyed):
+  // then there is nothing to tap, as for a player whose button just went away.
+  const tapEl = async (sel) => {
+    if (await cardUp()) return;
+    const b = await page.locator(sel).boundingBox({ timeout: 1000 }).catch(() => null);
+    if (b) await touch.tap(b.x + b.width / 2, b.y + b.height / 2);
+  };
 
   // Pan with one-finger drags until world (x, y) is inside the safe area; returns its screen point.
   async function view(x, y) {
