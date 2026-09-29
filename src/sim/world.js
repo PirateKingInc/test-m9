@@ -23,6 +23,9 @@ export class World {
     this.PF = PF;
     this.rng = createRng(seed);
     this.grid = new Grid(map.cols, map.rows, map.tile);
+    // Maps mirrored north-south as well (the free-for-all) mirror every
+    // tie-break in y too (Phase 8, PHASE8_SPEC.md "Pathfinding symmetry").
+    this.grid.mirrorY = !!map.mirrorY;
     this.width = map.cols * map.tile;
     this.height = map.rows * map.tile;
     this.time = 0;

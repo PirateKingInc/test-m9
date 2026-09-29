@@ -33,12 +33,18 @@ export function approach(world, u, e, dt) {
 // Center of the walkable tile bordering e's footprint that is nearest to (x,y).
 // Edge-adjacent tiles come first: diagonal corner tiles are too far from the edge
 // for melee/build range, so they are only used when every edge tile is blocked.
+// Exact distance ties go to the first tile in scan order (top row first, left
+// to right). On maps mirrored north-south too (the free-for-all), the scan runs
+// in the mirror image of that order in the south and east halves, so mirrored
+// camps pick mirrored tiles (Phase 8). The 1v1 map keeps the Phase 1 order.
 export function adjacentTile(world, e, x, y) {
   const g = world.grid;
+  const up = g.mirrorY && e.ty + e.h / 2 > g.rows / 2, left = g.mirrorY && e.tx + e.w / 2 > g.cols / 2;
+  const ys = range(e.ty - 1, e.ty + e.h, up), xs = range(e.tx - 1, e.tx + e.w, left);
   let best = null, bestD = Infinity;
   for (const corners of [false, true]) {
-    for (let ty = e.ty - 1; ty <= e.ty + e.h; ty++) {
-      for (let tx = e.tx - 1; tx <= e.tx + e.w; tx++) {
+    for (const ty of ys) {
+      for (const tx of xs) {
         const sideX = tx === e.tx - 1 || tx === e.tx + e.w, sideY = ty === e.ty - 1 || ty === e.ty + e.h;
         if (!(sideX || sideY) || (sideX && sideY) !== corners || !g.isWalkable(tx, ty)) continue;
         const c = g.center(tx, ty), d = Math.hypot(c.x - x, c.y - y);
@@ -48,6 +54,13 @@ export function adjacentTile(world, e, x, y) {
     if (best) return best;
   }
   return null;
+}
+
+// Integers a..b inclusive, descending if `rev`.
+function range(a, b, rev) {
+  const out = [];
+  for (let i = a; i <= b; i++) out.push(i);
+  return rev ? out.reverse() : out;
 }
 
 export function clearPath(u) {

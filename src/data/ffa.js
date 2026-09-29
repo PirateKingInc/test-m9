@@ -92,7 +92,10 @@ export const TERRITORY = {
 export const FFA_STRATEGIES = { 2: 'rush', 3: 'boom', 4: 'turtle' };
 
 // Measured one-way march time in seconds between two camps' Castles (Phase 7,
-// PHASE7_SPEC.md "Travel time"): the round trip of a 14-unit army from
-// test/travel.js, halved. test/rivals.test.js re-measures it.
-export const CAMP_TRAVEL = { '1-2': 49.0, '1-3': 65.6, '1-4': 41.0, '2-3': 42.2, '2-4': 65.6, '3-4': 48.1 };
+// PHASE7_SPEC.md "Travel time"), for the 20-unit army of test/travel.js.
+// Phase 8 re-measured it after the north-south pathfinding fix: the average of
+// the two one-way marches, each the median of 24 slightly shifted marches
+// (PHASE8_SPEC.md "Pathfinding symmetry"); mirror pairs now agree.
+// test/rivals.test.js re-measures it.
+export const CAMP_TRAVEL = { '1-2': 49.5, '1-3': 66.6, '1-4': 40.7, '2-3': 40.8, '2-4': 66.6, '3-4': 49.5 };
 export const campTravel = (a, b) => CAMP_TRAVEL[a < b ? `${a}-${b}` : `${b}-${a}`];

@@ -18,9 +18,10 @@ const PHASE6 = {
   6: '4 1<-4 2<-3 3<-4',
 };
 
-function play(seed, targeting = 'assess') {
+function play(seed, targeting = 'assess', mirrorY = true) {
   const camps = Object.fromEntries(Object.entries(FFA_STRATEGIES).map(([t, s]) => [t, { strategy: s, difficulty: 'hard', targeting }]));
   const m = new Match({ seed, PF, ffa: { map: FFA_MAP, camps }, player: { strategy: 'boom', difficulty: 'hard', targeting }, view: readonly });
+  m.world.grid.mirrorY = mirrorY; // false: without Phase 8's north-south tie-breaks, i.e. Phase 6/7 pathing
   const falls = [], captures = [];
   while (!m.world.result) {
     m.step();
@@ -65,7 +66,7 @@ test('multi-rival FFA playthroughs: camps turn on weakened rivals, avoid stronge
   assert.ok(differ.length >= 3, `outcomes differ from Phase 6 on most seeds (${differ.length} of ${Object.keys(PHASE6).length})`);
 });
 
-test('the Phase 6 outcomes above are what targeting: nearest produces', () => {
-  const { r, falls } = play(2, 'nearest');
+test('the Phase 6 outcomes above are what targeting: nearest produces (on Phase 6 pathing)', () => {
+  const { r, falls } = play(2, 'nearest', false);
   assert.equal(`${r.winner} ${falls.map((f) => `${f.team}<-${f.by}`).join(' ')}`, PHASE6[2]);
 });

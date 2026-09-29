@@ -20,8 +20,12 @@ export class Pathfinder {
   // Mirror symmetry: queries that start in the east half run in a mirrored frame
   // (x -> cols-1-x) so A*'s fixed neighbour order, the flood fill and the
   // clearance sampling treat both halves of the map identically.
+  //
+  // Phase 8: on maps mirrored north-south as well (grid.mirrorY, the
+  // free-for-all), queries that start in the south half also flip y
+  // (y -> rows-1-y), so the north and south camps plan identically too.
   pfGrid(g = this.frame) {
-    const key = g.mirrored ? 'm' : 'n';
+    const key = g.frameKey || 'n';
     const c = (this.cache ||= {})[key] ||= { version: -1 };
     if (c.version !== this.grid.version) {
       c.base = new this.PF.Grid(g.cols, g.rows, g.toMatrix());
@@ -32,16 +36,24 @@ export class Pathfinder {
     return c.base;
   }
 
-  // The grid as seen from the mirrored frame (same interface as Grid for reads).
-  mirrorView() {
-    const grid = this.grid;
-    if (this.mirror) return this.mirror;
+  // The grid as seen from a mirrored frame (same interface as Grid for reads):
+  // mx flips x (east half), my flips y (south half, mirrorY maps only).
+  mirrorView(mx = true, my = false) {
+    const grid = this.grid, key = `${mx ? 'm' : ''}${my ? 's' : ''}` || 'n';
+    const views = (this.views ||= {});
+    if (views[key]) return views[key];
+    const fx = (tx) => (mx ? grid.cols - 1 - tx : tx), fy = (ty) => (my ? grid.rows - 1 - ty : ty);
     const view = Object.create(grid); // inherits tile, rows, cols, tileOf, center, spiral...
-    view.mirrored = true;
-    view.isWalkable = (tx, ty) => grid.isWalkable(grid.cols - 1 - tx, ty);
-    view.toMatrix = () => grid.toMatrix().map((row) => row.slice().reverse());
+    view.mirrored = mx;
+    view.frameKey = key;
+    view.mirrorY = false; // inside the frame, the north-half order applies
+    view.isWalkable = (tx, ty) => grid.isWalkable(fx(tx), fy(ty));
+    view.toMatrix = () => {
+      const m = grid.toMatrix().map((row) => (mx ? row.slice().reverse() : row.slice()));
+      return my ? m.reverse() : m;
+    };
     view.nearestWalkable = function (tx, ty, maxR) { for (const t of this.spiral(tx, ty, maxR)) return t; return null; };
-    this.mirror = view;
+    views[key] = view;
     return view;
   }
 
@@ -102,12 +114,17 @@ export class Pathfinder {
   // Waypoints in px from (x,y) toward (tx,ty). Blocked or unreachable goals resolve
   // to the nearest reachable tile. Returns null if the unit itself is boxed in.
   find(x, y, tx, ty) {
-    const grid = this.grid, W = grid.cols * grid.tile;
-    const east = grid.tileOf(x, y).tx >= grid.cols / 2;
-    this.frame = east ? this.mirrorView() : grid;
-    if (!east) return this.findInFrame(x, y, tx, ty);
-    const pts = this.findInFrame(W - x, y, W - tx, ty);
-    return pts && pts.map((p) => ({ x: W - p.x, y: p.y }));
+    const grid = this.grid, W = grid.cols * grid.tile, H = grid.rows * grid.tile;
+    const start = grid.tileOf(x, y);
+    const east = start.tx >= grid.cols / 2, south = !!grid.mirrorY && start.ty >= grid.rows / 2;
+    // Inside a planning frame every tie-break uses the canonical (north-west)
+    // order; on a map mirrored north-south the unmirrored frame is a view too,
+    // so the grid's own south-half spiral order doesn't leak in.
+    if (!east && !south) { this.frame = grid.mirrorY ? this.mirrorView(false, false) : grid; return this.findInFrame(x, y, tx, ty); }
+    this.frame = this.mirrorView(east, south);
+    const fx = (v) => (east ? W - v : v), fy = (v) => (south ? H - v : v);
+    const pts = this.findInFrame(fx(x), fy(y), fx(tx), fy(ty));
+    return pts && pts.map((p) => ({ x: fx(p.x), y: fy(p.y) }));
   }
 
   findInFrame(x, y, tx, ty) {

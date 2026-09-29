@@ -73,8 +73,10 @@ export function updateProduction(world, dt) {
     // bottom-right in the west half (the Phase 1 default), bottom-left in the east.
     // A fixed bottom-right for everyone sent east-side units out the back of
     // their base (see BALANCE.md, side bias).
-    const east = b.x >= world.width / 2;
-    const toward = b.rally || { x: b.x + (east ? -b.pw : b.pw), y: b.y + b.ph };
+    // Phase 8: on maps mirrored north-south too (the free-for-all), the south
+    // half spawns toward the top corner, the mirror image of the north half.
+    const east = b.x >= world.width / 2, south = world.grid.mirrorY && b.y >= world.height / 2;
+    const toward = b.rally || { x: b.x + (east ? -b.pw : b.pw), y: b.y + (south ? -b.ph : b.ph) };
     const p = spawnPoint(world, b, toward.x, toward.y);
     const u = world.addUnit(item.unit, b.team, p.x, p.y);
     world.emit('trained', { id: u.id, unit: item.unit, team: b.team, building: b.id });

@@ -6,16 +6,20 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { scenario } from './rivals-helpers.js';
-import { CAMP_TRAVEL, campTravel } from '../src/data/ffa.js';
+import { CAMP_TRAVEL, campTravel, FFA_MAP } from '../src/data/ffa.js';
 import { RIVALS } from '../src/data/rivals.js';
 import { roundTrip } from './travel.js';
 
 const order = (r) => r.ranking.map((x) => x.team);
 
-test('CAMP_TRAVEL is the measured march time (round trip / 2, within 1 s)', () => {
+test('CAMP_TRAVEL is the measured march time (both one-way marches, each the median of 12 shifted marches, averaged; within 1 s)', () => {
+  // The same shifts as tools/symmetry.mjs (its first 12 of 24).
+  const SHIFTS = Array.from({ length: 12 }, (_, i) => [((i * 37) % 17) - 8, ((i * 53) % 17) - 8]);
+  const median = (xs) => { const v = [...xs].sort((p, q) => p - q); return (v[5] + v[6]) / 2; };
   for (const key of Object.keys(CAMP_TRAVEL)) {
     const [a, b] = key.split('-').map(Number);
-    const half = roundTrip(a, b).roundTrip / 2;
+    const leg = (from, to) => median(SHIFTS.map((s) => roundTrip(from, to, 1, FFA_MAP, s).there));
+    const half = (leg(a, b) + leg(b, a)) / 2;
     assert.ok(Math.abs(half - CAMP_TRAVEL[key]) <= 1, `${key}: table ${CAMP_TRAVEL[key]} s vs measured ${half.toFixed(1)} s`);
   }
   assert.equal(campTravel(3, 2), CAMP_TRAVEL['2-3']);

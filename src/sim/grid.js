@@ -62,12 +62,16 @@ export class Grid {
   // Walkable tiles in rings of increasing Chebyshev radius around (tx,ty), nearest first.
   // Equal-distance ties keep the Phase 1 west-to-east order in the west half and
   // use its mirror image in the east half, so both halves behave identically.
+  // On maps mirrored north-south too (mirrorY), the south half likewise uses
+  // the vertical mirror image of the north half's order (Phase 8).
   *spiral(tx, ty, maxR = 20) {
     if (this.isWalkable(tx, ty)) yield { tx, ty };
     const dir = tx < this.cols / 2 ? -1 : 1;
+    const dirY = this.mirrorY && ty >= this.rows / 2 ? -1 : 1;
     for (let r = 1; r <= maxR; r++) {
       const ring = [];
-      for (let dy = -r; dy <= r; dy++) {
+      for (let j = -r; j <= r; j++) {
+        const dy = dirY * j;
         for (let k = 0; k <= 2 * r; k++) {
           const dx = dir * (r - k);
           if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;

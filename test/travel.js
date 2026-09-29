@@ -25,13 +25,19 @@ export const ARMY = ['striker', 'sparker', 'bulwark', 'lancer'].flatMap((t) => A
 // Round trip of a full army from camp a's Castle to camp b's and back, timed on
 // the last unit. Plain moves (no fighting on the way), the sim's pathfinding,
 // steering and chokepoints. Returns { there, back, roundTrip, pathTiles }.
-export function roundTrip(a, b, seed = 1, map = FFA_MAP) {
+// `shift` moves the whole formation by (dx, dy) px, mirrored with the camp
+// (Phase 8's symmetry check averages several shifted marches).
+export function roundTrip(a, b, seed = 1, map = FFA_MAP, shift = [0, 0]) {
   const w = twoCastles(a, b, seed, map);
   const home = castleOf(w, a), target = castleOf(w, b);
   target.team = a; // an obstacle to walk up to, not something to attack on arrival
   const d = Math.hypot(target.x - home.x, target.y - home.y), ux = (target.x - home.x) / d, uy = (target.y - home.y) / d;
   const start = { x: home.x + ux * 4 * T, y: home.y + uy * 4 * T }; // in front of the home Castle, toward the rival
-  const units = ARMY.map((t, i) => w.addUnit(t, a, start.x + ((i % 5) - 2) * 28, start.y + (Math.floor(i / 5) - 1.5) * 28));
+  // The formation is laid out in the mirror image for mirrored camps (Phase 8),
+  // so a march and its mirror twin start from mirror-image states: the same
+  // unit types on the same side, the same unit order.
+  const sx = home.x < w.width / 2 ? 1 : -1, sy = home.y < w.height / 2 ? 1 : -1;
+  const units = ARMY.map((t, i) => w.addUnit(t, a, start.x + sx * (((i % 5) - 2) * 28 + shift[0]), start.y + sy * ((Math.floor(i / 5) - 1.5) * 28 + shift[1])));
   roundTrip.last = { w, units };
   // Arrived: every unit has finished its move (formation slots spread a
   // 20-unit army over a few tiles) and stands within 10 tiles of the goal.
