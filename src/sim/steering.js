@@ -33,10 +33,19 @@ export function separate(world) {
       if (!cell) hash.set(k, (cell = []));
       cell.push(u);
     }
+    // Pushes are applied one pair at a time, so the order matters. On maps
+    // mirrored north-south too (the free-for-all), a unit in the east (south)
+    // half visits neighbour cells in the mirror image of the west (north)
+    // order, so mirrored crowds resolve identically (Phase 8). The 1v1 map
+    // keeps the Phase 1 order.
+    const mir = world.grid.mirrorY, W = world.width / 2, H = world.height / 2;
     for (const a of units) {
       const cx = Math.floor(a.x / CELL), cy = Math.floor(a.y / CELL);
-      for (let dy = -1; dy <= 1; dy++) {
-        for (let dx = -1; dx <= 1; dx++) {
+      const sx = mir && a.x >= W ? -1 : 1, sy = mir && a.y >= H ? -1 : 1;
+      for (let j = -1; j <= 1; j++) {
+        const dy = sy * j;
+        for (let i = -1; i <= 1; i++) {
+          const dx = sx * i;
           const cell = hash.get(`${cx + dx},${cy + dy}`);
           if (!cell) continue;
           for (const b of cell) {

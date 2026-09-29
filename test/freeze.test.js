@@ -31,7 +31,7 @@ export const FROZEN = {
   "src/data/difficulty.js": "5edbe78a9ebb8172eed5c945f34732d549375eeb806df9265e684577b1a0ea6e",
   "src/data/ffa.js": "aae3f1f3cef2a7e34f8b923414f643189ffb44872e105f25b9d9d30a021877df",
   "src/data/map.js": "7ca9715b0b10d0d0a5659268c05bb7df451bda0306b21032a0fa5f13abc6436f",
-  "src/data/rivals.js": "8014daa450dc2910458dc6947a97ac8c79b562ee6ef74e9c4d37ac36fb4b87ae",
+  "src/data/rivals.js": "54c99cdb2916999bc23ec81d33a8438d9db58915afa7ef7fb73e0a43032ac905",
   "src/data/strategies.js": "ce6e3cd4a084145f4ae7315103bf953ae76d6e6b5cfdc117aab6f966fe15e499",
   "src/data/units.js": "b401f86514666b40bd0a2f8b5b1ac664563a6f33be2869391763c747f36a3ca0",
   "src/sim/combat.js": "da57ab0604b8f60a2e22584091abdd17c220982fb00a86bf4b2b8d38fcc6f10b",
@@ -47,13 +47,13 @@ export const FROZEN = {
   "src/sim/rng.js": "16b01e7963ce86441359bdea3b68f2b4479afbcc9ea3d1018ef4da36614d95f0",
   "src/sim/selection.js": "cf20075f76b5ac3023454f2392cab4f47b0ca50d8ef5f49b885c1e4e04abe3ef",
   "src/sim/spatial.js": "9c8ca85c581fcb61e63338d7c19c286018ea01410272dfd4ba0bd79be1b8334d",
-  "src/sim/steering.js": "b89ec8a54093853a66b8a4e7b4902fda00a36694565a369fb256b31c8c34c57f",
+  "src/sim/steering.js": "1c43b5dbe49cd82ce421f44143534cb0678f26fe6e91297a8c097d954f1f1369",
   "src/sim/supply.js": "3dafb9550ca87e902d153392eb319697a6559fa6b84c05d75cee160e1f0d6824",
   "src/sim/territory.js": "5266e7e71f2850c912e4e67ad50ffe69b34783041447d7247c83a3598503b6f6",
   "src/sim/victory.js": "22f80deadc6acb54862bd1c8ab11ddafb550102af8261f8a8bbed1c0948c9a42",
   "src/sim/world.js": "8d9a3d2709930e8927a775079cbdb448b478df5909e8e113b88d2d547e6d810e",
   "src/ai/engine-types.js": "af5469d73733f3337336b5217b6a9186f1c3c0fd36e9623477c786b4f5b1c643",
-  "src/ai/engine.js": "1661783579c7413bd445eb93ce362305dbd39e9a5e347ef123adcea5452afda0",
+  "src/ai/engine.js": "149a34cb3f5daf2bfae9a283ea0656322dcffaa96c35052257daea06e0c56bc7",
   "src/ai/match.js": "c833058cc4533c4e947693dfaf25602c02b16b24772b21d2f2c6a57565747442",
   "src/ai/readonly.js": "85d635a231882096209c77af1e34820ecae488fde5da79d390b5dfdee07850f7",
   "src/ai/rivals.js": "f23a6d6da53c7edb400983396f9894bba876c0a0179b8fe5f2247b74dc7d30ec",
@@ -203,13 +203,15 @@ test('Phase 7 equivalence: with placeholder targeting, the free-for-all builds a
 });
 
 // Phase 8 gate (PHASE8_SPEC.md "Pathfinding symmetry"): the same production
-// logs with the north-south mirrored tie-breaks on, recorded on the Phase 8
-// fix before any Phase 8 balance change. The 1v1 fingerprints above are
+// logs with the north-south mirrored tie-breaks on (pathfinding, spiral,
+// approach tile, spawn corner and separation order), recorded before any
+// Phase 8 balance change. (With placeholder targeting, Phase 8's AI changes
+// are off, so only the symmetry fix moves this log.) The 1v1 fingerprints above are
 // untouched by the fix (the 1v1 map is not mirrored north-south).
 export const GOLDEN_PHASE8_FFA = {
-  'seed1-600s': '8e2b454e344c3f86 (388 build/train orders)',
-  'seed2-600s': '4a93453a6d751e0d (528 build/train orders)',
-  'seed3-600s': 'c37cbbe5499e9d6b (506 build/train orders)',
+  'seed1-600s': 'ed06bd6d3f1e3144 (440 build/train orders)',
+  'seed2-600s': '3df41df5e3e29dc2 (529 build/train orders)',
+  'seed3-600s': '92297db501e93762 (471 build/train orders)',
 };
 
 test('Phase 8 equivalence: the free-for-all with the pathfinding fix builds and trains as pinned', () => {

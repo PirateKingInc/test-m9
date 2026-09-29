@@ -28,6 +28,17 @@ export const RIVALS = {
     rescoutEvery: 120, // s between re-scouts (one at a time)
     rescoutGiveUp: 90, // s before a re-scouting Peasant goes back to work regardless
   },
+  // Free-for-all attack triggers (Phase 8, PHASE8_SPEC.md "Part C"), by
+  // strategy id. opportunitySupply: besides its usual wave threshold, a camp
+  // launches a wave once its home army reaches this much supply while its
+  // target is an opportunity (seen weaker, engaged with a third camp, or its
+  // Castle damaged). null: no opportunity trigger.
+  attack: {
+    rush: { opportunitySupply: null },
+    boom: { opportunitySupply: 16 },
+    turtle: { opportunitySupply: 16 },
+  },
+  opportunity: { weakerThan: 0.8, castleDamage: 0.3 }, // what counts as an opportunity
   // Zone holding (PHASE7_SPEC.md "Zone holding").
   hold: {
     squadMax: 4,

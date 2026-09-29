@@ -844,8 +844,13 @@ export class AiEngine {
     const baseSupply = this.stats.waves === 0 ? s.firstWaveSupply : s.waveSupply;
     const needSupply = baseSupply == null ? null : baseSupply * this.waveFactor;
     const homeSupply = home.reduce((n, u) => n + UNITS[u.type].supply, 0);
-    const ready = needSupply != null ? homeSupply >= needSupply : home.length >= need;
-    if (!threats.length && ready) {
+    const usual = needSupply != null ? homeSupply >= needSupply : home.length >= need;
+    const opportunity = !usual && !threats.length ? this.opportunityReady(homeSupply) : null;
+    if (!threats.length && (usual || opportunity)) {
+      if (opportunity) { // Phase 8: an early wave on an opportunity
+        this.stats.opportunities = (this.stats.opportunities || 0) + 1;
+        this.react('opportunity', opportunity);
+      }
       if (this.multi()) { // Phase 7: attack the pick, claim land, or hold
         this.goal = this.waveGoal();
         this.goalSince = this.w.time;
@@ -860,6 +865,20 @@ export class AiEngine {
       this.note(`wave ${this.stats.waves}: ${home.length} units attack`);
       this.joinWave(home);
     }
+  }
+
+  // Free-for-all opportunity trigger (Phase 8, PHASE8_SPEC.md "Part C"): a
+  // strategy with an opportunitySupply (RIVALS.attack) also launches once its
+  // home army has that much supply, if its target is an opportunity right now.
+  // Returns why (for the log), or null.
+  opportunityReady(homeSupply) {
+    if (!this.multi()) return null;
+    const need = RIVALS.attack[this.strategyId]?.opportunitySupply;
+    if (need == null || homeSupply < need * (this.waveFactor ?? 1)) return null;
+    const i = this.intel(), t = i.target != null && i.ranking.find((r) => r.team === i.target);
+    const o = RIVALS.opportunity;
+    const why = t && (t.R < o.weakerThan ? 'seen weaker' : t.engaged != null ? `engaged with camp ${t.engaged}` : t.castle >= o.castleDamage ? 'Castle damaged' : null);
+    return why ? `camp ${t.team} ${why}: wave at ${Math.round(homeSupply)} supply` : null;
   }
 
   // Phase 8 bookkeeping (the batch runner's attack counts; no effect on play):

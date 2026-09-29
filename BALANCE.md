@@ -501,3 +501,36 @@ average.
   quarter of Boom camps and a sixth of Turtle camps never attack at all, and
   Rush makes about three times as many target *changes* (3.1 per camp vs
   0.9–1.1): it has waves out most of the time, so its ranking shows.
+
+### After Parts C and D (attack triggers, stale intel and re-scouting)
+
+`balance/ffa-after-cd.json`: the same 900 seeds after the Boom/Turtle
+opportunity trigger (Part C), intel staleness with re-scouting (Part D) and
+the mirrored separation order. No balance tuning yet.
+
+| Strategy | FFAs won | Per camp | Avg place | Avg elimination | Attacks per camp (mean / median) | Camps attacking ≥ once | Retargets per camp | Re-scouts per camp |
+|---|---|---|---|---|---|---|---|---|
+| Rush | **24%** (22–27%) | 18% | 2.80 | 9.1 min | 1.76 / 2 | 99% | 2.33 | 2.67 |
+| Boom | **31%** (28–34%) | 23% | 2.64 | 9.2 min | 4.06 / 3 | 100% | 1.23 | 2.69 |
+| Turtle | **45%** (41–48%) | 33% | 2.06 | 11.7 min | 4.36 / 4 | 99% | 1.83 | 2.34 |
+
+Corners: NW 28%, NE 22%, SE 23%, SW 28% (west 55%, east 45%). No draws, none
+at the time limit, 13.4 minutes on average.
+
+**Attack frequency (Part C), before → after:**
+
+| Strategy | Attacks per camp, mean | Median | Camps that attack at least once | Target changes per camp |
+|---|---|---|---|---|
+| Rush | 2.09 → 1.76 | 2 → 2 | 100% → 99% | 3.13 → 2.33 |
+| Boom | 1.87 → **4.06** | 1 → **3** | 73% → **100%** | 0.93 → 1.23 |
+| Turtle | 1.91 → **4.36** | 2 → **4** | 84% → **99%** | 1.10 → 1.83 |
+
+Every strategy now acts in essentially every match, and Boom and Turtle
+change targets far more often, so their rankings show. The lopsidedness
+reversed on raw launches (Boom and Turtle now launch more, smaller waves than
+Rush), but decisions are much closer to even (Rush 1.9× Turtle, was 2.8×).
+
+**Effect on balance:** Rush rose from 14% to 24% (other camps now attack
+earlier and more, so Rush is less often the one caught out), Boom fell from 42%
+to 31% (its early opportunity waves cost it: out 2 minutes sooner on
+average), Turtle is unchanged at 45%. Both targets are still met.
