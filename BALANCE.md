@@ -573,3 +573,32 @@ shipped values are the Part C/D ones above. Since both targets are met with
 them, the procedure's "up to 3 further adjustments" step (which applies only
 to a missed target) was not triggered, and tuning stopped here, as the stop
 condition requires. No open-ended search was run.
+
+### Stability: the shipped values on a disjoint seed set
+
+`balance/ffa-shipped-seeds1001.json`: the shipped (Part C/D) values on seeds
+1001–1100 per class, 900 matches, nothing changed.
+
+| | Seeds 1–100 | Seeds 1001–1100 | Pooled (1,800) |
+|---|---|---|---|
+| Rush | 24% | 26% | **25%** |
+| Boom | 31% | 27% | **29%** |
+| Turtle | 45% | 47% (44–50%) | **46%** |
+| NW / NE / SE / SW | 28 / 22 / 23 / 28% | 27 / 22 / 24 / 26% | 27.5 / 22 / 23.5 / 27% |
+
+**Both targets are met on both seed sets.** No strategy changes rank.
+Turtle is the strongest in both, and its upper interval on the second set
+touches the ~50% ceiling, so it is the cell to watch (backlog). The west
+still wins a little more (55% pooled) than the east.
+
+### N-way summary against the stop condition
+
+| Target | Baseline | Shipped (pooled 1,800) | Met? |
+|---|---|---|---|
+| No strategy above ~50% of FFAs | Turtle 44% | Turtle 46% | **yes** |
+| No corner above ~35% | SW 29% | NW 27.5% | **yes** |
+
+One tuning pass was run and rejected (it widened the spread); no further
+adjustment step was triggered, and there is **no accepted exception**.
+Remaining imbalances within the targets: Turtle ahead of Rush by about 20
+points, and a 55/45 west/east lean.

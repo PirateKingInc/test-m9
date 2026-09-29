@@ -65,6 +65,16 @@ These shipped in Phase 7:
 * the dev panel targeting view
 * a free-for-all production-log fingerprint proving build/train unchanged
 
+## Phase 8: Symmetry & N-way balance (done)
+
+These shipped in Phase 8:
+* north-south mirrored tie-breaks on the free-for-all map (pathfinding,
+  spiral, approach tile, spawn corner, separation order), root-caused with
+  the mirror trace; mirrored marches now match
+* a four-camp batch runner over every corner arrangement, a baseline, one
+  tuning pass (rejected under the rule fixed in advance), targets met
+* Boom/Turtle opportunity attacks; stale-intel confidence and re-scouting
+
 ## Post-project (not scheduled)
 
 The project's phases are complete. These ideas were deliberately not
@@ -100,15 +110,16 @@ Phase 3.
 - [P5] Animated sprites: walking legs and hooves, beating dragon wings, flags that wave. Units are single rotated sprites.
 - [P5] The design docs (SPEC.md, BALANCE.md, PROJECT.md and the Phase 2-4 specs) still use the internal codenames; README.md has the mapping table. Renaming them would touch every table the tests cross-check against the data.
 - [P5] Zoomed right out (0.35x), buildings and gold mines are small; a simplified far-zoom icon set (or a minimap) would help on phones.
-- [P8] **N-way balance.** No tuning was done for four camps: seed 1 at Hard ends with Rose (Merchant Kingdom) last standing at 13 minutes, and the idle-player browser match loses its Castle to Jade's first wave at about 7 minutes. Strategy strength, the camp-to-strategy assignment and the 30:00 limit all need measuring for four camps, as Phase 3 did for two.
-- [P8] Side symmetry for four camps: the pathfinder's mirror frame is east-west only (Phase 3), so tie-breaks are not mirrored north-south; the NE-SE army round trip is 2.5 s longer than NW-SW, and its legs differ by 4 s (40.1 s NE→SE, 44.2 s SE→NE). Still present in Phase 7; it did not block targeting (the travel table uses the round-trip average).
-- [P8] **Most visible multi-rival play comes from the Rush camp.** Rush sends the most waves, so Crimson is the camp that retargets and claims most often; Merchant Kingdom and Stone Bastion attack rarely and so decide rarely. N-way tuning of wave sizes per strategy would give the other camps more chances to act on their rankings.
-- [P8] Rival strength is seen armies only: a rival never scouted is assumed an equal. Periodic re-scouting of stale rivals (a lookout Peasant or scout rider) would make the ranking better informed, at an economic cost that needs balancing.
-- [P8] Avoiding being the third party: a camp does not yet predict that attacking a rival will leave it open to a fourth camp (it reacts once raided).
-- [P8] AI camps do not value a rival's banked gold as loot when choosing a target (it is not visible); zones owned stand in for it.
-- [P8] Zone squads defend one zone at a time with at most four units; with many zones held, larger or several squads may be needed.
-- [P8] 5th camp / difficulty scaling for the free-for-all (deferred from Phase 7).
+- [P9] **Theory of mind.** A camp does not predict what other camps will do to each other: that attacking a rival will leave it open to a fourth camp, or that two rivals are about to fight. It only reacts to what it has seen.
+- [P9] AI camps do not value a rival's banked gold as loot when choosing a target (it is not visible); zones owned stand in for it.
+- [P9] Zone squads defend one zone at a time with at most four units; with many zones held, larger or several squads may be needed.
+- [P9] **5th camp / difficulty scaling** for the free-for-all (deferred from Phases 7 and 8). Five camps cannot be placed mirror-symmetrically on a square map (PHASE6_SPEC.md).
+- [P9] **East-west lean in the free-for-all.** West corners win 55-56% of free-for-alls (east 44-45%) in every measurement, for every strategy. The pathfinding is mirror-equivariant in both axes, but a long east-west march is still about 1.3 s slower westward than eastward (median of 24, PHASE8_SPEC.md): crowd behaviour on the way (steering, slots, float rounding), not route choice. Within the corner target; worth a Phase 3-style trace of an east-west march pair.
+- [P9] **Strategy spread.** Stone Bastion (Turtle) wins 46% of free-for-alls (pooled 1,800 matches; one seed set's upper interval touches 50%), Warband Raid (Rush) 25%. Within the ~50% ceiling, but the one tuning pass showed how sensitive Boom's opportunity threshold is (16 -> 22 moved Boom from 31% to 50%); a finer, measured adjustment could narrow the spread.
+- [P9] Re-scouting costs a Peasant's mining for about a minute every 2 minutes, and the scout often dies at a defended base; a cheaper lookout (a Tower's sight, a mounted scout) would need new rules.
+- [P9] The batch runner takes about an hour for 900 matches; profiling the free-for-all step (A* on a 96x96 grid) would allow larger seed sets.
 - [P6] **Capturing intact enemy structures.** Buildings of an eliminated camp are razed; taking them over (and turning surviving units) was out of scope.
 - [P6] Spectating after your camp falls: the match runs on, but there is no camp-follow camera, speed-up or skip to the result.
 - [P6] Zone income or upkeep: owning land only matters for loot and the time-limit ranking; a per-zone bonus could make territory matter during the match.
 - [P6] More than four camps or other free-for-all maps (the map data format supports it; colours and symmetry would need new work).
+- [P9] **The opportunity trigger does not scale with difficulty.** Easy and Normal free-for-all camps launch the same 16-supply opportunity waves as Hard, so a weak-looking player (or the scripted touch bot) can be raided at about 5 minutes instead of about 7. Scaling `RIVALS.attack` per difficulty tier (and measuring it) is the fix.

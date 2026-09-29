@@ -234,3 +234,47 @@ needed. Details and every table are in BALANCE.md.
 | Rush | 2.09 → 1.76 | 2 → 2 | 100% → 99% | 3.13 → 2.33 |
 | Boom | 1.87 → 4.06 | 1 → 3 | 73% → 100% | 0.93 → 1.23 |
 | Turtle | 1.91 → 4.36 | 2 → 4 | 84% → 99% | 1.10 → 1.83 |
+
+Stability: the shipped values on disjoint seeds (1001–1100 per class): Rush
+26%, Boom 27%, Turtle 47% (44–50%), corners 22–27%; pooled over 1,800
+matches Rush 25%, Boom 29%, Turtle 46%, worst corner 27.5%. Both targets met
+on both seed sets.
+
+### Part A: symmetry
+
+Every north-south mirror pair of marches within 0.5 s (median of 24); the
+diagonals went from 0.72–0.77 s apart to identical; with the mirrored
+separation order the north-south twin marches are exactly equal. All four
+camps stay mirror-exact for 90 s for every strategy. The 1v1 fingerprints
+(`GOLDEN`, `GOLDEN_PHASE5`) never moved; the Phase 6 free-for-all
+production log is still reproduced with the fix switched off.
+
+### Part D: stale intel
+
+`test/stale-intel.test.js`: a rival seen weak once and then rebuilt out of
+sight is trusted fully for 45 s, blended at 80 s, and not acted on after the
+150 s window (assumed equal, no Castle bonus, not the target); a re-scout of
+the current target sees the rebuilt army and the scoring flips to *clearly
+stronger*. In full games each camp re-scouts 2–3 times a match.
+
+### Full free-for-alls (the default layout, Hard)
+
+Eight seeds on the shipped code (Azure Boom, Crimson Rush, Rose Boom, Jade
+Turtle):
+
+| Seed | Winner | Eliminations |
+|---|---|---|
+| 2 | Crimson (Rush), 10:28 | Rose to Crimson 6:01, Azure to Crimson 9:35, Jade to Crimson 10:28 |
+| 3 | Jade (Turtle), 12:10 | Azure to Jade 6:45, Rose to Crimson 7:17, Crimson to Jade 12:10 |
+| 5 | Azure (Boom), 17:09 | Rose to Crimson 9:32, Jade to Azure 10:20, Crimson to Azure 17:09 |
+| 6 | Rose (Boom), 16:20 | Crimson to Rose 6:00, Azure to Jade 10:47, Jade to Rose 16:20 |
+| 7 | Azure (Boom), 14:56 | Crimson to Rose 8:06, Rose to Azure 13:34, Jade to Azure 14:56 |
+| 8 | Crimson (Rush), 7:33 | Rose to Crimson 5:36, Azure to Crimson 6:57, Jade to Crimson 7:33 |
+| 9 | Jade (Turtle), 16:46 | Crimson to Rose 6:24, Rose to Jade 15:54, Azure to Jade 16:46 |
+| 10 | Crimson (Rush), 15:54 | Rose to Crimson 4:43, Azure to Crimson 6:28, Jade to Crimson 15:54 |
+
+Every corner and every strategy wins at least once; on Phase 7's four seeds
+(2, 3, 5, 6) the winners were Crimson, Jade, Azure, Azure and are now
+Crimson, Jade, Azure, Rose. Every camp acts in every game: Boom and Turtle
+camps launched 1–10 opportunity waves each, all camps changed targets and
+re-scouted.

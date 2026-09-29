@@ -261,7 +261,11 @@ async function play(page, query, ffa) {
   expect(navigations, 'no gesture navigated the page').toEqual([]);
   expect(s.result, 'the match reached a declared result').toBeTruthy();
   for (const type of ['depot', 'foundry', 'spire']) expect(placed.has(type), `placed a ${type} by touch`).toBe(true);
-  expect(maxArmy, 'trained an army by touch').toBeGreaterThanOrEqual(ffa ? 6 : 10);
+  // Free-for-all: since Phase 8 a camp that looks weak draws early
+  // opportunity waves from its neighbours (PHASE8_SPEC.md "Part C"), so this
+  // simple bot can fall at about 5 minutes with a small army; 4 units still
+  // proves training by touch.
+  expect(maxArmy, 'trained an army by touch').toBeGreaterThanOrEqual(ffa ? 4 : 10);
   expect(wave + defends, 'fought with armed touch orders (attack waves or defence)').toBeGreaterThanOrEqual(1);
   expect(actions.holds, 'assigned a control group by press-and-hold').toBeGreaterThanOrEqual(1);
   expect(actions.pinches, 'zoomed by pinch').toBeGreaterThanOrEqual(1);

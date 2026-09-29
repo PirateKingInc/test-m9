@@ -137,6 +137,20 @@ on a larger map; the other three are AI camps at the chosen difficulty.
   retake one it just lost. The exact formula is in
   [PHASE7_SPEC.md](PHASE7_SPEC.md). The AI camps still build and train
   exactly as before.
+- **Fresh intel and attacks (Phase 8).** A camp's read on a rival goes stale:
+  after 45 s without seeing any of the rival's units or buildings it trusts
+  it less and less, and after 150 s it treats that rival as an unknown equal
+  again. So once its first scout is back, a camp sends a Peasant to look
+  again at the rival it knows least about (its current target first), at
+  most every 2 minutes. Boom (Merchant Kingdom) and Turtle (Stone Bastion)
+  camps also attack early, with a smaller army, when their target is an
+  opportunity: seen weakened, busy fighting someone else, or with a damaged
+  Castle.
+- **Balance.** Every corner arrangement of the three strategies has been
+  played 200 times each (1,800 matches at Hard): no strategy wins more than
+  about half of the free-for-alls (Warband Raid 25%, Merchant Kingdom 29%,
+  Stone Bastion 46%; with one strategy doubled in each game, an even share
+  is 33%) and no corner more than 28%. See [BALANCE.md](BALANCE.md).
 - **Watching the AI think.** Press <kbd>`</kbd> (backtick) in a free-for-all to
   open the dev panel: it lists each AI camp's posture (attacking, claiming,
   holding, any zone squad) and its ranking of rivals, best first, with the
@@ -322,6 +336,9 @@ npm test             # headless sim tests (node --test)
 npm run test:e2e     # Playwright browser tests, desktop and mobile emulation (npx playwright install chromium first)
 npm run test:mobile  # the touch-only playthroughs, 1v1 and free-for-all (their own CI job)
 node tools/travel.mjs  # the free-for-all camp spacing measurement
+node tools/symmetry.mjs  # every free-for-all march vs its mirror twins (median of 24)
+node tools/mirror-trace.mjs boom 120  # first tick a camp and its mirror twin differ
+node tools/ffa-balance.mjs --seeds 100 --out balance/ffa-latest.json  # four-camp balance, 900 matches (about an hour)
 ```
 
 Add `?speed=N` to the URL to run the game N× faster (up to 16×). The mobile
@@ -380,6 +397,9 @@ exact commit.
 | `test/targeting.test.js` | Waves march on the pick, turn on a rival seen weakened (not on noise, not within 20 s), claim free zones when every rival is clearly stronger, hold with nothing to claim; the read-only guard catches the targeting code writing game state |
 | `test/defense-ffa.test.js`, `test/zones-hold.test.js` | Early-rush defense with raiders from two camps and for every corner; massing judged per rival; zone squads defend a zone being taken, retake a zone lost in the last 90 s, don't take on a much bigger force, and go home |
 | `test/ffa-rivals.test.js`, `test/devai.test.js`, `e2e/ffa.spec.js` | Full free-for-alls with the Phase 7 AI compared with Phase 6 on the same seeds; the dev panel targeting view |
+| `test/symmetry-ns.test.js` | Phase 8: the free-for-all's north-south mirror — spiral, A* under both mirrors, approach tile, spawn corner, 90 s mirror-exact games for each strategy, diagonal marches equal |
+| `test/stale-intel.test.js`, `test/attack-trigger.test.js` | Phase 8: intel confidence over time, no acting on a stale "weak" read, a re-scout that catches a rebuilt army; Boom/Turtle opportunity waves |
+| `test/ffa-balance.test.js` | Phase 8: the four-camp batch runner's arrangements, mirror classes and match records |
 | `e2e/tapzoom.spec.js` | Rapid taps never trigger the browser's double-tap zoom and each counts; the game's pinch still works |
 | `e2e/groups.spec.js` | Control groups without the browser's reserved Ctrl+1–8: Shift+digit, the HUD group bar, and Fullscreen with Keyboard Lock |
 
