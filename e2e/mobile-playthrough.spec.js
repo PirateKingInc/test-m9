@@ -13,13 +13,25 @@ const SAFE = { l: 40, r: 690, t: 70, b: 240 }; // clear of the HUD, action bar a
 const CENTER = { x: 365, y: 155 };
 
 test('mobile playthrough: touch controls alone play a full match against the AI to its end', async ({ page }) => {
-  const query = process.env.PLAY_QUERY || '?mode=match&difficulty=easy&seed=11&speed=2';
+  await play(page, process.env.PLAY_QUERY || '?mode=match&difficulty=easy&seed=11&speed=2', false);
+});
+
+// Phase 6 verification (h): the same touch-only bot in the four-camp
+// free-for-all. Every other camp is hostile; it attacks the nearest living
+// rival Castle. If its own camp falls, it taps "Watch on" and the match runs
+// to its end without it.
+test('mobile playthrough: touch controls alone play a four-camp free-for-all to its end', async ({ page }) => {
+  await play(page, process.env.PLAY_QUERY_FFA || '?mode=ffa&difficulty=easy&seed=11&speed=3', true);
+});
+
+async function play(page, query, ffa) {
   const { errors, touch } = await openTouchGame(page, query);
   const state = () => page.evaluate(() => {
     const w = window.__game.world, cam = window.__game.scene.cameras.main;
-    const pick = (e) => ({ id: e.id, type: e.type, team: e.team, x: e.x, y: e.y, built: e.built, order: e.order?.type, queue: e.queue?.length ?? 0, carry: e.carry });
+    const pick = (e) => ({ id: e.id, type: e.type, team: e.team, x: e.x, y: e.y, built: e.built, order: e.order?.type, queue: e.queue?.length ?? 0, carry: e.carry, hp: e.hp, maxHp: e.maxHp });
     return {
       time: w.time, lumen: w.resources[1], result: w.result && { winner: w.result.winner, reason: w.result.reason, time: w.result.time },
+      fallen: (w.eliminated || []).map((e) => ({ team: e.team, by: e.by, time: e.time })),
       units: [...w.ofKind('unit')].map(pick), buildings: [...w.ofKind('building')].map(pick),
       nodes: [...w.ofKind('node')].map((n) => ({ id: n.id, x: n.x, y: n.y })),
       cam: { x: cam.worldView.x, y: cam.worldView.y, zoom: cam.zoom }, armed: window.__game.scene.ui.boxArmed ? 'box' : window.__game.scene.ui.armed,
@@ -66,7 +78,9 @@ test('mobile playthrough: touch controls alone play a full match against the AI 
   let s = await state();
   const core = mine(s, 'buildings', 'core')[0];
   const nearNode = (p) => s.nodes.slice().sort((a, b) => Math.hypot(a.x - p.x, a.y - p.y) - Math.hypot(b.x - p.x, b.y - p.y))[0];
-  const enemyCore = s.buildings.find((b) => b.team === 2 && b.type === 'core');
+  // The nearest rival Castle still standing (the only one in the 1v1 match).
+  const enemyCore = () => s.buildings.filter((b) => b.team !== 1 && b.type === 'core')
+    .sort((a, b) => Math.hypot(a.x - core.x, a.y - core.y) - Math.hypot(b.x - core.x, b.y - core.y))[0];
   const rally = { x: core.x + 230, y: core.y + 20 }; // just in front of the Core: idle units there defend it
 
   // Put idle Drones to work: double-tap one (selects every Drone on screen), Order, tap a crystal.
@@ -88,8 +102,9 @@ test('mobile playthrough: touch controls alone play a full match against the AI 
     let got = false;
     for (let i = 0; i < 4 && !got; i++) {
       s = await state();
-      const d = mine(s, 'units', 'drone').sort((a, b) => (a.order === 'gather' ? 0 : 1) - (b.order === 'gather' ? 0 : 1))[i % drones.length];
-      await selectUnit(d);
+      const now = mine(s, 'units', 'drone').sort((a, b) => (a.order === 'gather' ? 0 : 1) - (b.order === 'gather' ? 0 : 1));
+      if (!now.length) return false; // every Peasant died meanwhile (a raid)
+      await selectUnit(now[i % now.length]);
       got = await page.evaluate(() => window.__game.scene.ui.selection.entities(window.__game.world).some((e) => e.team === 1 && e.type === 'drone'));
     }
     if (!got) return false;
@@ -140,9 +155,11 @@ test('mobile playthrough: touch controls alone play a full match against the AI 
   const rallied = new Set();
   const log = [];
   const started = Date.now();
+  let fell = null;
   for (let round = 0; round < 2000 && Date.now() - started < 14 * 60_000; round++) {
     s = await state();
     if (s.result) break;
+    if (ffa && s.fallen.some((f) => f.team === 1)) { fell = s.fallen.find((f) => f.team === 1); break; }
     if (round % 5 === 0) console.log(`[${Math.round((Date.now() - started) / 1000)}s real] game ${Math.round(s.time)}s lumen ${s.lumen} supply ${s.supply.used}/${s.supply.cap} drones ${mine(s, 'units', 'drone').length} army ${mine(s, 'units').filter((u) => u.type !== 'drone').length} buildings ${mine(s, 'buildings').map((b) => b.type[0] + (b.built ? '' : '*')).join('')} waves ${wave}`);
     // Build the next planned structure once the previous one is finished and it is affordable.
     const pending = mine(s, 'buildings').some((b) => !b.built);
@@ -182,7 +199,10 @@ test('mobile playthrough: touch controls alone play a full match against the AI 
     }
     // Defense: enemy combat units near the base -> the whole army goes at them.
     s = await state();
-    const threat = s.units.find((u) => u.team === 2 && u.type !== 'drone' && Math.hypot(u.x - core.x, u.y - core.y) < 700);
+    // (Free-for-all: raids can come from two gates, so the bot watches wider.)
+    let threat = s.units.find((u) => u.team !== 1 && u.type !== 'drone' && Math.hypot(u.x - core.x, u.y - core.y) < (ffa ? 1000 : 700));
+    const hurt = ffa && mine(s, 'buildings', 'core').find((b) => b.hp < b.maxHp);
+    if (!threat && hurt) threat = s.units.filter((u) => u.team !== 1).sort((a, b) => Math.hypot(a.x - hurt.x, a.y - hurt.y) - Math.hypot(b.x - hurt.x, b.y - hurt.y))[0];
     const armyNow = mine(s, 'units').filter((u) => u.type !== 'drone');
     if (threat && armyNow.length) {
       await groupArmy();
@@ -197,28 +217,35 @@ test('mobile playthrough: touch controls alone play a full match against the AI 
     const army = mine(s, 'units').filter((u) => u.type !== 'drone');
     maxArmy = Math.max(maxArmy, army.length);
     const atRally = army.filter((u) => Math.hypot(u.x - rally.x, u.y - rally.y) < 260);
-    if (atRally.length >= 16 + wave * 2) {
+    if (atRally.length >= (ffa ? 6 : 16) + wave * 2) {
       await groupArmy();
       grouped = true;
-      await sendGroup(enemyCore);
+      await sendGroup(enemyCore());
       wave++;
       log.push(`${Math.round(s.time)}s wave ${wave}: ${atRally.length} units`);
     } else if (grouped && army.some((u) => u.order === 'idle' && Math.hypot(u.x - rally.x, u.y - rally.y) > 600)) {
-      await sendGroup(enemyCore); // a wave that stopped short attacks again
+      await sendGroup(enemyCore()); // a wave that stopped short attacks again
     }
     await page.waitForTimeout(400);
   }
+  if (fell) { // our camp fell: watch the rest of the free-for-all
+    log.push(`${Math.round(fell.time)}s our Castle fell to team ${fell.by}`);
+    await expect(page.locator('#watch-on')).toBeVisible();
+    await touch.tapEl('#watch-on'); actions.taps++;
+    await expect(page.locator('#result')).toBeHidden();
+    await expect.poll(async () => !!(await state()).result, { timeout: 12 * 60_000, intervals: [2000] }).toBe(true);
+  }
   s = await state();
-  console.log(`mobile playthrough: ${log.join('; ')}`);
-  console.log(`mobile playthrough result: ${s.result ? `${s.result.winner === 1 ? 'player (touch) wins' : s.result.winner === 2 ? 'AI wins' : 'draw'} by ${s.result.reason} at ${Math.round(s.result.time)}s game time` : `no result by ${Math.round(s.time)}s`}; max army ${maxArmy}, waves ${wave}, defences ${defends}; touch actions: ${JSON.stringify(actions)}`);
+  console.log(`mobile playthrough${ffa ? ' (free-for-all)' : ''}: ${log.join('; ')}`);
+  console.log(`mobile playthrough result: ${s.result ? `${s.result.winner === 1 ? 'player (touch) wins' : s.result.winner ? `AI camp ${s.result.winner} wins` : 'draw'} by ${s.result.reason} at ${Math.round(s.result.time)}s game time` : `no result by ${Math.round(s.time)}s`}; max army ${maxArmy}, waves ${wave}, defences ${defends}; touch actions: ${JSON.stringify(actions)}`);
   // The claim is that touch alone can play a whole match to its end, not that
   // this simple scripted player beats the AI (it usually loses; see README).
   expect(s.result, 'the match reached a declared result').toBeTruthy();
   for (const type of ['depot', 'foundry', 'spire']) expect(placed.has(type), `placed a ${type} by touch`).toBe(true);
-  expect(maxArmy, 'trained an army by touch').toBeGreaterThanOrEqual(10);
+  expect(maxArmy, 'trained an army by touch').toBeGreaterThanOrEqual(ffa ? 6 : 10);
   expect(wave + defends, 'fought with armed touch orders (attack waves or defence)').toBeGreaterThanOrEqual(1);
   expect(actions.holds, 'assigned a control group by press-and-hold').toBeGreaterThanOrEqual(1);
   expect(actions.pinches, 'zoomed by pinch').toBeGreaterThanOrEqual(1);
   expect(actions.drags, 'panned and placed by dragging').toBeGreaterThan(10);
   expect(errors).toEqual([]);
-});
+}

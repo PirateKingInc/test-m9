@@ -45,6 +45,12 @@ export const STRATEGY_TEXT = {
 // Team (camp) colour names (Phase 6: four free-for-all camps).
 export const TEAM_TEXT = { 1: 'Azure', 2: 'Crimson', 3: 'Rose', 4: 'Jade' };
 
+// Free-for-all zones (Phase 6), by zone id.
+export const ZONE_TEXT = {
+  nw: 'the North-west lands', ne: 'the North-east lands', se: 'the South-east lands', sw: 'the South-west lands',
+  n: 'the North field', w: 'the West field', e: 'the East field', s: 'the South field', c: 'the Centre field',
+};
+
 export const DIFFICULTY_TEXT = {
   easy: { name: 'Easy' },
   normal: { name: 'Normal' },

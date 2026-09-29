@@ -2,6 +2,7 @@ import { World } from '../sim/world.js';
 import { Match } from '../ai/match.js';
 import { DIFFICULTY } from '../data/difficulty.js';
 import { STRATEGIES } from '../data/strategies.js';
+import { FFA_MAP, FFA_STRATEGIES } from '../data/ffa.js';
 import { STRATEGY_TEXT, strategyName, difficultyName } from '../theme/names.js';
 import { GameScene } from './scene.js';
 import { Hud } from './hud.js';
@@ -17,7 +18,7 @@ blockNativeZoom(); // Phase 6: rapid taps are game input, never a browser zoom
 
 // No mode chosen yet: show the start screen. Its choices become URL params, so
 // "Play again" simply reloads the same setup.
-if (mode !== 'match' && mode !== 'sandbox') {
+if (mode !== 'match' && mode !== 'sandbox' && mode !== 'ffa') {
   showMenu();
 } else {
   start(mode);
@@ -50,6 +51,7 @@ function showMenu() {
     const strategy = document.getElementById('strategy').value;
     location.search = `?mode=match&difficulty=${difficulty}&strategy=${strategy}`;
   });
+  document.getElementById('start-ffa').addEventListener('click', () => { location.search = `?mode=ffa&difficulty=${difficulty}`; });
   document.getElementById('start-sandbox').addEventListener('click', () => { location.search = '?mode=sandbox'; });
 }
 
@@ -61,6 +63,10 @@ function start(mode) {
   if (mode === 'match') {
     match = new Match({ seed, PF: globalThis.PF, ai: { strategy, difficulty } });
     world = match.world;
+  } else if (mode === 'ffa') { // Phase 6: four camps; the AI camps' scripts are fixed (FFA_STRATEGIES)
+    const camps = Object.fromEntries(Object.entries(FFA_STRATEGIES).map(([team, s]) => [team, { strategy: s, difficulty }]));
+    match = new Match({ seed, PF: globalThis.PF, ffa: { map: FFA_MAP, camps } });
+    world = match.world;
   } else {
     world = new World({ seed, PF: globalThis.PF, setup: 'start' });
   }
@@ -68,7 +74,7 @@ function start(mode) {
   const touch = setupInputMode(); // Phase 4: touch chrome when the device is touch-first
   const sfx = new Sfx();
   const scene = new GameScene(world, hud, sfx, match ? () => match.step() : () => world.step());
-  hud.setOpponent(match ? { difficulty: difficultyName(difficulty), strategy: strategyName(match.ai.strategyId) } : null);
+  hud.setOpponent(match ? { difficulty: difficultyName(difficulty), strategy: strategyName(match.ai.strategyId), ffa: mode === 'ffa' } : null);
 
   // Audio may only start after a user gesture.
   let greeted = false;

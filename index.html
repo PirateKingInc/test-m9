@@ -13,6 +13,7 @@
     <span>Gold <b id="lumen">0</b></span>
     <span id="units-readout">Units <b id="unit-count">0</b></span>
     <span>Supply <b id="supply">0/0</b></span>
+    <span id="ffa-readout" hidden>Zones <b id="zones">0</b> · Camps <b id="camps">4</b></span>
     <span id="opponent" class="dim">Sandbox, no opponent · <kbd>`</kbd> dev panel</span>
     <button id="fullscreen" title="Fullscreen with keyboard lock: lets Ctrl+1-9 reach the game in Chrome">Fullscreen</button>
     <button id="help" title="Show the tutorial hints again">Help</button>
@@ -49,6 +50,7 @@
       <p id="strategy-note" class="dim"></p>
       <div class="result-actions">
         <button id="start-match">Start match</button>
+        <button id="start-ffa" title="Four camps on a larger map: take land, and loot the camps you conquer">Free-for-all (4 camps)</button>
         <button id="start-sandbox">Sandbox (no opponent)</button>
       </div>
     </div>
@@ -59,6 +61,7 @@
       <p id="result-detail" class="dim"></p>
       <table id="result-stats"></table>
       <div class="result-actions">
+        <button id="watch-on" hidden>Watch on</button>
         <button id="play-again">Play again</button>
         <button id="change-difficulty">Change difficulty</button>
       </div>

@@ -14,16 +14,17 @@ function noise(seed) {
 // isRock(tx, ty) says which tiles are impassable rock.
 export function paintTerrain(ctx, cols, rows, tile, isRock) {
   const W = cols * tile, H = rows * tile, rnd = noise(7);
+  const area = (cols * rows) / (80 * 60); // detail scales with the map (1 on the 1v1 map)
   ctx.fillStyle = GROUND.base;
   ctx.fillRect(0, 0, W, H);
-  for (let i = 0; i < 900; i++) { // soft mottling
+  for (let i = 0; i < Math.round(900 * area); i++) { // soft mottling
     const x = rnd() * W, y = rnd() * H, r = 18 + rnd() * 70;
     ctx.fillStyle = GROUND.mottle[Math.floor(rnd() * GROUND.mottle.length)];
     ctx.globalAlpha = 0.18;
     ctx.beginPath(); ctx.ellipse(x, y, r, r * (0.5 + rnd() * 0.5), rnd() * Math.PI, 0, Math.PI * 2); ctx.fill();
   }
   ctx.globalAlpha = 1;
-  for (let i = 0; i < 2400; i++) { // grass tufts and pebbles
+  for (let i = 0; i < Math.round(2400 * area); i++) { // grass tufts and pebbles
     ctx.fillStyle = GROUND.speck[Math.floor(rnd() * GROUND.speck.length)];
     ctx.fillRect(rnd() * W, rnd() * H, 1 + rnd() * 2, 1 + rnd() * 2);
   }

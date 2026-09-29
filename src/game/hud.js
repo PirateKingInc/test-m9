@@ -2,7 +2,7 @@ import { PLAYER } from '../sim/constants.js';
 import { supplyOf } from '../sim/supply.js';
 import { UNITS } from '../data/units.js';
 import { BUILDINGS } from '../data/buildings.js';
-import { UNIT_TEXT, ATTACK_TEXT, ARMOR_TEXT, NODE_NAME, unitName, buildingName } from '../theme/names.js';
+import { UNIT_TEXT, ATTACK_TEXT, ARMOR_TEXT, NODE_NAME, TEAM_TEXT, ZONE_TEXT, unitName, buildingName } from '../theme/names.js';
 
 const GROUP_HOLD_MS = 500;
 
@@ -132,22 +132,77 @@ export class Hud {
 
   setOpponent(opp, doc = document) {
     this.opponent = opp;
-    if (opp) doc.getElementById('opponent').textContent = `vs AI · ${opp.difficulty}`;
+    if (opp) doc.getElementById('opponent').textContent = opp.ffa ? `Free-for-all · 3 rival camps · ${opp.difficulty}` : `vs AI · ${opp.difficulty}`;
+    if (opp?.ffa) doc.getElementById('ffa-readout').hidden = false;
+  }
+
+  // Free-for-all (Phase 6): your zones, the camps still standing, and a card
+  // when your own camp falls (the match goes on without you).
+  updateFreeForAll(world, doc = document) {
+    const zones = world.zones.filter((z) => z.owner === PLAYER).length;
+    const out = new Set((world.eliminated || []).map((e) => e.team));
+    const camps = world.teams.filter((t) => !out.has(t)).length;
+    const text = `${zones}/${world.zones.length}|${camps}`;
+    if (text !== this.ffaSig) {
+      this.ffaSig = text;
+      doc.getElementById('zones').textContent = `${zones}/${world.zones.length}`;
+      doc.getElementById('camps').textContent = `${camps}/${world.teams.length}`;
+    }
+    const mine = (world.eliminated || []).find((e) => e.team === PLAYER);
+    if (mine && !world.result && !this.shownFall) {
+      this.shownFall = true;
+      this.showFall(mine, doc);
+    }
+  }
+
+  showFall(rec, doc = document) {
+    doc.getElementById('result-title').textContent = 'Defeat';
+    doc.getElementById('result-title').className = 'defeat';
+    const by = rec.by ? `${TEAM_TEXT[rec.by]} took your lands and ${rec.gold} gold.` : 'Your Castle has fallen.';
+    doc.getElementById('result-detail').textContent = `Your Castle has fallen. ${by} The other camps fight on.`;
+    const table = doc.getElementById('result-stats');
+    if (table) table.innerHTML = '';
+    const watch = doc.getElementById('watch-on');
+    watch.hidden = false;
+    watch.onclick = () => { doc.getElementById('result').hidden = true; };
+    doc.getElementById('result').hidden = false;
+    doc.getElementById('play-again').onclick = () => location.reload();
+    doc.getElementById('change-difficulty').onclick = () => { location.search = '?menu'; };
+  }
+
+  // A line for the free-for-all's big moments (the scene passes sim events).
+  ffaEvent(e) {
+    const name = (t) => (t === PLAYER ? 'You' : TEAM_TEXT[t]);
+    if (e.type === 'eliminated') {
+      const loot = e.by ? `: ${name(e.by)} take${e.by === PLAYER ? '' : 's'} ${e.gold} gold and ${e.zones.length} zone${e.zones.length === 1 ? '' : 's'}` : '';
+      this.toast(e.team === PLAYER ? `Your Castle has fallen${loot}` : `${TEAM_TEXT[e.team]} has fallen${loot}`, { alert: e.team === PLAYER || e.by === PLAYER });
+    } else if (e.type === 'zoneCaptured' && (e.to === PLAYER || e.from === PLAYER)) {
+      this.toast(e.to === PLAYER ? `You hold ${ZONE_TEXT[e.zone]}` : `${TEAM_TEXT[e.to]} took ${ZONE_TEXT[e.zone]} from you`);
+    }
   }
 
   // Victory / Defeat / Draw screen (SPEC.md Phase 2 "Win / lose").
   showResult(r, doc = document) {
     this.shownResult = true;
     const title = r.winner === null ? 'Draw' : r.winner === PLAYER ? 'Victory' : 'Defeat';
-    const why = { 'core-destroyed': r.winner === PLAYER ? 'The enemy Castle has fallen.' : 'Your Castle has fallen.',
-      draw: 'Both Castles fell at the same moment.', 'time-limit': `Time limit reached: decided on score (${r.scores[1]} vs ${r.scores[2]}).` }[r.reason];
+    const who = (t) => (t === PLAYER ? 'Your camp' : TEAM_TEXT[t]);
+    const why = r.standings // free-for-all (Phase 6)
+      ? { 'last-standing': `${who(r.winner)} is the last camp standing.`, draw: 'The last Castles fell at the same moment.',
+        'time-limit': r.winner === null ? 'Time limit reached: the leaders tied on land and score.' : `Time limit reached: ${who(r.winner)} held the most land.` }[r.reason]
+      : { 'core-destroyed': r.winner === PLAYER ? 'The enemy Castle has fallen.' : 'Your Castle has fallen.',
+        draw: 'Both Castles fell at the same moment.', 'time-limit': `Time limit reached: decided on score (${r.scores[1]} vs ${r.scores[2]}).` }[r.reason];
+    const watch = doc.getElementById('watch-on');
+    if (watch) watch.hidden = true;
     const mm = Math.floor(r.time / 60), ss = String(Math.floor(r.time % 60)).padStart(2, '0');
     doc.getElementById('result-title').textContent = title;
     doc.getElementById('result-title').className = title.toLowerCase();
-    const opp = this.opponent ? ` The AI (${this.opponent.difficulty}) played ${this.opponent.strategy}.` : '';
+    const opp = this.opponent && !this.opponent.ffa ? ` The AI (${this.opponent.difficulty}) played ${this.opponent.strategy}.` : '';
     doc.getElementById('result-detail').textContent = `${why} Match time ${mm}:${ss}.${opp}`;
     const table = doc.getElementById('result-stats');
-    if (table && this.stats) {
+    if (table && r.standings) { // free-for-all: every camp's place
+      table.innerHTML = '<tr><th>#</th><th>Camp</th><th>Zones</th><th>Score</th></tr>'
+        + r.standings.map((s) => `<tr><td>${s.place}</td><td>${s.team === PLAYER ? 'You' : TEAM_TEXT[s.team]}${s.eliminatedAt != null ? ' (fell)' : ''}</td><td>${s.zones}</td><td>${s.score}</td></tr>`).join('');
+    } else if (table && this.stats) {
       const them = this.opponent ? 'AI' : 'Team 2';
       table.innerHTML = `<tr><th></th><th>You</th><th>${them}</th></tr>`
         + this.stats.rows(PLAYER, PLAYER === 1 ? 2 : 1).map(([k, a, b]) => `<tr><td>${k}</td><td>${a}</td><td>${b}</td></tr>`).join('');
@@ -185,6 +240,7 @@ export class Hud {
     this.el.supply.textContent = `${sup.used}/${sup.cap}`;
     this.el.supply.classList.toggle('blocked', sup.free <= 0);
     this.el.fps.textContent = `${Math.round(fps)} fps`;
+    if (world.zones) this.updateFreeForAll(world);
     if (world.result && !this.shownResult) this.showResult(world.result);
     if (!ui) return;
     this.ui = ui;

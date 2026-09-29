@@ -7,6 +7,7 @@ import { bakeAll, TERRAIN_KEY } from '../art/atlas.js';
 import { SpriteLayer } from './sprites.js';
 import { zoomAbout, wheelZoom, hudBounds } from './camera.js';
 import { reasonText } from '../theme/names.js';
+import { drawTerritory, ZONE_DEPTH, BANNER_DEPTH } from './territory.js';
 
 const Phaser = globalThis.Phaser;
 const PAN_SPEED = 900; // px/s
@@ -32,6 +33,10 @@ export class GameScene extends Phaser.Scene {
     this.add.image(0, 0, TERRAIN_KEY).setOrigin(0).setDepth(0);
     this.sprites = new SpriteLayer(this);
     this.gfx = this.add.graphics().setDepth(4); // overlays above the sprites
+    if (w.zones) { // free-for-all territory (Phase 6)
+      this.zoneGfx = this.add.graphics().setDepth(ZONE_DEPTH);
+      this.bannerGfx = this.add.graphics().setDepth(BANNER_DEPTH);
+    }
     this.fxGfx = this.add.graphics().setDepth(5);
     this.effects = new Effects(this);
     this.stats = new MatchStats();
@@ -131,6 +136,7 @@ export class GameScene extends Phaser.Scene {
       this.stats.add(events);
       for (const e of events) {
         if (e.type === 'rejected' && e.team === 1) this.hud?.toast(reasonText(e.reason));
+        if (e.type === 'eliminated' || e.type === 'zoneCaptured') this.hud?.ffaEvent(e);
         // Under-attack cue: enemy fire hitting our units or buildings (throttled).
         if (e.type === 'attack' && e.team !== 1 && this.world.get(e.target)?.team === 1) {
           this.lastAttack = { x: e.tx, y: e.ty };
@@ -149,6 +155,7 @@ export class GameScene extends Phaser.Scene {
   render(alpha) {
     const g = this.gfx, w = this.world;
     g.clear();
+    if (this.zoneGfx) drawTerritory(this.zoneGfx, this.bannerGfx, w, this.cameras.main.zoom, performance.now() / 1000);
     for (const b of w.ofKind('building')) if (!b.built) drawProgress(g, b);
     this.sprites.sync(w, alpha);
     const sel = this.ui.selection;
