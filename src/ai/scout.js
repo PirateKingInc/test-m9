@@ -122,9 +122,10 @@ export class Scout {
 
   // ---- derived knowledge -------------------------------------------------
 
-  seenArmy() {
+  // Combat units seen in memory, by type (of one rival team, if given).
+  seenArmy(team) {
     const counts = Object.fromEntries(COMBAT_TYPES.map((t) => [t, 0]));
-    for (const m of this.memory.values()) if (m.kind === 'unit' && m.type in counts) counts[m.type]++;
+    for (const m of this.memory.values()) if (m.kind === 'unit' && m.type in counts && (team == null || m.team === team)) counts[m.type]++;
     return counts;
   }
 

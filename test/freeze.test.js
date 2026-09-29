@@ -53,11 +53,11 @@ export const FROZEN = {
   "src/sim/victory.js": "22f80deadc6acb54862bd1c8ab11ddafb550102af8261f8a8bbed1c0948c9a42",
   "src/sim/world.js": "0d7002d5226dc8f0d485f4fb57921b03de81b33c2039e8e096fb5ff213978a33",
   "src/ai/engine-types.js": "af5469d73733f3337336b5217b6a9186f1c3c0fd36e9623477c786b4f5b1c643",
-  "src/ai/engine.js": "d85b97695350a9cdde0c11360fb5df5223ea06f7d5057f4a549ed07b9f2fafc9",
+  "src/ai/engine.js": "f1b01293633d3b557fb8feff2e371767a00260d0fd8e74fb33c7a00b4aced696",
   "src/ai/match.js": "c833058cc4533c4e947693dfaf25602c02b16b24772b21d2f2c6a57565747442",
   "src/ai/readonly.js": "85d635a231882096209c77af1e34820ecae488fde5da79d390b5dfdee07850f7",
   "src/ai/rivals.js": "cca552e99ef174b0b9e9c32da51ddf596a882eb4061f51a917bcd753bc7accb2",
-  "src/ai/scout.js": "81d9e1d3402400ec8d54799de4bc447adca1a4513a213602e13f1af1071e765b"
+  "src/ai/scout.js": "3df8d1039d41dee07f525d0295d37f12db982f48e7a94394c3aeb05c4595569d"
 };
 
 test('src/data is byte-identical to its Phase 5 split; src/sim and src/ai to their pinned Phase 6 state', () => {

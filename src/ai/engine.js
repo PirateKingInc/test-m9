@@ -64,6 +64,7 @@ export class AiEngine {
     this.expansion = null; // { name, center, depot, spire, guard, nodes } once we expand
     this.expandRetryAt = 0;
     this.guards = new Set(); // combat units posted at the expansion (never join waves)
+    this.squad = null; // Phase 7 zone squad: { zone, kind, since, ids, clearSince }
   }
 
   // ---- acting -------------------------------------------------------------
@@ -320,23 +321,35 @@ export class AiEngine {
       this.react('defend-end');
     }
 
-    const seen = this.scout.seenArmy();
-    const total = Object.values(seen).reduce((a, b) => a + b, 0);
-    let massed = null;
-    for (const [type, n] of Object.entries(seen)) {
-      if (n >= cfg.massMin && n / total >= cfg.massShare && (!massed || n > seen[massed])) massed = type;
-    }
+    // Free-for-all (Phase 7): massing is judged per rival, see massedRival().
+    const mass = this.multi() ? this.massedRival() : massedIn(this.scout.seenArmy());
+    const massed = mass?.type ?? null, seen = mass?.seen;
     if (massed && massed !== this.counterFor) {
       if (this.pendingMass?.type !== massed) this.pendingMass = { type: massed, at: now };
       if (now - this.pendingMass.at >= delay) {
         this.counterFor = massed;
         this.pendingMass = null;
-        this.react('massing', `${seen[massed]} ${massed} seen: counter with ${cfg.counters[massed].join('/')}`);
+        this.react('massing', `${seen[massed]} ${massed} seen${mass.team ? ` (camp ${mass.team})` : ''}: counter with ${cfg.counters[massed].join('/')}`);
       }
     } else if (!massed) {
       this.pendingMass = null;
       if (this.counterFor) { this.counterFor = null; this.react('massing-end'); }
     }
+  }
+
+  // Per-rival massing (PHASE7_SPEC.md "Reactive defense in the free-for-all"):
+  // each rival's seen army is judged on its own, so two rivals massing two
+  // different types don't dilute each other. Several massing: our target
+  // first, then a rival hitting us, then the biggest seen army.
+  massedRival() {
+    const i = this.intel(), found = [];
+    for (const c of this.livingRivals()) {
+      const m = massedIn(this.scout.seenArmy(c.team));
+      if (m) found.push({ ...m, team: c.team, hitting: !!i.ranking.find((r) => r.team === c.team)?.hitting });
+    }
+    if (!found.length) return null;
+    return found.find((m) => m.team === i.target) || found.find((m) => m.hitting)
+      || found.reduce((a, b) => (b.total > a.total || (b.total === a.total && b.team < a.team) ? b : a));
   }
 
   // Composition weights after reactions: counterShare of production goes to the
@@ -549,6 +562,79 @@ export class AiEngine {
     return this.guards;
   }
 
+  // ---- zone holding (Phase 7) -------------------------------------------------
+
+  // Seen rival army value in a zone (PHASE7_SPEC.md "Zone holding"): rival
+  // combat units remembered within zoneRadius of its field, not seen gone.
+  rivalForceAt(z) {
+    const r = RIVALS.hold.zoneRadius * this.w.grid.tile, T = this.w.grid.tile, now = this.w.time;
+    const [cx, cy] = z.field;
+    let v = 0;
+    for (const m of this.scout.memory.values()) {
+      if (m.kind !== 'unit' || m.gone || !COMBAT_TYPES.includes(m.type) || now - m.seenAt > EXPANSION.contestMemory) continue;
+      if (Math.hypot(m.x - cx * T, m.y - cy * T) <= r) v += UNITS[m.type].supply * (m.health ?? 1);
+    }
+    return v;
+  }
+
+  // Keep the non-home zones we hold: a squad of up to squadMax home units goes
+  // to a zone of ours being taken (defend), or to one we lost in the last
+  // lostMemory seconds (recapture), if the rival force seen there is small
+  // enough. One squad at a time. Returns the squad's unit ids.
+  holdZones(home, rally) {
+    const cfg = RIVALS.hold, now = this.w.time, T = this.w.grid.tile;
+    this.zoneLost ??= new Map();
+    this.zoneSeen ??= new Map();
+    for (const z of this.w.zones) {
+      if (this.zoneSeen.get(z.id) === this.team && z.owner !== this.team) this.zoneLost.set(z.id, { at: now, to: z.owner });
+      this.zoneSeen.set(z.id, z.owner);
+    }
+    const sq = this.squad;
+    if (sq) {
+      const units = [...sq.ids].map((id) => this.w.get(id)).filter(Boolean);
+      const z = this.w.zones.find((x) => x.id === sq.zone);
+      const clear = z.owner === this.team && z.holder == null && this.rivalForceAt(z) === 0;
+      sq.clearSince = clear ? sq.clearSince ?? now : null;
+      if (!units.length || this.defending || now - sq.since > cfg.maxOut || (clear && now - sq.clearSince >= cfg.clearAfter)) {
+        const idle = units.filter((u) => u.order.type === 'idle');
+        if (idle.length && !this.defending) this.issue({ type: 'move', ids: idle.map((u) => u.id), ...rally });
+        this.react('zone-squad-home', `${sq.zone}: ${!units.length ? 'squad lost' : this.defending ? 'needed at home' : clear ? 'zone secure' : 'time out'}`);
+        this.squad = null;
+        return NO_SQUAD;
+      }
+      const at = { x: z.field[0] * T, y: z.field[1] * T };
+      const back = units.filter((u) => u.order.type === 'idle' && Math.hypot(u.x - at.x, u.y - at.y) > EXPANSION.guardLeash * T);
+      if (back.length) this.issue({ type: 'attackMove', ids: back.map((u) => u.id), ...at });
+      sq.ids = new Set(units.map((u) => u.id));
+      return sq.ids;
+    }
+    if (this.defending || this.intruders().length) return NO_SQUAD;
+    const core = this.core();
+    const jobs = [];
+    for (const z of this.w.zones) {
+      if (!z.field) continue;
+      const force = this.rivalForceAt(z);
+      const lost = this.zoneLost.get(z.id);
+      if (z.owner === this.team && ((z.holder != null && z.holder !== this.team) || force > 0)) jobs.push({ z, kind: 'defend', force, limit: cfg.defendOvermatch });
+      else if (z.owner !== this.team && lost && now - lost.at <= cfg.lostMemory) jobs.push({ z, kind: 'recapture', force, limit: 1 });
+    }
+    if (!jobs.length) return NO_SQUAD;
+    const dist = (z) => Math.hypot(z.field[0] * T - core.x, z.field[1] * T - core.y);
+    jobs.sort((a, b) => (a.kind === b.kind ? dist(a.z) - dist(b.z) : a.kind === 'defend' ? -1 : 1));
+    for (const job of jobs) {
+      const at = { x: job.z.field[0] * T, y: job.z.field[1] * T };
+      const picks = [...home].sort((a, b) => Math.hypot(a.x - at.x, a.y - at.y) - Math.hypot(b.x - at.x, b.y - at.y)).slice(0, cfg.squadMax);
+      if (picks.length < cfg.squadMin) return NO_SQUAD;
+      const value = picks.reduce((n, u) => n + UNITS[u.type].supply * (u.hp / u.maxHp), 0);
+      if (job.force > job.limit * value) continue;
+      this.issue({ type: 'attackMove', ids: picks.map((u) => u.id), ...at });
+      this.squad = { zone: job.z.id, kind: job.kind, since: now, ids: new Set(picks.map((u) => u.id)), clearSince: null };
+      this.react(`zone-${job.kind}`, `${job.z.id}: ${picks.length} units vs ${job.force.toFixed(1)} seen`);
+      return this.squad.ids;
+    }
+    return NO_SQUAD;
+  }
+
   // ---- army control -------------------------------------------------------
 
   // Any team but ours is an enemy (Phase 6: N camps; in the 1v1 match that is
@@ -709,7 +795,8 @@ export class AiEngine {
     const inWave = new Set(this.wave.filter((id) => this.w.get(id)));
     this.wave = [...inWave];
     const guards = this.postGuards(this.army().filter((u) => !inWave.has(u.id)));
-    const army = this.army().filter((u) => !guards.has(u.id));
+    const squad = this.multi() ? this.holdZones(this.army().filter((u) => !inWave.has(u.id) && !guards.has(u.id)), rally) : NO_SQUAD;
+    const army = this.army().filter((u) => !guards.has(u.id) && !squad.has(u.id));
     const home = army.filter((u) => !inWave.has(u.id));
 
     // Defend mode (early-aggression trigger): recall any wave and send the whole
@@ -887,6 +974,19 @@ export class AiEngine {
     if (!this.core()) return; // defeated
     this.think();
   }
+}
+
+const NO_SQUAD = new Set(); // never written: holdZones returns a fresh Set for a squad
+
+// The massed type in a seen-army count (SPEC.md Phase 2 "massing"): at least
+// massMin of one combat type and a majority of the army; the largest wins.
+function massedIn(seen) {
+  const cfg = SCOUTING, total = Object.values(seen).reduce((a, b) => a + b, 0);
+  let type = null;
+  for (const [t, n] of Object.entries(seen)) {
+    if (n >= cfg.massMin && n / total >= cfg.massShare && (!type || n > seen[type])) type = t;
+  }
+  return type ? { type, seen, total } : null;
 }
 
 // The Phase 1 bot, now a thin preset of the engine running the sandbox script.
