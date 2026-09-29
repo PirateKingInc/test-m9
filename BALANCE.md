@@ -1,4 +1,4 @@
-# Balance report (Phase 3)
+# Balance report (Phase 3; four-camp free-for-all: Phase 8)
 
 This file records how the three AI strategies fare against each other, before
 and after Phase 3 tuning, how the Economy-Boom mirror's side bias was found
@@ -408,3 +408,96 @@ each strategy. Against the pre-fix code, all 6 of its tests fail.
   1 (west). Against Hard (Boom) it rose from 25% to 58% once the west side
   was no longer handicapped. The table still holds: competent beats every
   tier, novice loses at every tier, and win rates fall from Easy to Hard.
+
+## Four-camp free-for-all (Phase 8)
+
+Phase 3 measured and tuned the 1v1 only. Phase 8 measures the four-camp
+free-for-all for the first time ([PHASE8_SPEC.md](PHASE8_SPEC.md) "Part B").
+
+### How it is measured
+
+```bash
+node tools/ffa-balance.mjs --seeds 100 --out balance/ffa-baseline.json   # 900 matches, Hard timing
+```
+
+- **Arrangements.** Four camps, three strategies: one strategy plays two
+  camps. The 36 ways to place them fall into **9 classes** of 4 mirror images
+  (which strategy is doubled, and whether its two camps are north-south
+  neighbours, east-west neighbours or diagonal). The map is symmetric under
+  both mirrors and the half turn, not under a quarter turn, so these are the
+  meaningful permutations.
+- **Seeds.** 100 per class, spread 25 per mirror image, so every corner hosts
+  every role equally. 900 matches per run, every camp scripted at **Hard**
+  timing, each played to its declared result (last camp standing, or the
+  30:00 ranking).
+- **What counts.** A strategy's win rate is the share of free-for-alls won by
+  a camp playing it; each strategy is doubled in a third of the matches, so
+  **chance is 33%** of matches (25% per camp). A corner's is the share won
+  from that corner (chance 25%). Brackets are 95% Wilson intervals.
+- **Targets (the bounded stop condition, set in advance):** no strategy above
+  ~50%, no corner above ~35%. One tuning pass; if a target is still missed,
+  at most 3 hypothesis-driven adjustments and one re-measurement; then stop
+  and record any miss here as an accepted exception.
+- **Speed.** About 14 s a match headless; a 900-match run takes about an
+  hour on the 4-CPU development container. Raw per-match records are in
+  `balance/ffa-*.json`.
+
+### Baseline (before any Phase 8 tuning)
+
+`balance/ffa-baseline.json`: the Phase 7 AI on the Phase 8 pathfinding fix,
+no other change.
+
+| Strategy | FFAs won (chance 33%) | Per camp (chance 25%) | Avg place | Avg elimination | Attacks per camp (mean / median) | Camps attacking ≥ once | Retargets per camp |
+|---|---|---|---|---|---|---|---|
+| Rush | **14%** (12–17%) | 11% | 3.07 | 9.0 min | 2.09 / 2 | 100% | 3.13 |
+| Boom | **42%** (39–45%) | 31% | 2.25 | 11.2 min | 1.87 / 1 | 73% | 0.93 |
+| Turtle | **44%** (41–47%) | 33% | 2.19 | 11.4 min | 1.91 / 2 | 84% | 1.10 |
+
+| Corner | FFAs won (chance 25%) | Avg place |
+|---|---|---|
+| NW | 27% (24–30%) | 2.52 |
+| NE | 24% (21–27%) | 2.50 |
+| SE | 20% (18–23%) | 2.53 |
+| SW | 29% (26–32%) | 2.44 |
+
+| Class (100 seeds each) | Rush wins | Boom wins | Turtle wins |
+|---|---|---|---|
+| Rush ×2, east-west neighbours | 13 | 36 | 51 |
+| Rush ×2, diagonal | 26 | 24 | 50 |
+| Rush ×2, north-south neighbours | 32 | 44 | 24 |
+| Boom ×2, east-west neighbours | 18 | 70 | 12 |
+| Boom ×2, diagonal | 18 | 69 | 13 |
+| Boom ×2, north-south neighbours | 13 | 62 | 25 |
+| Turtle ×2, east-west neighbours | 5 | 23 | 72 |
+| Turtle ×2, diagonal | 1 | 31 | 68 |
+| Turtle ×2, north-south neighbours | 4 | 17 | 79 |
+
+900 matches, no draws, 15 decided at the 30:00 limit, 14.1 minutes on
+average.
+
+**What the baseline shows:**
+
+- **Both targets are already met:** the strongest strategy (Turtle) wins 44%
+  of free-for-alls, the strongest corner (SW) 29%.
+- **Rush is weak in a four-way game:** 14% of wins against a 33% chance level,
+  last on average, and out first (9.0 min). Its waves never retreat; in a 1v1
+  a lost wave only hands the initiative back, but in a free-for-all a camp
+  that throws its army away is open to two other rivals. When Rush is doubled
+  and its two camps are north-south neighbours (the closest pair, 41 s), it
+  does best (32%): they often go at each other's rivals rather than being
+  picked apart.
+- **Doubling a strategy helps it**, as expected (two camps, two chances):
+  Boom wins 62–70% when doubled, Turtle 68–79%.
+- **An east-west lean.** The west corners win 56% (NW 27% + SW 29%) and the
+  east 44%, about 3.7 standard deviations from even; every strategy leans
+  the same way (Rush 84 west / 46 east, Boom 209 / 167, Turtle 208 / 186).
+  North vs south is even (51 / 49). The pathfinding is mirror-equivariant in
+  both axes (Phase 8 Part A), but a long east-west march is still about 1.3 s
+  slower westward than eastward (median of 24, PHASE8_SPEC.md), which is
+  crowd behaviour on the way, not route choice. It stays inside the corner
+  target; it is recorded in the backlog.
+- **Attacks are not as lopsided as Phase 7 thought; decisions are.** Every
+  strategy launches about two attacks per camp (medians 2 / 1 / 2), but a
+  quarter of Boom camps and a sixth of Turtle camps never attack at all, and
+  Rush makes about three times as many target *changes* (3.1 per camp vs
+  0.9–1.1): it has waves out most of the time, so its ranking shows.

@@ -851,6 +851,7 @@ export class AiEngine {
         this.goalSince = this.w.time;
         if (this.goal.key === 'hold') { this.posture('holding', 'every rival is clearly stronger and no free zone to claim'); return; }
         this.posture(this.goal.claim ? `claiming ${this.goal.claim.id}` : `attacking camp ${this.goal.team}`, this.goalWhy());
+        this.countGoal(this.goal);
       }
       this.mode = 'attack';
       this.waveFactor = null; // the next wave draws a new threshold
@@ -859,6 +860,13 @@ export class AiEngine {
       this.note(`wave ${this.stats.waves}: ${home.length} units attack`);
       this.joinWave(home);
     }
+  }
+
+  // Phase 8 bookkeeping (the batch runner's attack counts; no effect on play):
+  // attacks launched at a rival camp, and waves sent to claim a zone.
+  countGoal(g) {
+    if (g.team != null) this.stats.attacks = (this.stats.attacks || 0) + 1;
+    else if (g.claim) this.stats.claims = (this.stats.claims || 0) + 1;
   }
 
   // Why the current goal (the top reasons from the ranking).
@@ -891,6 +899,8 @@ export class AiEngine {
       this.stance = 'holding';
       return true;
     }
+    if (prev?.team == null) this.countGoal(g); // a claiming wave turned on a rival: a new attack
+    this.stats.retargets = (this.stats.retargets || 0) + 1;
     const t = this.attackTarget();
     this.issue({ type: 'attackMove', ids: this.wave, x: t.x, y: t.y });
     this.stance = g.claim ? `claiming ${g.claim.id}` : `attacking camp ${g.team}`;

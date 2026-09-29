@@ -53,7 +53,7 @@ export const FROZEN = {
   "src/sim/victory.js": "22f80deadc6acb54862bd1c8ab11ddafb550102af8261f8a8bbed1c0948c9a42",
   "src/sim/world.js": "8d9a3d2709930e8927a775079cbdb448b478df5909e8e113b88d2d547e6d810e",
   "src/ai/engine-types.js": "af5469d73733f3337336b5217b6a9186f1c3c0fd36e9623477c786b4f5b1c643",
-  "src/ai/engine.js": "f1b01293633d3b557fb8feff2e371767a00260d0fd8e74fb33c7a00b4aced696",
+  "src/ai/engine.js": "4dc56f104f1484a0d0aae1ffdf973e2bd114378b7eda5fa2ab54fdc9979be6d9",
   "src/ai/match.js": "c833058cc4533c4e947693dfaf25602c02b16b24772b21d2f2c6a57565747442",
   "src/ai/readonly.js": "85d635a231882096209c77af1e34820ecae488fde5da79d390b5dfdee07850f7",
   "src/ai/rivals.js": "cca552e99ef174b0b9e9c32da51ddf596a882eb4061f51a917bcd753bc7accb2",
