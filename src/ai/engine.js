@@ -90,12 +90,15 @@ export class AiEngine {
     return this.mine('building', 'core').find((b) => b.built) || this.mine('building', 'core')[0];
   }
 
-  // The west base's spot offsets, mirrored when our Core sits in the east half.
+  // The west base's spot offsets, mirrored when our Core sits in the east half
+  // (and, on maps that ask for it, the south half: the free-for-all's corners).
+  south() { return !!this.w.map.mirrorY && this.core().y > this.w.height / 2; }
+
   spot(key, type) {
     const c = this.core(), def = BUILDINGS[type];
     const [dx, dy] = SPOTS[key] || SPOTS[type];
     const east = c.x > this.w.width / 2;
-    return { tx: east ? c.tx + c.w - dx - def.w : c.tx + dx, ty: c.ty + dy };
+    return { tx: east ? c.tx + c.w - dx - def.w : c.tx + dx, ty: this.south() ? c.ty + c.h - dy - def.h : c.ty + dy };
   }
 
   // A valid footprint near the desired spot that leaves a one-tile walkable ring
@@ -103,7 +106,7 @@ export class AiEngine {
   // `key` is a SPOTS name, or an absolute { tx, ty } (expansion buildings).
   placement(type, key) {
     const want = typeof key === 'object' ? key : this.spot(key, type), def = BUILDINGS[type], g = this.w.grid;
-    const east = this.core().x > this.w.width / 2;
+    const east = this.core().x > this.w.width / 2, south = this.south();
     const ringFree = (tx, ty) => {
       for (let y = ty - 1; y <= ty + def.h; y++) for (let x = tx - 1; x <= tx + def.w; x++) {
         const edge = x === tx - 1 || x === tx + def.w || y === ty - 1 || y === ty + def.h;
@@ -113,8 +116,9 @@ export class AiEngine {
     };
     for (const strict of [true, false]) {
       for (let r = 0; r <= 8; r++) {
-        for (let dy = -r; dy <= r; dy++) for (let k = -r; k <= r; k++) {
+        for (let j = -r; j <= r; j++) for (let k = -r; k <= r; k++) {
           const dx = east ? -k : k; // the east base searches in the mirror-image order
+          const dy = south ? -j : j; // and a south base in the vertical mirror image
           if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
           const tx = want.tx + dx, ty = want.ty + dy;
           if (canPlace(this.w, type, tx, ty) && (!strict || ringFree(tx, ty))) return { tx, ty };
@@ -371,6 +375,28 @@ export class AiEngine {
 
   // ---- expansion (Phase 3) --------------------------------------------------
 
+  // Fields we may expand to: the 1v1 map's two middle fields, or (Phase 6) the
+  // free-for-all's neutral zones.
+  expansionFields() {
+    if (this.w.zones) return [...this.w.zones].filter((z) => z.field).map((z) => this.zoneField(z)); // a plain array: we sort it
+    return Object.keys(EXPANSION.fields).map((n) => this.field(n));
+  }
+
+  // A neutral zone's field, with its Depot, Spire and guard spots on the side
+  // facing our Castle (the 1v1 fields put them 5-7 tiles toward the owner).
+  zoneField(z) {
+    const T = this.w.grid.tile, [cx, cy] = z.field, core = this.core();
+    const d = Math.hypot(core.x / T - cx, core.y / T - cy) || 1;
+    const ux = (core.x / T - cx) / d, uy = (core.y / T - cy) / d;
+    const at = (k, side = 0) => ({ tx: Math.round(cx + ux * k - uy * side), ty: Math.round(cy + uy * k + ux * side) });
+    const g = at(5, -2);
+    return {
+      name: z.id, center: { x: cx * T, y: cy * T },
+      depot: at(7, 0), spire: at(5, 3),
+      guard: { x: (g.tx + 0.5) * T, y: (g.ty + 0.5) * T },
+    };
+  }
+
   // A middle field's tiles for our side (the data is written for the west).
   field(name) {
     const f = EXPANSION.fields[name], T = this.w.grid.tile;
@@ -434,7 +460,7 @@ export class AiEngine {
     if (!this.expansion) {
       const why = this.expandWanted();
       if (!why) return false;
-      const fields = Object.keys(EXPANSION.fields).map((n) => this.field(n))
+      const fields = this.expansionFields()
         .filter((f) => this.nodesNear(f.center, EXPANSION.fieldRadius).length && !this.contested(f))
         .sort((a, b) => Math.hypot(a.center.x - core.x, a.center.y - core.y) - Math.hypot(b.center.x - core.x, b.center.y - core.y));
       if (!fields.length) return false;

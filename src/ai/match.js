@@ -8,10 +8,21 @@ export class Match {
   // ai: { strategy, difficulty } for team 2 (or null for no opponent).
   // player: optional { strategy, difficulty } to have team 1 scripted too (tests,
   // fairness runs). view: optional (world) => read-only view for guard tests.
-  constructor({ seed = 1337, PF = globalThis.PF, ai = { strategy: 'rush', difficulty: 'hard' }, player = null, view = (w) => w } = {}) {
-    this.world = new World({ seed, PF, setup: 'match' });
+  //
+  // Free-for-all (Phase 6): pass `ffa: { map, camps: { team: { strategy, difficulty } } }`
+  // for the AI camps (teams 2-4 on the free-for-all map); `player` still scripts
+  // team 1 if given, otherwise team 1 is the human (or idle, headless).
+  constructor({ seed = 1337, PF = globalThis.PF, ai = { strategy: 'rush', difficulty: 'hard' }, player = null, view = (w) => w, ffa = null } = {}) {
     this.brains = [];
-    if (ai) this.brains.push(new AiEngine(this.world, { team: 2, seed, view: view(this.world), ...ai }));
+    if (ffa) {
+      this.world = new World({ seed, PF, map: ffa.map, setup: 'ffa' });
+      for (const [team, cfg] of Object.entries(ffa.camps).sort((a, b) => a[0] - b[0])) {
+        this.brains.push(new AiEngine(this.world, { team: Number(team), seed, view: view(this.world), ...cfg }));
+      }
+    } else {
+      this.world = new World({ seed, PF, setup: 'match' });
+      if (ai) this.brains.push(new AiEngine(this.world, { team: 2, seed, view: view(this.world), ...ai }));
+    }
     if (player) this.brains.push(new AiEngine(this.world, { team: 1, seed: seed + 7, view: view(this.world), ...player }));
   }
 
