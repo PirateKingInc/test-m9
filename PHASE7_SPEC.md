@@ -197,3 +197,73 @@ The north-south difference noted in Phase 6 is still present: in the
 travel measurement the NE→SE leg takes 40.1 s and SE→NE 44.2 s, while the
 NW↔SW legs are 41.2 / 40.7 s. It does not block this phase (the travel
 table uses the round-trip average), so it stays in the backlog.
+
+## Results
+
+### Equivalence (nothing else changed)
+
+- **1v1:** the Phase 3 fingerprints (`GOLDEN`) and all 11 Phase 5 full-match
+  fingerprints (`GOLDEN_PHASE5`) reproduce byte-for-byte; the fairness
+  harness passes unchanged.
+- **Free-for-all build/train/economy:** with `targeting: 'nearest'` the Phase 7
+  engine reproduces the Phase 6 production logs exactly (seeds 1–3, 600 s:
+  `4f4318ddf6ec1937` 450 orders, `d929da210827d0d8` 423, `c24196fc992e9861`
+  515; `GOLDEN_PHASE6_FFA` in the freeze guard). Every difference in a Phase 7
+  free-for-all therefore comes from targeting, caution, per-rival massing and
+  zone squads.
+- **Read-only guard:** every Phase 7 test and full playthrough runs the AI
+  through the read-only proxy; a targeting routine that writes zone owners
+  throws `MutationError` (`test/targeting.test.js`).
+
+### Scripted scenarios
+
+| Scenario | Result |
+|---|---|
+| Azure at 20% after fighting Jade, Rose nearest at full strength (Crimson deciding) | Azure 0.79, Jade 0.59, Rose −0.22: **Azure** |
+| Equal armies, Azure seen fighting Jade, Rose nearer and idle | **Azure** |
+| Azure's Castle seen at 20% | **Azure** ("Castle 20%") |
+| Rose's army seen, then seen gone | **Rose** (seen army 0) |
+| Rose next door at R 3.1, fighting Azure | **not Rose**: Azure |
+| Every rival R ≥ 1.5 | **cautious**: claims the East field; with nothing free, holds |
+| Wave on the march sees Azure at 20% fighting Jade | keeps Rose inside 20 s, then **turns on Azure** |
+| Azure edges Rose by less than 0.75 | wave **keeps** its target |
+| Raiders from two camps in base before 5:00 | defend mode, every corner |
+| Azure all Horsemen, Jade mixed (pooled 45%) | counters **Horsemen** (pooling would not react) |
+| Two rivals massing | counters the one **hitting us**, else our **target** |
+| Rose taking our East zone | **4-unit squad** defends; not against 12 supply of Shield Knights |
+| East zone lost in the last 90 s | squad **retakes** it (zone back in 45 s); not after 90 s or against 5 Horsemen |
+
+### Full free-for-alls (Hard, team 1 scripted Merchant Kingdom)
+
+Four seeds with the Phase 7 AI against the same seeds under the Phase 6
+placeholder (`test/ffa-rivals.test.js`):
+
+| Seed | Phase 6 (placeholder) | Phase 7 |
+|---|---|---|
+| 2 | Jade wins; Rose to Crimson, Azure to Crimson, Crimson to Jade | **Crimson** wins at 19:44; Rose to Crimson (4:54), Azure to Crimson (11:12), Jade to Crimson (19:44) |
+| 3 | Rose wins; Jade to Azure, Crimson to Rose, Azure to Rose | **Jade** wins at 9:54; Rose to Crimson, Azure to Jade, Crimson to Jade |
+| 5 | Azure wins; Jade, Crimson, Rose all to Azure | Azure wins at 16:43; Rose to **Crimson**, Crimson to Azure, Jade to Azure |
+| 6 | Jade wins; Azure to Jade, Crimson to Rose, Rose to Jade | **Azure** wins at 13:13; Crimson to Rose, Jade to Azure, Rose to Azure |
+
+What the logs show:
+
+- **Changing target after seeing a rival weakened:** e.g. seed 2, Crimson
+  at 5:18 turns its wave from Azure to Jade ("weaker, hitting us"), and at
+  9:12 back to Azure ("weaker, hitting us, 3 zones", 0.82 above Jade); seed 6,
+  Azure at 11:24 turns on Jade ("weaker, engaged with Rose, hitting us",
+  0.97 above Rose), Rose at 9:33 and Jade at 11:15 also switch on sight of
+  a weakened rival. Every AI camp (and the scripted player) switched at
+  least once across the four seeds.
+- **Avoiding a stronger neighbour and expanding elsewhere:** seed 2,
+  Crimson backs off Jade (R 1.55) at 12:33 to claim the West field (taken at
+  13:58), then the Centre (taken 14:08), and wins by picking Jade off later;
+  seed 3, Crimson backs off Jade (R 1.53) and takes the South field 8 s
+  later.
+- Three of four seeds end with a different winner; all four with a
+  different elimination order.
+
+### Mobile
+
+The touch-only playthroughs (`npm run test:mobile`: 1v1 and free-for-all,
+Easy) play to their end on the Phase 7 code. As in Phase 6 the scripted touch
+player loses (the test proves touch can play a whole game).

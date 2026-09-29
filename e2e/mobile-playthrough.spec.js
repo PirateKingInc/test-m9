@@ -204,8 +204,10 @@ async function play(page, query, ffa) {
       await tapWorld(coreB.x, coreB.y);
       await cardTap('train:drone', 1);
     }
-    // Army: every finished Foundry keeps training, rallying ahead of the base.
-    for (const f of mine(s, 'buildings', 'foundry').filter((b) => b.built && b.queue < 3)) {
+    // Army: every finished Foundry keeps training, rallying ahead of the base
+    // (free-for-all: except while saving up for the first Tower, see the plan).
+    const savingForTower = ffa && next?.type === 'spire' && !placed.has('spire') && s.lumen < cost.spire;
+    for (const f of mine(s, 'buildings', 'foundry').filter((b) => b.built && b.queue < 3 && !savingForTower)) {
       await tapWorld(f.x, f.y);
       if (!rallied.has(f.id)) { await order(rally); rallied.add(f.id); }
       const pickUnit = ['striker', 'sparker', 'striker', 'lancer'][(round + f.id) % 4];

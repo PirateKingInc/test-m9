@@ -53,6 +53,18 @@ These shipped in Phase 6:
 * four team colours, the territory overlay and the free-for-all HUD
 * no more native double-tap-to-zoom on phones
 
+## Phase 7: Multi-rival AI (done)
+
+These shipped in Phase 7:
+* rival intel from scouting only: seen army strength, seen deaths, witnessed
+  fights between rivals, attacks on us, Castle damage, measured travel time
+* a documented priority formula, caution (no march on a clearly stronger
+  rival; claim free land or hold instead) and retarget hysteresis
+* per-rival massing; early-rush defense with raiders from several camps
+* zone squads that defend held zones and retake lost ones
+* the dev panel targeting view
+* a free-for-all production-log fingerprint proving build/train unchanged
+
 ## Post-project (not scheduled)
 
 The project's phases are complete. These ideas were deliberately not
@@ -88,10 +100,14 @@ Phase 3.
 - [P5] Animated sprites: walking legs and hooves, beating dragon wings, flags that wave. Units are single rotated sprites.
 - [P5] The design docs (SPEC.md, BALANCE.md, PROJECT.md and the Phase 2-4 specs) still use the internal codenames; README.md has the mapping table. Renaming them would touch every table the tests cross-check against the data.
 - [P5] Zoomed right out (0.35x), buildings and gold mines are small; a simplified far-zoom icon set (or a minimap) would help on phones.
-- [P7] **Real multi-rival AI targeting.** Phase 6's AI camps use a deliberate placeholder: attack the nearest living rival camp (`AiEngine.targetCamp()`). Phase 7 should weigh each rival's strength, threat and distance, pile on a weakened camp, avoid being the third party that softens a target for someone else, and defend against two attackers at once.
-- [P7] AI awareness of territory: take and hold zones on purpose (today zones change hands only as a side effect of expansions and waves), and value a rival's banked gold and land as loot when choosing a target.
 - [P8] **N-way balance.** No tuning was done for four camps: seed 1 at Hard ends with Rose (Merchant Kingdom) last standing at 13 minutes, and the idle-player browser match loses its Castle to Jade's first wave at about 7 minutes. Strategy strength, the camp-to-strategy assignment and the 30:00 limit all need measuring for four camps, as Phase 3 did for two.
-- [P8] Side symmetry for four camps: the pathfinder's mirror frame is east-west only (Phase 3), so tie-breaks are not mirrored north-south; the NE-SE army round trip is 2.5 s longer than NW-SW.
+- [P8] Side symmetry for four camps: the pathfinder's mirror frame is east-west only (Phase 3), so tie-breaks are not mirrored north-south; the NE-SE army round trip is 2.5 s longer than NW-SW, and its legs differ by 4 s (40.1 s NE→SE, 44.2 s SE→NE). Still present in Phase 7; it did not block targeting (the travel table uses the round-trip average).
+- [P8] **Most visible multi-rival play comes from the Rush camp.** Rush sends the most waves, so Crimson is the camp that retargets and claims most often; Merchant Kingdom and Stone Bastion attack rarely and so decide rarely. N-way tuning of wave sizes per strategy would give the other camps more chances to act on their rankings.
+- [P8] Rival strength is seen armies only: a rival never scouted is assumed an equal. Periodic re-scouting of stale rivals (a lookout Peasant or scout rider) would make the ranking better informed, at an economic cost that needs balancing.
+- [P8] Avoiding being the third party: a camp does not yet predict that attacking a rival will leave it open to a fourth camp (it reacts once raided).
+- [P8] AI camps do not value a rival's banked gold as loot when choosing a target (it is not visible); zones owned stand in for it.
+- [P8] Zone squads defend one zone at a time with at most four units; with many zones held, larger or several squads may be needed.
+- [P8] 5th camp / difficulty scaling for the free-for-all (deferred from Phase 7).
 - [P6] **Capturing intact enemy structures.** Buildings of an eliminated camp are razed; taking them over (and turning surviving units) was out of scope.
 - [P6] Spectating after your camp falls: the match runs on, but there is no camp-follow camera, speed-up or skip to the result.
 - [P6] Zone income or upkeep: owning land only matters for loot and the time-limit ranking; a per-zone bonus could make territory matter during the match.

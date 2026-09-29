@@ -126,9 +126,21 @@ on a larger map; the other three are AI camps at the chosen difficulty.
   army (measured with the game's own pathfinding), while an undefended Castle
   falls to a 14-unit raid in 9 seconds: marching out leaves home open.
   Details in [PHASE6_SPEC.md](PHASE6_SPEC.md).
-- **The AI's targeting is a placeholder.** Each AI camp simply attacks the
-  nearest rival camp still standing. It does not yet weigh threats or pile on a
-  weakened camp; that is Phase 7.
+- **How the AI camps choose a target (Phase 7).** Each AI camp ranks every
+  living rival from what it has **actually scouted**: the army it has seen
+  (and seen die), the rival's zones, whether it **watched** that rival fight a
+  third camp, whether the rival is hitting it, how damaged the rival's Castle
+  looked, and the measured march time. It piles on a rival it saw weakened or
+  busy elsewhere; it will not march on a rival that is clearly stronger
+  (1.5× its own army), and uses a ready army to **claim a free zone** instead,
+  or stays home. It sends a small squad to defend a zone it holds, or to
+  retake one it just lost. The exact formula is in
+  [PHASE7_SPEC.md](PHASE7_SPEC.md). The AI camps still build and train
+  exactly as before.
+- **Watching the AI think.** Press <kbd>`</kbd> (backtick) in a free-for-all to
+  open the dev panel: it lists each AI camp's posture (attacking, claiming,
+  holding, any zone squad) and its ranking of rivals, best first, with the
+  score and the reasons. It is a verification view, not part of the HUD.
 
 ## Controls
 
@@ -157,7 +169,7 @@ touch device an **action bar** appears on the right of the screen (see
 | **Space** | Jump the camera to where your lands were last attacked |
 | **M** | Mute or unmute |
 | **Help** (top bar) | Show the first-run tutorial hints again |
-| **\`** (backtick) | Dev panel. It spawns **training dummies** and team-2 units, for verification only. |
+| **\`** (backtick) | Dev panel, for verification only: spawns **training dummies** and team-2 units; in a free-for-all it also shows each AI camp's rival ranking (Phase 7). |
 
 ### Touch controls (phones and tablets)
 
@@ -364,6 +376,10 @@ exact commit.
 | `test/capture.test.js` | Eliminating a camp with X gold and Y zones gives the conqueror exactly +X gold and +Y zones, and no other camp anything |
 | `test/ffa-win.test.js` | Last camp standing, simultaneous falls, and every time-limit case end with a declared result |
 | `test/ffa-playthrough.test.js` | A full four-camp free-for-all, every camp scripted, played to its result with eliminations that capture land and loot |
+| `test/rivals.test.js` | Phase 7 rival assessment: scripted opportunism (a rival seen at 20% after fighting another outranks the nearest full-strength one; engaged, damaged-Castle and seen-dying rivals score up) and caution (a clearly stronger rival is never the target); only what is inside the camp's eyes counts; the travel table matches a fresh measurement |
+| `test/targeting.test.js` | Waves march on the pick, turn on a rival seen weakened (not on noise, not within 20 s), claim free zones when every rival is clearly stronger, hold with nothing to claim; the read-only guard catches the targeting code writing game state |
+| `test/defense-ffa.test.js`, `test/zones-hold.test.js` | Early-rush defense with raiders from two camps and for every corner; massing judged per rival; zone squads defend a zone being taken, retake a zone lost in the last 90 s, don't take on a much bigger force, and go home |
+| `test/ffa-rivals.test.js`, `test/devai.test.js`, `e2e/ffa.spec.js` | Full free-for-alls with the Phase 7 AI compared with Phase 6 on the same seeds; the dev panel targeting view |
 | `e2e/tapzoom.spec.js` | Rapid taps never trigger the browser's double-tap zoom and each counts; the game's pinch still works |
 | `e2e/groups.spec.js` | Control groups without the browser's reserved Ctrl+1–8: Shift+digit, the HUD group bar, and Fullscreen with Keyboard Lock |
 
