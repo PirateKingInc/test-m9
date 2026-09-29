@@ -44,7 +44,9 @@ function engage(world, e, target, weapon) {
   e.facing = Math.atan2(target.y - e.y, target.x - e.x);
   if (e.cooldown <= 1e-9) {
     const dmg = damageRoll(world, weapon, target);
+    const before = target.hp;
     target.hp -= dmg;
+    if (before > 0 && target.hp <= 0) target.killedBy = e.team; // the killing blow (Phase 6 capture)
     target.lastHit = world.time;
     e.cooldown = weapon.cooldown;
     world.emit('attack', { id: e.id, target: target.id, attack: weapon.attack, x: e.x, y: e.y, tx: target.x, ty: target.y, team: e.team });
@@ -133,7 +135,9 @@ export function updateCombat(world, dt) {
   for (const e of [...world.entities.values()]) {
     if ((e.kind === 'unit' || e.kind === 'building') && e.hp <= 0) {
       world.removeEntity(e);
-      world.emit('death', { id: e.id, kind: e.kind, unit: e.type, team: e.team, x: e.x, y: e.y });
+      // A completed Castle's killer is remembered for free-for-all capture (Phase 6).
+      if (e.type === 'core' && e.built) (world.castleKills ||= {})[e.team] = e.killedBy ?? null;
+      world.emit('death', { id: e.id, kind: e.kind, unit: e.type, team: e.team, x: e.x, y: e.y, by: e.killedBy });
     }
   }
 }
