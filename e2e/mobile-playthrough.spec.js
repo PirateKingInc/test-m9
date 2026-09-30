@@ -170,7 +170,7 @@ async function play(page, query, ffa) {
   // Tower 4th in line is ever affordable (the test checks touch placement of
   // every building type, not how long the bot survives).
   if (ffa) plan.splice(2, 2, plan[3], plan[2]);
-  let wave = 0, grouped = false, maxArmy = 0, defends = 0;
+  let wave = 0, grouped = false, maxArmy = 0, defends = 0, lastArmy = 0;
   const placed = new Set();
   const rallied = new Set();
   const log = [];
@@ -211,6 +211,17 @@ async function play(page, query, ffa) {
     }
     await regather();
     s = await state();
+    // A foundation nobody is building (regather's double-tap selects every
+    // Drone on screen, the builder too, and sends them all to the crystals):
+    // select one Drone and Order it onto the foundation, as a player would.
+    // Otherwise it stays unfinished and nothing else is ever built (CI run
+    // 36747788419: a Barracks left at 102 s, no army by 632 s).
+    const unfinished = mine(s, 'buildings').find((b) => !b.built);
+    if (unfinished && !mine(s, 'units', 'drone').some((d) => d.order === 'build')) {
+      const d = mine(s, 'units', 'drone').sort((a, b) => Math.hypot(a.x - unfinished.x, a.y - unfinished.y) - Math.hypot(b.x - unfinished.x, b.y - unfinished.y))[0];
+      if (d) { await selectUnit(d); await order(unfinished); log.push(`${Math.round(s.time)}s resumed ${unfinished.type}`); }
+      s = await state();
+    }
     // Drones: up to 10, from the Core.
     const coreB = mine(s, 'buildings', 'core')[0];
     if (coreB && mine(s, 'units', 'drone').length < 14 && coreB.queue === 0 && s.lumen >= 50) {
@@ -234,6 +245,12 @@ async function play(page, query, ffa) {
     const hurt = ffa && mine(s, 'buildings', 'core').find((b) => b.hp < b.maxHp);
     if (!threat && hurt) threat = s.units.filter((u) => u.team !== 1).sort((a, b) => Math.hypot(a.x - hurt.x, a.y - hurt.y) - Math.hypot(b.x - hurt.x, b.y - hurt.y))[0];
     const armyNow = mine(s, 'units').filter((u) => u.type !== 'drone');
+    // A fight can start and end between two rounds (a round of touch actions
+    // takes seconds): soldiers lost since the last look are a threat too, so
+    // what is left goes at the nearest enemy (CI run 36745864284 lost 13
+    // units between two looks and never reacted).
+    if (!threat && armyNow.length < lastArmy) threat = s.units.filter((u) => u.team !== 1 && u.type !== 'drone').sort((a, b) => Math.hypot(a.x - core.x, a.y - core.y) - Math.hypot(b.x - core.x, b.y - core.y))[0];
+    lastArmy = armyNow.length;
     if (threat && armyNow.length) {
       await groupArmy();
       await sendGroup(threat);
