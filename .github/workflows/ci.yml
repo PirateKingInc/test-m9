@@ -80,3 +80,7 @@ jobs:
       - run: npm ci
       - name: Security rules (emulator)
         run: npm run test:rules
+      - name: Install Chromium for Playwright
+        run: npx playwright install --with-deps chromium
+      - name: Lobby and peer connections, several browsers (emulator)
+        run: npm run test:mp

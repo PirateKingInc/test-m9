@@ -130,7 +130,11 @@ So expiry is application-level, in three layers:
    server runs it when the host's connection ends for any reason (tab
    closed, crash, network loss after its timeout), so an abandoned lobby
    normally disappears within about a minute. Each guest likewise registers
-   the removal of its own slot.
+   the removal of its own slot. (Only the slot: Firebase checks disconnect
+   writes against the rules path by path when they are registered, and a
+   member entry may only be deleted once its slot is gone. The leftover entry
+   in the write-only member index is harmless, since the anonymous id dies
+   with the tab.)
 2. **A lobby older than one hour is inert.** The rules compare `meta/created`
    (server time) with `now`: nobody can join, start or signal in it.
 3. **Anyone may delete an inert lobby**, and clients do: a join attempt that

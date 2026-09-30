@@ -1,0 +1,27 @@
+/* Phase 10: the Multiplayer screens (src/net/menu.js). Reuses the menu card look. */
+#lobby { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 31;
+  background: radial-gradient(ellipse at 50% 30%, #3a2a17 0%, var(--bg) 70%); overflow-y: auto; }
+#lobby[hidden] { display: none; }
+.lobby-card { max-width: 520px; }
+.lobby-card section[hidden] { display: none; }
+.lobby-field { display: flex; flex-direction: column; gap: 6px; align-items: center; color: var(--dim); margin-top: 14px; }
+.lobby-card input { background: var(--button); color: var(--text); border: 1px solid var(--edge); border-radius: 5px;
+  padding: 9px 12px; font-size: 16px; text-align: center; min-width: 220px; }
+.lobby-card input:focus { outline: none; border-color: var(--accent); }
+.lobby-join { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+.lobby-join input { min-width: 140px; letter-spacing: 0.12em; text-transform: uppercase; }
+.lobby-join button { background: var(--button); color: var(--text); border: 1px solid var(--edge); border-radius: 5px; padding: 10px 18px; font-size: 15px; cursor: pointer; }
+.lobby-code { font-size: 38px; letter-spacing: 0.18em; color: var(--accent); margin: 4px 0 10px; font-weight: 700; user-select: all; }
+.lobby-title { font-size: 18px; color: var(--accent); }
+.lobby-list { text-align: left; margin: 10px auto; padding-left: 0; list-style: none; max-width: 440px; }
+.lobby-list li { padding: 7px 10px; border: 1px solid var(--edge); border-radius: 5px; margin: 5px 0; }
+.lobby-list li.open { color: var(--dim); border-style: dashed; }
+.lobby-list li.peer-verified { border-color: var(--accent); }
+.lobby-list li.peer-failed { border-color: var(--enemy); color: var(--enemy); }
+.lobby-status { min-height: 1.3em; color: var(--accent); margin-top: 12px; }
+.lobby-card button:disabled { opacity: 0.5; cursor: default; }
+@media (max-width: 600px) {
+  #lobby { align-items: flex-start; }
+  .lobby-card { padding: 20px 16px; }
+  .lobby-code { font-size: 30px; }
+}
