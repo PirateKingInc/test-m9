@@ -84,6 +84,13 @@ kbd { border: 1px solid var(--edge); border-radius: 3px; padding: 0 4px; font-si
   background: radial-gradient(ellipse at 50% 30%, #3a2a17 0%, var(--bg) 70%); }
 #menu[hidden] { display: none; }
 .menu-card { min-width: 420px; }
+/* The four mode buttons: a 2x2 grid of equal cells. As one shrinking flex row
+   they each squeezed to their narrowest label, and "Free-for-all vs AI" broke
+   at every hyphen, one word per line. Labels now wrap only between phrases. */
+#menu .result-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: 1fr; }
+#menu .result-actions button { line-height: 1.25; }
+/* Phrases a label may not break inside ("Free-for-all", "(no opponent)"). */
+#menu .result-actions .phrase { white-space: nowrap; }
 .brand-title { color: var(--accent); letter-spacing: 0.18em; font-size: 34px !important; text-shadow: 0 2px 0 #5a3a10, 0 0 18px rgba(232, 182, 76, 0.35); }
 #emblem { display: block; margin: 0 auto 4px; width: 132px; height: 140px; }
 .tagline { margin: 0 0 6px; color: var(--text); font-style: italic; }
