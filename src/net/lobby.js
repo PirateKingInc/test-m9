@@ -121,6 +121,14 @@ export class Lobby {
     }
   }
 
+  // Once the match starts the lobby must outlive any one player's connection
+  // (Phase 11: reconnection signals through it, and names come from its
+  // slots), so the Phase 10 disconnect handlers are cancelled. It then ends
+  // by the rules' age limit.
+  async keepForMatch() {
+    try { await this.fb.onDisconnect(this.ref(this.isHost ? '' : `slots/${this.slot}`)).cancel(); } catch { /* already gone */ }
+  }
+
   // Leave on purpose: the host closes the lobby, a guest frees its slot.
   async leave() {
     if (!this.code) return;

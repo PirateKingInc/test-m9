@@ -154,11 +154,33 @@ test('expiry: a lobby older than an hour is inert, and anyone may delete it; no 
   denied(await join(old, sweeper, 3), 'join an expired lobby');
   denied(await start(old, host, 'HHAA'), 'start an expired lobby');
   allowed(await put(`lobbies/${old}/meta/status`, 'owner', 'started'), 'set it started');
-  denied(await put(`lobbies/${old}/signal/${a.uid}/${host.uid}/desc`, host, { type: 'offer', sdp: 'v=0' }), 'signal in an expired lobby');
+  // Phase 11: a started lobby still carries reconnection signaling for 3 hours.
+  allowed(await put(`lobbies/${old}/signal/${a.uid}/${host.uid}/desc`, host, { type: 'offer', sdp: 'v=0' }), 'signal in a match started an hour ago');
+  allowed(await put(`lobbies/${old}/meta/created`, 'owner', Date.now() - 3 * HOUR - 60000), 'make it three hours old');
+  denied(await put(`lobbies/${old}/signal/${a.uid}/${host.uid}/desc`, host, { type: 'offer', sdp: 'v=1' }), 'signal after three hours');
   denied(await read('lobbies', sweeper), 'list lobbies');
   denied(await read('lobbies', sweeper, `&orderBy=${encodeURIComponent('"meta/created"')}&limitToFirst=25`), 'list lobbies with a query');
   denied(await del(`lobbies/${fresh}`, sweeper), 'delete a live lobby');
   allowed(await del(`lobbies/${old}`, sweeper), 'anyone deletes the expired one');
   allowed(await put(`lobbies/${old}/members/x`, 'owner', '2'), 'leftovers without a meta record');
   allowed(await del(`lobbies/${old}`, sweeper), 'are deletable too');
+});
+
+test('presence (Phase 11): each member of a started match announces only itself, and only members see it', async () => {
+  const host = await user(), a = await user(), outsider = await user(), c = code();
+  allowed(await create(c, host), 'create');
+  allowed(await join(c, a, 2), 'a joins');
+  denied(await put(`lobbies/${c}/presence/${host.uid}`, host, true), 'not before the match starts');
+  allowed(await start(c, host, 'HHAA'), 'start');
+  allowed(await put(`lobbies/${c}/presence/${host.uid}`, host, true), 'the host announces itself');
+  allowed(await put(`lobbies/${c}/presence/${a.uid}`, a, true), 'and a');
+  denied(await put(`lobbies/${c}/presence/${a.uid}`, host, true), 'nobody announces someone else');
+  denied(await del(`lobbies/${c}/presence/${a.uid}`, host), 'or removes them');
+  denied(await put(`lobbies/${c}/presence/${outsider.uid}`, outsider, true), 'an outsider cannot announce itself');
+  denied(await put(`lobbies/${c}/presence/${host.uid}`, host, 'here'), 'only the value true');
+  const seen = await read(`lobbies/${c}/presence`, a);
+  allowed(seen, 'members read presence');
+  assert.deepEqual(Object.keys(seen.body).sort(), [a.uid, host.uid].sort());
+  denied(await read(`lobbies/${c}/presence`, outsider), 'outsiders do not');
+  allowed(await del(`lobbies/${c}/presence/${a.uid}`, a), 'a player removes its own (as its disconnect handler does)');
 });

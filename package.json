@@ -12,7 +12,7 @@
     "balance": "node tools/balance.mjs",
     "test:mobile": "MOBILE_PLAYTHROUGH=1 playwright test e2e/mobile-playthrough.spec.js",
     "test:rules": "firebase emulators:exec --project demo-dragonmarch --only auth,database \"node --test test/rules/*.test.js\"",
-    "test:mp": "firebase emulators:exec --project demo-dragonmarch --only auth,database \"MULTIPLAYER=1 playwright test e2e/mp-\""
+    "test:mp": "firebase emulators:exec --project demo-dragonmarch --only auth,database \"MULTIPLAYER=1 playwright test e2e/mp- --workers=1\""
   },
   "devDependencies": {
     "@playwright/test": "1.56.1",

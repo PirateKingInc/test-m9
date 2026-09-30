@@ -62,7 +62,7 @@ jobs:
     # against the Firebase Local Emulator Suite: never the production project,
     # no credentials. The database emulator needs Java.
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 50 # Phase 11: whole matches in 2-4 real browsers, one at a time
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -82,5 +82,5 @@ jobs:
         run: npm run test:rules
       - name: Install Chromium for Playwright
         run: npx playwright install --with-deps chromium
-      - name: Lobby and peer connections, several browsers (emulator)
+      - name: Lobby, connections, and whole matches in several browsers (emulator)
         run: npm run test:mp

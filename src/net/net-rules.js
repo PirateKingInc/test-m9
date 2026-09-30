@@ -14,6 +14,7 @@ const DEFAULTS = {
   chatMax: 200, // characters per chat line
   chatBurst: 5, // lines per chatWindowMs per player
   chatWindowMs: 5000,
+  speed: 1, // game time per real time; only browser tests raise it (the lockstep is tick-based)
 };
 
 // Browser tests shorten the timings with globalThis.__DM_NET_OVERRIDES__

@@ -22,9 +22,10 @@ async function open() {
   const emu = globalThis.__DM_FIREBASE_EMULATOR__;
   const config = emu ? { ...FIREBASE_CONFIG, projectId: emu.projectId, databaseURL: `https://${emu.ns}.firebaseio.com` } : FIREBASE_CONFIG;
   const fbApp = app.initializeApp(config, 'dragonmarch');
-  // In-memory persistence: the anonymous identity lives as long as this tab
-  // and no longer, and two tabs are two different players.
-  const fbAuth = auth.initializeAuth(fbApp, { persistence: auth.inMemoryPersistence });
+  // Session persistence: the anonymous identity lives as long as this tab (a
+  // reload keeps it, so a player can rejoin a match: Phase 11), and two tabs
+  // are two different players. Nothing outlives the tab.
+  const fbAuth = auth.initializeAuth(fbApp, { persistence: auth.browserSessionPersistence });
   const fbDb = db.getDatabase(fbApp);
   if (emu) {
     auth.connectAuthEmulator(fbAuth, `http://${emu.auth}`, { disableWarnings: true });

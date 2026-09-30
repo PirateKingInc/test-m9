@@ -62,7 +62,7 @@
             ".read": "auth != null && auth.uid === $to",
             ".write": "auth != null && auth.uid === $to && !newData.exists()",
             "$from": {
-              ".write": "auth != null && auth.uid === $from && $from !== $to && root.child('lobbies/' + $code + '/meta/status').val() === 'started' && root.child('lobbies/' + $code + '/meta/created').val() > now - 3600000 && root.child('lobbies/' + $code + '/members/' + $from).exists() && root.child('lobbies/' + $code + '/members/' + $to).exists()",
+              ".write": "auth != null && auth.uid === $from && $from !== $to && root.child('lobbies/' + $code + '/meta/status').val() === 'started' && root.child('lobbies/' + $code + '/meta/created').val() > now - 10800000 && root.child('lobbies/' + $code + '/members/' + $from).exists() && root.child('lobbies/' + $code + '/members/' + $to).exists()",
               "desc": {
                 ".validate": "newData.hasChildren(['type', 'sdp'])",
                 "type": {
@@ -96,6 +96,13 @@
                 ".validate": false
               }
             }
+          }
+        },
+        "presence": {
+          ".read": "auth != null && root.child('lobbies/' + $code + '/members/' + auth.uid).exists()",
+          "$uid": {
+            ".write": "auth != null && auth.uid === $uid && root.child('lobbies/' + $code + '/members/' + $uid).exists() && root.child('lobbies/' + $code + '/meta/status').val() === 'started'",
+            ".validate": "newData.val() === true"
           }
         },
         "$other": {

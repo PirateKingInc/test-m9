@@ -49,7 +49,7 @@ function build() {
       el('ul', { id: 'mp-peers', className: 'lobby-list' }),
       el('p', { className: 'dim', textContent: 'Camps' }),
       el('ol', { id: 'mp-lineup', className: 'lobby-list' }),
-      el('p', { className: 'dim', textContent: 'Playing the match together over these connections comes in the next update. This screen proves every player can reach every other one directly.' }),
+      el('p', { id: 'mp-links-note', className: 'dim', textContent: 'The match begins once every player is connected.' }),
       el('div', { className: 'result-actions' }, el('button', { id: 'mp-menu', textContent: 'Back to menu' }))),
     el('p', { id: 'mp-status', className: 'lobby-status', role: 'status' }));
   document.body.append(el('div', { id: 'lobby' }, card));
@@ -195,7 +195,36 @@ function renderLinks(lobby) {
   $('mp-links-title').textContent = done === peers.length ? `Connected directly to all ${peers.length} other player${peers.length > 1 ? 's' : ''}.`
     : failed ? `Connected to ${done} of ${peers.length}. ${failed} could not connect directly (a strict network or firewall).`
       : `Connecting to ${peers.length} other player${peers.length > 1 ? 's' : ''}…`;
+  if (failed && !done) $('mp-links-note').textContent = 'The match cannot start without a direct connection to every player.';
+  // Phase 11: everyone connected: the match starts (after a moment on this screen).
+  if (done === peers.length && !state.starting) {
+    state.starting = true;
+    $('mp-links-note').textContent = 'Everyone is connected: the match is starting…';
+    setTimeout(() => import('./play.js').then((m) => m.startMatch(lobby, mesh)).catch((e) => status(`Could not start: ${e.message}`)), 2500);
+  }
 }
+
+// Phase 11: a tab that was in a match (and reloaded) goes straight back in.
+async function rejoinOnLoad() {
+  try { if (!sessionStorage.getItem('dm-mp')) return; } catch { return; } // (play.js's key) nothing to rejoin: load nothing
+  const { savedMatch, rejoinMatch, forgetMatch } = await import('./play.js');
+  const saved = savedMatch();
+  if (!saved || new URLSearchParams(location.search).get('mode')) return;
+  $('menu').hidden = true;
+  build();
+  show('mp-links');
+  $('mp-links-title').textContent = 'Rejoining your match…';
+  $('mp-links-note').textContent = 'Reconnecting to the other players.';
+  try {
+    const { connect } = await import('./firebase.js');
+    const fb = await connect();
+    if (await rejoinMatch(saved, fb)) return;
+  } catch (e) { console.warn(e); }
+  forgetMatch();
+  $('lobby').hidden = true;
+  $('menu').hidden = false;
+}
+rejoinOnLoad();
 
 const PEER_TEXT = {
   waiting: 'waiting for its answer',
