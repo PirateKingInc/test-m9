@@ -60,7 +60,10 @@ export function updateTerritory(world) {
     if (world.time - z.holdSince >= TERRITORY.captureHold - 1e-9) {
       const from = z.owner;
       z.owner = only; z.holder = null; z.holdSince = null;
-      world.emit('zoneCaptured', { zone: z.id, from, to: only });
+      // Phase 9: gold a hopeless camp left in its home zone goes to the captor.
+      const loot = world.zoneLoot?.[z.id] || 0;
+      if (loot) { world.resources[only] = (world.resources[only] || 0) + loot; delete world.zoneLoot[z.id]; }
+      world.emit('zoneCaptured', { zone: z.id, from, to: only, ...(loot && { loot }) });
     }
   }
 }

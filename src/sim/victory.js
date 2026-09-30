@@ -4,6 +4,9 @@
 // the free-for-all's elimination and ranking rules are in PHASE6_SPEC.md.
 import { UNITS } from '../data/units.js';
 import { BUILDINGS } from '../data/buildings.js';
+import { HOPELESS } from '../data/camp-rules.js';
+import { isHopeless } from './hopeless.js';
+import { SIM_DT } from './constants.js';
 
 export function hasCore(world, team) {
   for (const b of world.ofKind('building')) if (b.team === team && b.type === 'core' && b.built && b.hp > 0) return true;
@@ -37,6 +40,11 @@ export function checkResult(world) {
   const alive = world.teams.filter((t) => hasCore(world, t));
   if (alive.length === 0) return finish(world, null, 'draw');
   if (alive.length === 1) return finish(world, alive[0], 'core-destroyed');
+  // Phase 9: a camp that can never produce again loses (only camps whose
+  // Castle still stands are checked, so this never fires on top of a fall).
+  const lost = confirmedHopeless(world, alive);
+  if (lost.length === alive.length) return finish(world, null, 'draw');
+  if (lost.length) return finish(world, alive.find((t) => !lost.includes(t)), 'hopeless');
   if (world.time >= world.map.timeLimit - 1e-9) {
     const scores = world.teams.map((t) => score(world, t));
     const best = Math.max(...scores);
@@ -54,12 +62,18 @@ const zoneCount = (world, team) => (world.zones || []).filter((z) => z.owner ===
 // one transfer; everything the eliminated camp still had is razed. If the
 // conqueror fell in the same tick (or there is none), the gold is lost and the
 // zones go neutral.
-function eliminate(world, team, alive) {
-  const by = world.castleKills?.[team] ?? null;
+//
+// Phase 9: a hopeless camp is eliminated the same way, but no one landed a
+// blow, so nothing is transferred: its zones go neutral and its banked gold is
+// left in its home zone for whoever captures that zone next (territory.js).
+function eliminate(world, team, alive, hopeless = false) {
+  const by = hopeless ? null : world.castleKills?.[team] ?? null;
   const conqueror = by != null && by !== team && alive.includes(by) ? by : null;
   const gold = world.resources[team] || 0;
   world.resources[team] = 0;
   if (conqueror != null) world.resources[conqueror] += gold;
+  const home = hopeless && (world.zones || []).find((z) => z.home === team);
+  if (home && gold > 0) (world.zoneLoot ||= {})[home.id] = ((world.zoneLoot || {})[home.id] || 0) + gold;
   const zones = [];
   for (const z of world.zones || []) {
     if (z.owner !== team) continue;
@@ -67,7 +81,7 @@ function eliminate(world, team, alive) {
     zones.push(z.id);
   }
   for (const e of [...world.entities.values()]) if (e.team === team && (e.kind === 'unit' || e.kind === 'building')) world.removeEntity(e);
-  const rec = { team, by: conqueror, time: world.time, gold, zones };
+  const rec = { team, by: conqueror, time: world.time, gold, zones, ...(hopeless && { reason: 'hopeless' }) };
   world.eliminated.push(rec);
   world.emit('eliminated', { ...rec });
 }
@@ -99,8 +113,14 @@ function finishFreeForAll(world, winner, reason) {
 function checkFreeForAll(world) {
   world.eliminated ||= [];
   const out = new Set(world.eliminated.map((e) => e.team));
-  const alive = world.teams.filter((t) => !out.has(t) && hasCore(world, t));
+  let alive = world.teams.filter((t) => !out.has(t) && hasCore(world, t));
   for (const t of world.teams) if (!out.has(t) && !alive.includes(t)) eliminate(world, t, alive);
+  // Phase 9: hopeless camps, among those still standing after Castle losses.
+  const lost = confirmedHopeless(world, alive);
+  if (lost.length) {
+    alive = alive.filter((t) => !lost.includes(t));
+    for (const t of lost) eliminate(world, t, alive, true);
+  }
   if (alive.length === 0) return finishFreeForAll(world, null, 'draw');
   if (alive.length === 1) return finishFreeForAll(world, alive[0], 'last-standing');
   if (world.time >= world.map.timeLimit - 1e-9) {
@@ -108,4 +128,24 @@ function checkFreeForAll(world) {
     const tie = rank[1] && rank[1].z === rank[0].z && rank[1].s === rank[0].s;
     return finishFreeForAll(world, tie ? null : rank[0].t, 'time-limit');
   }
+}
+
+// ---- hopeless camps (Phase 9, PHASE9_SPEC.md "Part C") ----------------------
+
+// Camps among `alive` that have been hopeless for the whole confirmation
+// window. Checked every HOPELESS.checkEvery seconds (tick-aligned); a camp
+// that recovers even once starts the window again. world.hopelessCheck =
+// false switches the rule off (the freeze guard's proof that nothing else
+// changed).
+function confirmedHopeless(world, alive) {
+  if (world.hopelessCheck === false) return [];
+  if (world.tick % Math.max(1, Math.round(HOPELESS.checkEvery / SIM_DT)) !== 0) return [];
+  const since = (world.hopelessSince ||= {});
+  const out = [];
+  for (const t of alive) {
+    if (!isHopeless(world, t)) { delete since[t]; continue; }
+    since[t] ??= world.time;
+    if (world.time - since[t] >= HOPELESS.confirm - 1e-9) out.push(t);
+  }
+  return out;
 }

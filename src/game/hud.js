@@ -160,8 +160,9 @@ export class Hud {
   showFall(rec, doc = document) {
     doc.getElementById('result-title').textContent = 'Defeat';
     doc.getElementById('result-title').className = 'defeat';
-    const by = rec.by ? `${TEAM_TEXT[rec.by]} took your lands and ${rec.gold} gold.` : 'Your Castle has fallen.';
-    doc.getElementById('result-detail').textContent = `Your Castle has fallen. ${by} The other camps fight on.`;
+    const by = rec.by ? `${TEAM_TEXT[rec.by]} took your lands and ${rec.gold} gold.` : '';
+    const what = rec.reason === 'hopeless' ? 'Your camp has no army and no way left to raise one or earn gold.' : 'Your Castle has fallen.';
+    doc.getElementById('result-detail').textContent = `${what} ${by ? `${by} ` : ''}The other camps fight on.`;
     const table = doc.getElementById('result-stats');
     if (table) table.innerHTML = '';
     const watch = doc.getElementById('watch-on');
@@ -177,9 +178,10 @@ export class Hud {
     const name = (t) => (t === PLAYER ? 'You' : TEAM_TEXT[t]);
     if (e.type === 'eliminated') {
       const loot = e.by ? `: ${name(e.by)} take${e.by === PLAYER ? '' : 's'} ${e.gold} gold and ${e.zones.length} zone${e.zones.length === 1 ? '' : 's'}` : '';
-      this.toast(e.team === PLAYER ? `Your Castle has fallen${loot}` : `${TEAM_TEXT[e.team]} has fallen${loot}`, { alert: e.team === PLAYER || e.by === PLAYER });
+      const fell = e.reason === 'hopeless' ? 'can no longer fight or earn: out of the game' : 'has fallen';
+      this.toast(e.team === PLAYER ? `Your ${e.reason === 'hopeless' ? 'camp can no longer fight or earn: out of the game' : 'Castle has fallen'}${loot}` : `${TEAM_TEXT[e.team]} ${fell}${loot}`, { alert: e.team === PLAYER || e.by === PLAYER });
     } else if (e.type === 'zoneCaptured' && (e.to === PLAYER || e.from === PLAYER)) {
-      this.toast(e.to === PLAYER ? `You hold ${ZONE_TEXT[e.zone]}` : `${TEAM_TEXT[e.to]} took ${ZONE_TEXT[e.zone]} from you`);
+      this.toast(e.to === PLAYER ? `You hold ${ZONE_TEXT[e.zone]}${e.loot ? ` (+${e.loot} gold left there)` : ''}` : `${TEAM_TEXT[e.to]} took ${ZONE_TEXT[e.zone]} from you`);
     }
   }
 
@@ -191,7 +193,8 @@ export class Hud {
     const why = r.standings // free-for-all (Phase 6)
       ? { 'last-standing': `${who(r.winner)} is the last camp standing.`, draw: 'The last Castles fell at the same moment.',
         'time-limit': r.winner === null ? 'Time limit reached: the leaders tied on land and score.' : `Time limit reached: ${who(r.winner)} held the most land.` }[r.reason]
-      : { 'core-destroyed': r.winner === PLAYER ? 'The enemy Castle has fallen.' : 'Your Castle has fallen.',
+      : { hopeless: r.winner === PLAYER ? 'The enemy has no army and no way left to raise one.' : 'Your camp has no army and no way left to raise one or earn gold.',
+        'core-destroyed': r.winner === PLAYER ? 'The enemy Castle has fallen.' : 'Your Castle has fallen.',
         draw: 'Both Castles fell at the same moment.', 'time-limit': `Time limit reached: decided on score (${r.scores[1]} vs ${r.scores[2]}).` }[r.reason];
     const watch = doc.getElementById('watch-on');
     if (watch) watch.hidden = true;

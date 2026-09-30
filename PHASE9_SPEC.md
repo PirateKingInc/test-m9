@@ -99,7 +99,12 @@ A camp is **hopeless** when all of these hold:
 2. **No unit in production** in any of its buildings (it would come out).
 3. **No completed Storehouse** (the literal "no income structure" check, kept
    as an extra safeguard even though the search below already covers it).
-4. **No reachable future:** a search over an abstract model of the camp
+   Only a Storehouse takes in gold in this game; the Castle does not.
+4. **No Peasant while gold is left in any mine.** A Peasant that could still
+   reach a mine keeps the camp in the game even when the search shows it
+   could never deliver (no Storehouse and not enough gold for one): the rule
+   errs toward under-triggering.
+5. **No reachable future:** a search over an abstract model of the camp
    proves that **no sequence of actions** produces a unit or income:
 
    The abstract state is: banked gold; whether the camp has a Peasant;
@@ -122,8 +127,8 @@ window) is eliminated. It is checked once a second.
 
 ### False-positive safeguards (each has a scripted test)
 
-- A Peasant alive and any gold left in any mine, with a drop-off or the gold
-  (or a site to cancel) to get one: not hopeless.
+- A Peasant alive and any gold left in any mine: not hopeless (whether or
+  not it could get a drop-off).
 - Enough gold for the cheapest unit (a Peasant at a completed Castle, a
   soldier at a completed Barracks): not hopeless.
 - A unit in a training queue: not hopeless.
