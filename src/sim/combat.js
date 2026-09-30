@@ -89,7 +89,8 @@ registerCommand('attackMove', (world, cmd) => {
 
 registerOrder('attack', (world, u, dt) => {
   const o = u.order, target = world.get(o.target), weapon = weaponOf(u);
-  if (!target || target.hp <= 0 || (o.auto && gap(u, target) > COMBAT.leashRange)) {
+  // Auto-defend engagements (Phase 9) keep to their zone instead of the leash.
+  if (!target || target.hp <= 0 || (o.auto && !o.defend && gap(u, target) > COMBAT.leashRange)) {
     u.order = { type: 'idle' }; clearPath(u); return;
   }
   if (engage(world, u, target, weapon)) clearPath(u);

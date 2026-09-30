@@ -18,10 +18,11 @@ const PHASE6 = {
   6: '4 1<-4 2<-3 3<-4',
 };
 
-function play(seed, targeting = 'assess', mirrorY = true) {
+function play(seed, targeting = 'assess', mirrorY = true, phase9 = true) {
   const camps = Object.fromEntries(Object.entries(FFA_STRATEGIES).map(([t, s]) => [t, { strategy: s, difficulty: 'hard', targeting }]));
   const m = new Match({ seed, PF, ffa: { map: FFA_MAP, camps }, player: { strategy: 'boom', difficulty: 'hard', targeting }, view: readonly });
   m.world.grid.mirrorY = mirrorY; // false: without Phase 8's north-south tie-breaks, i.e. Phase 6/7 pathing
+  if (!phase9) m.world.autoDefend = m.world.hopelessCheck = false; // without Phase 9's camp rules
   const falls = [], captures = [];
   while (!m.world.result) {
     m.step();
@@ -61,12 +62,16 @@ test('multi-rival FFA playthroughs: camps turn on weakened rivals, avoid stronge
   for (const o of opportunism) console.log(`# retarget: ${o}`);
   for (const c of claims) console.log(`# claim: seed ${c.seed} camp ${c.team} at ${c.t.toFixed(0)} s -> ${c.zone}${c.taken ? `, taken at ${c.taken.toFixed(0)} s` : ''} (${c.detail})`);
   assert.ok(opportunism.length >= 1, 'at least one camp changes target after seeing a rival weakened');
-  assert.ok(claims.some((c) => c.taken != null), 'at least one camp avoids stronger rivals and takes a free zone instead');
+  // Since Phase 9 (auto-defend) a claimed field is defended harder, so on these
+  // seeds the claims are not always completed; the scripted targeting tests
+  // cover the capture itself.
+  assert.ok(claims.length >= 1, 'at least one camp avoids stronger rivals and sends its army to claim a free zone instead');
+  console.log(`# claims completed: ${claims.filter((c) => c.taken != null).length} of ${claims.length}`);
   const differ = Object.keys(PHASE6).filter((s) => outcomes[s] !== PHASE6[s]);
   assert.ok(differ.length >= 3, `outcomes differ from Phase 6 on most seeds (${differ.length} of ${Object.keys(PHASE6).length})`);
 });
 
 test('the Phase 6 outcomes above are what targeting: nearest produces (on Phase 6 pathing)', () => {
-  const { r, falls } = play(2, 'nearest', false);
+  const { r, falls } = play(2, 'nearest', false, false);
   assert.equal(`${r.winner} ${falls.map((f) => `${f.team}<-${f.by}`).join(' ')}`, PHASE6[2]);
 });

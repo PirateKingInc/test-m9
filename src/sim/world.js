@@ -14,6 +14,7 @@ import { separate } from './steering.js';
 import { checkResult } from './victory.js';
 import { SpatialIndex } from './spatial.js';
 import { setupZones, updateTerritory } from './territory.js';
+import { updateDefense } from './defense.js';
 
 // The headless game state. No Phaser/DOM here: the renderer reads entities,
 // and everything that changes the world goes through issue(cmd).
@@ -133,7 +134,11 @@ export class World {
 
   issue(cmd) {
     if (this.result) return { ok: false, reason: 'Game over' };
-    return issueCommand(this, cmd);
+    const res = issueCommand(this, cmd);
+    // An order from the owner replaces any automatic one and forgets the
+    // auto-defend post (Phase 9).
+    if (res.ok && cmd.ids) for (const id of cmd.ids) { const u = this.get(id); if (u && u.post && u.team === (cmd.team ?? PLAYER)) u.post = null; }
+    return res;
   }
 
   step() {
@@ -141,6 +146,7 @@ export class World {
     const units = [...this.ofKind('unit')];
     for (const u of units) { u.px = u.x; u.py = u.y; }
     this.spatial.rebuild(this); // enemy scans this tick use the index
+    updateDefense(this); // free-for-all only (Phase 9): idle defenders in owned zones
     for (const u of units) thinkUnit(this, u, SIM_DT);
     separate(this);
     updateConstruction(this, SIM_DT);

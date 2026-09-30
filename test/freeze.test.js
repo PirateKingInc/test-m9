@@ -28,15 +28,17 @@ const sha = (buf) => createHash('sha256').update(buf).digest('hex');
 // changed no behaviour is the fingerprints below, not these pins.
 export const FROZEN = {
   "src/data/buildings.js": "0176c4b3f71568db3421a3f661c96fbf64b9b78d7d3d2f812770307c8b204ec8",
+  "src/data/camp-rules.js": "eaba6b6ba317c1a0a1027eedb46a1888ca23b860bce20b49cf2a8618406049da",
   "src/data/difficulty.js": "5edbe78a9ebb8172eed5c945f34732d549375eeb806df9265e684577b1a0ea6e",
   "src/data/ffa.js": "aae3f1f3cef2a7e34f8b923414f643189ffb44872e105f25b9d9d30a021877df",
   "src/data/map.js": "7ca9715b0b10d0d0a5659268c05bb7df451bda0306b21032a0fa5f13abc6436f",
   "src/data/rivals.js": "54c99cdb2916999bc23ec81d33a8438d9db58915afa7ef7fb73e0a43032ac905",
   "src/data/strategies.js": "ce6e3cd4a084145f4ae7315103bf953ae76d6e6b5cfdc117aab6f966fe15e499",
   "src/data/units.js": "b401f86514666b40bd0a2f8b5b1ac664563a6f33be2869391763c747f36a3ca0",
-  "src/sim/combat.js": "da57ab0604b8f60a2e22584091abdd17c220982fb00a86bf4b2b8d38fcc6f10b",
+  "src/sim/combat.js": "75bdaad3d784746da47791b0e2fb8a16a3413db6550ac5436dd10357356a830a",
   "src/sim/constants.js": "5b908c2299440ddc070608d52ebc5ee3ab663c5eca24fdb209bbc782bdc845cd",
   "src/sim/construction.js": "ab8038d3cc615af3d15960b06d9b90ae79ccb0a0d0dadf97dca3e42778fbb6dd",
+  "src/sim/defense.js": "516e85ef4ffd7dad3151afb05278e527fb0eb6d632f22663c6dd9129a83cfa7a",
   "src/sim/economy.js": "d3aba13d910b5063111e0f262d273407ed2e105c10c21128dcda6ad7e9522756",
   "src/sim/geometry.js": "15ee1ec57af7007c22ed774bdddf71647a22085dd89c00e30f269270d0f06d49",
   "src/sim/grid.js": "f990df96f1d979bf2302f8d5567e8aed7fa9148e5e6411144c7b91cb66b137c9",
@@ -51,7 +53,7 @@ export const FROZEN = {
   "src/sim/supply.js": "3dafb9550ca87e902d153392eb319697a6559fa6b84c05d75cee160e1f0d6824",
   "src/sim/territory.js": "5266e7e71f2850c912e4e67ad50ffe69b34783041447d7247c83a3598503b6f6",
   "src/sim/victory.js": "22f80deadc6acb54862bd1c8ab11ddafb550102af8261f8a8bbed1c0948c9a42",
-  "src/sim/world.js": "8d9a3d2709930e8927a775079cbdb448b478df5909e8e113b88d2d547e6d810e",
+  "src/sim/world.js": "8ed7678c152ccbe3287977b8466167b3d400ff2361caf8ef9503df0dee2b6073",
   "src/ai/engine-types.js": "af5469d73733f3337336b5217b6a9186f1c3c0fd36e9623477c786b4f5b1c643",
   "src/ai/engine.js": "149a34cb3f5daf2bfae9a283ea0656322dcffaa96c35052257daea06e0c56bc7",
   "src/ai/match.js": "c833058cc4533c4e947693dfaf25602c02b16b24772b21d2f2c6a57565747442",
@@ -168,12 +170,13 @@ test('Phase 6 equivalence: 1v1 matches through the N-team code reproduce Phase 5
 // Phase 7 change, for three seeds over the first 10 minutes. With the Phase 6
 // placeholder targeting switched back on (`targeting: 'nearest'`), the Phase 7
 // engine must reproduce every order at the same tick.
-export function ffaProductionLogs({ targeting = 'nearest', until = 600, mirrorY = true } = {}) {
+export function ffaProductionLogs({ targeting = 'nearest', until = 600, mirrorY = true, phase9 = true } = {}) {
   const out = {};
   for (const seed of [1, 2, 3]) {
     const camps = Object.fromEntries(Object.entries(FFA_STRATEGIES).map(([t, s]) => [t, { strategy: s, difficulty: 'hard', targeting }]));
     const m = new Match({ seed, PF, ffa: { map: FFA_MAP, camps }, player: { strategy: 'boom', difficulty: 'hard', targeting } });
     m.world.grid.mirrorY = mirrorY; // false: without Phase 8's north-south mirrored tie-breaks
+    if (!phase9) m.world.autoDefend = m.world.hopelessCheck = false; // without Phase 9's camp rules
     const log = [];
     for (const b of m.brains) {
       const orig = b.issueFn;
@@ -199,7 +202,7 @@ test('Phase 7 equivalence: with placeholder targeting, the free-for-all builds a
   // Phase 8 changed the free-for-all's pathing (north-south mirrored
   // tie-breaks, PHASE8_SPEC.md "Pathfinding symmetry"). With exactly that
   // switched off, every order still lands on the same tick as in Phase 6.
-  assert.deepEqual(ffaProductionLogs({ mirrorY: false }), GOLDEN_PHASE6_FFA);
+  assert.deepEqual(ffaProductionLogs({ mirrorY: false, phase9: false }), GOLDEN_PHASE6_FFA);
 });
 
 // Phase 8 gate (PHASE8_SPEC.md "Pathfinding symmetry"): the same production
@@ -215,5 +218,19 @@ export const GOLDEN_PHASE8_FFA = {
 };
 
 test('Phase 8 equivalence: the free-for-all with the pathfinding fix builds and trains as pinned', () => {
-  assert.deepEqual(ffaProductionLogs(), GOLDEN_PHASE8_FFA);
+  // With Phase 9's camp rules (auto-defend, hopeless camps) switched off.
+  assert.deepEqual(ffaProductionLogs({ phase9: false }), GOLDEN_PHASE8_FFA);
+});
+
+// Phase 9 (PHASE9_SPEC.md): the same log with the camp rules on. Auto-defend
+// is a real combat change in the free-for-all, so this log moves; the 1v1
+// has no zones and its fingerprints above do not.
+export const GOLDEN_PHASE9_FFA = {
+  'seed1-600s': '02cba90ea9f830a7 (467 build/train orders)',
+  'seed2-600s': '6a95f780de4c515b (539 build/train orders)',
+  'seed3-600s': 'cb407a258047be60 (539 build/train orders)',
+};
+
+test('Phase 9 equivalence: the free-for-all with auto-defend and hopeless camps builds and trains as pinned', () => {
+  assert.deepEqual(ffaProductionLogs(), GOLDEN_PHASE9_FFA);
 });
