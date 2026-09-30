@@ -214,3 +214,78 @@ Phase 11; the screen says so.
 
 CI runs the emulator suites in their own job, with Java for the database
 emulator. No production credentials anywhere in CI.
+
+## Results
+
+### Regression and fingerprints
+
+Nothing in `src/sim`, `src/ai`, `src/data`, `src/game` or `src/theme` changed
+in this phase, and `test/freeze.test.js` was not touched (nothing re-pinned).
+On the final code: `npm test` 287/287 (the Phase 9 suite's 275 plus 12 new),
+including every freeze and equivalence test (data and sim/AI byte pins, the
+gameplay hash, the Phase 3/4 fixed-seed games, and the Phase 6, 7, 8 and 9
+equivalence fingerprints); the Playwright suite 61/61; fairness passes; both
+mobile playthroughs pass.
+
+### Security rules (`npm run test:rules`, 9 suites)
+
+Signed out: nothing. Signed in: nothing outside a lobby's `meta`, `slots`,
+`members` and `signal`; no listing of lobbies; only a lobby's own host creates
+(well-formed, server-timestamped), starts (2+ players, a lineup matching the
+slots) or closes it; one free slot per player, a 1–16 character name, never a
+fifth player in any slot; nobody removes anyone else; only members of a
+started lobby signal each other, with bounded SDP (≤ 10,000) and candidates
+(≤ 1,000), readable only by the recipient; an hour-old lobby is inert and
+anyone may delete it. All against the emulator over REST, no production
+credentials.
+
+### Browser tests (`npm run test:mp`, 10 tests)
+
+- **Lobby:** 2 and 4 independent browser contexts create and join by code and
+  see each other's names appear live; 4 joining at once all see the same
+  list; a fifth is refused ("That lobby is full (4 players).") and nobody is
+  displaced; malformed and unknown codes are explained; if the lobby server
+  refuses the connection (as the real project does until its one-time
+  setup), the player gets a plain message.
+- **Leaving:** a player leaving with the button, a closed guest tab (the
+  server's disconnect handler) and a closed host tab (the lobby closes, the
+  others are told, the code dies) all update the remaining players' views.
+- **AI fill-in:** starting with 2 players, both see Merchant Kingdom and
+  Stone Bastion AI in camps 3 and 4 (`HHAA`); a late joiner is refused.
+  Headless: for every lineup with 2–4 humans the unchanged `Match` puts AI
+  brains on exactly the empty camps with the single-player strategies.
+- **Peer connections (the core proof):** 2, 3 and 4 players in separate
+  browser contexts, and 2 players in separate Chromium processes, each end
+  with one `connected` RTCPeerConnection per other player (6 pairs for 4), an
+  open data channel, a hello received from the other side, and an
+  independent probe per ordered pair found on the receiving side; offers and
+  answers are cleared from the database afterwards.
+
+### Reliability
+
+The first version failed 6 of 80 repeated runs. Diagnostics showed two
+Chromium races, both fixed in the protocol (see the connection sequence): a
+channel arriving already open, and a hello dropped at channel open (now
+resent until acknowledged). After the fixes: **all 8 multiplayer tests × 40
+repeats, 320/320**, then 45/45 and 9/9 on the final branches and 9/9 in CI (a tenth test, the
+refused-connection message, was added last).
+The 160 repeated mesh setups (80 two-player, 40 three-player, 40 four-player)
+were fully verified in 0.22 s, 0.41 s and 0.47 s on average (at most 1.0 s).
+
+**Limits of that evidence:** every run is on one machine, so ICE always picks
+host candidates over UDP. Connections across real networks (STUN
+server-reflexive candidates through home routers and mobile carriers) are
+not exercised by any automated test, and players behind symmetric NAT or
+strict firewalls will fail without a TURN relay (backlog).
+
+### Production setup (not done by this phase)
+
+The live site loads the real project's config, but the project needs two
+one-time steps by its owner in the Firebase console, which cannot be done
+from this repository without the owner's credentials: enable **Anonymous**
+sign-in (Authentication was never initialised: the API answers
+`CONFIGURATION_NOT_FOUND`), and **publish `database.rules.json`** (the
+database is still in locked mode, denying everything). Until then the
+Multiplayer screen says "Multiplayer is not available right now" (tested);
+single-player is unaffected.
+README.md "Multiplayer" has the steps.

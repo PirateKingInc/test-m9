@@ -86,6 +86,17 @@ These shipped in Phase 9:
   window with nothing transferred
 * the balance matrix re-measured (no severe outlier, no intervention)
 
+## Phase 10: Multiplayer foundation (done)
+
+These shipped in Phase 10:
+* Firebase Realtime Database as a logged exception, used only for lobby
+  records and the one-time WebRTC handshake; restrictive security rules
+  tested against the Firebase emulator
+* lobbies with 6-character match codes, display names, a live list, up to 4
+  players, AI in the empty camps, leaving and a closing host handled
+* a direct WebRTC connection between every pair of players, proven by a
+  test message over each data channel
+
 ## Post-project (not scheduled)
 
 The project's phases are complete. These ideas were deliberately not
@@ -140,3 +151,12 @@ Phase 3.
 - [P10] **Hopeless elimination never fires in AI-vs-AI play** (0 of 2,697 falls in the Phase 9 matrix): the scripted camps always keep a Peasant, gold or a queued unit until their Castle falls. It is a safety net for human play; a real-player telemetry pass would show how often it fires and whether 5 s feels right.
 - [P10] A moving building shows as an ordinary construction site; a distinct "packed up" look (carts, crates) would tell the player it rebuilds itself without a Peasant.
 - [P10] **Turtle drifted up with auto-defend** (45% -> 48% on the same seeds; upper interval 51%): its home garrison benefits most from automatic defence. Inside the ~65% severe-outlier line of Phase 9 but at Phase 8's ~50% target line; see the Phase 8 strategy-spread item.
+- [P11] **Lockstep command sync.** Send each player's `world.issue()` commands over the data channels and step every browser's deterministic sim in lockstep (the seed and lineup are already agreed at the start). The sim is already deterministic and command-driven, which is what makes this tractable.
+- [P11] **AI takeover on disconnect.** When a player's connection drops mid-match, an AI engine (the free-for-all script for that camp) holds the camp until they return.
+- [P11] **Snapshot-based reconnection.** A returning player gets a snapshot of the world (or the command log) from a peer and catches up; this needs a way back into a started lobby, which Phase 10 deliberately does not have.
+- [P11] **In-match chat** over the existing data channels.
+- [P11] **TURN relay.** With public STUN only, players behind symmetric NAT or strict corporate/campus firewalls cannot connect directly; they see "could not connect directly". A TURN server (paid, or a free tier) would relay them. Phase 10's tests only prove same-machine connections (host candidates); real-world success rates across networks are unmeasured.
+- [P11] **Scheduled lobby sweeper.** Abandoned lobbies are removed by the host's disconnect handler and are inert after an hour, but one whose handler never ran and whose code is never tried again stays (about 1 KB). A scheduled job with an admin credential (a GitHub Actions cron with a service-account secret, or Cloud Functions on the paid plan) could sweep them. A query-restricted sweep in the rules was tried, but the emulator does not evaluate numeric `query.endAt` comparisons, so it could not be tested.
+- [P11] Rejoining a lobby after a network blip: a guest whose connection drops loses its slot (the server frees it); it has to join again with the code.
+- [P11] Host migration: if the host leaves, the lobby closes rather than passing to another player.
+- [P11] Mobile layout of the lobby screens is only checked at desktop size in the multiplayer tests; the lobby uses the menu's responsive card.

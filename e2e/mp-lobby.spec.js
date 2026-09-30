@@ -100,3 +100,13 @@ test('the host starts with two players: everyone sees the camps, the AI in the e
   expect([a, b, c].flatMap((p) => p.errors)).toEqual([]);
   for (const p of [a, b, c]) await p.context.close();
 });
+
+test('when the lobby server refuses the connection, the player gets a plain message', async ({ browser }) => {
+  const a = await player(browser, 'Ava');
+  // The real project before its one-time setup: sign-in is refused.
+  await a.page.route('**/identitytoolkit.googleapis.com/**', (r) => r.fulfill({ status: 400, contentType: 'application/json', body: '{"error":{"code":400,"message":"CONFIGURATION_NOT_FOUND"}}' }));
+  await a.page.locator('#mp-create').click();
+  await expect(status(a)).toHaveText('Multiplayer is not available right now (the lobby server did not accept the connection). Try again later.', { timeout: 15000 });
+  await expect(a.page.locator('#mp-entry')).toBeVisible();
+  await a.context.close();
+});

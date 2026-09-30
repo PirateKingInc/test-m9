@@ -199,7 +199,15 @@ async function play(page, query, ffa) {
     if (next && !pending && s.lumen >= cost[next.type]) {
       const ok = await build(next.type, next.spot);
       if (ok) { log.push(`${Math.round(s.time)}s placed ${next.type}`); placed.add(next.type); plan.splice(plan.indexOf(next), 1); }
-      else next.spot = { x: next.spot.x + 40, y: next.spot.y + 30 }; // blocked spot: try beside it next time
+      else { // missed (blocked spot, or a tap that didn't land): try around the planned spot next time
+        // A ring around the original spot, never drifting away from it: a
+        // cumulative shift once walked the target off the base after a few
+        // misses, and the bot never built its Tower (CI run 36683468406).
+        next.base ??= next.spot;
+        next.tries = (next.tries || 0) + 1;
+        const a = next.tries * 2.4;
+        next.spot = { x: next.base.x + Math.round(Math.cos(a) * 60), y: next.base.y + Math.round(Math.sin(a) * 60) };
+      }
     }
     await regather();
     s = await state();

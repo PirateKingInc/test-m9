@@ -7,13 +7,15 @@ yours. The **sandbox** (no opponent) is still available from the start screen.
 See [PROJECT.md](PROJECT.md) for the roadmap and scope. It was built in phases:
 a sandbox, an AI opponent, balance and polish, touch controls with sprite art
 drawn in code (Phase 4), the fantasy reskin with a wider zoom range
-(Phase 5), and a **four-camp free-for-all** with territory and conquest
-(Phase 6).
+(Phase 5), a **four-camp free-for-all** with territory and conquest
+(Phase 6), and the first half of **multiplayer**: lobbies with match codes
+and direct connections between players (Phase 10).
 
 **Play:** https://piratekinginc.github.io/test-m8/ (desktop with mouse and keyboard, or a phone/tablet with touch; landscape recommended)
 
 It's a static site with no build step. [Phaser 3](https://phaser.io) and
 [PathFinding.js](https://github.com/qiao/PathFinding.js) load from the jsDelivr CDN.
+Multiplayer alone also loads Firebase from Google's CDN (see "Multiplayer").
 All art is drawn in code, and all audio is synthesized with the Web Audio API.
 
 ## Playing against the AI
@@ -184,6 +186,74 @@ Three changes from player feedback ([PHASE9_SPEC.md](PHASE9_SPEC.md)):
   cancels and trainings) and leans toward leaving camps in. In a
   free-for-all its land becomes neutral and the gold it had is left in its
   home zone for whoever takes it; in a 1v1 the other side wins.
+
+## Multiplayer (Phase 10: lobby and connections)
+
+The first half of multiplayer free-for-all: players find each other and open
+direct connections. **Playing a match together over those connections is the
+next phase**; see [PHASE10_SPEC.md](PHASE10_SPEC.md).
+
+1. On the start screen choose **Free-for-all multiplayer** (the difficulty
+   you picked applies to any AI camps).
+2. Type a **display name** (1–16 characters, only for this lobby; there are
+   no accounts).
+3. **Create lobby**: you get a 6-character **match code** such as `KX7-P3M`
+   (no `0`, `O`, `1` or `I`, so it is easy to read out). Share it. The
+   waiting screen lists the four camps live: who has joined, and which AI
+   will play each empty camp.
+   **Join lobby**: type a code (case, spaces and the dash don't matter).
+4. Up to **4 players**; a fifth is told the lobby is full. The host can
+   **Start** once at least **2** players are in. Empty camps go to the same
+   AI scripts as single-player (Crimson Warband Raid, Rose Merchant Kingdom,
+   Jade Stone Bastion). Slot n plays camp n; the host is always Azure.
+5. Leaving (the Leave button, or just closing the tab) frees your place for
+   everyone at once. If the host leaves, the lobby closes and the others are
+   told.
+6. After the start, every pair of players opens a **direct WebRTC
+   connection** and proves it with a test message; the screen shows each
+   connection and its round trip. A connection that cannot be made directly
+   (some strict corporate or campus networks) is reported as such: there is
+   no relay server yet (backlog).
+
+### Firebase, and why its config is in the code
+
+Multiplayer uses **Firebase Realtime Database** (free Spark plan) with
+anonymous sign-in, loaded from Google's CDN only when Multiplayer is opened.
+It stores only lobby records (code, names, who holds which camp) and the
+one-time connection handshake; no game traffic goes through it. This is the
+project's one external service, a deliberate exception recorded in
+[PROJECT.md](PROJECT.md).
+
+The web config in `src/net/config.js` (the `apiKey` and friends) is **meant
+to be public**: it identifies the Firebase project and is not a password.
+What any client can read or write is decided on Google's servers by
+[`database.rules.json`](database.rules.json): default deny; lobbies can't be
+listed; a client writes only its own slot in a lobby it holds the code for;
+names and handshake data are size- and shape-checked; lobbies expire after
+an hour.
+
+**One-time production setup** (needs the project owner, in the Firebase
+console for `dragonmarch-7e5b8`):
+1. *Authentication* → Get started → *Sign-in method* → enable **Anonymous**.
+2. *Realtime Database* → *Rules* → paste `database.rules.json` → Publish (or
+   `npx firebase deploy --only database` after `npx firebase login`).
+
+Until both are done, the Multiplayer screen tells players it is not available
+right now; everything else works as before.
+
+### Tests against the emulator
+
+The multiplayer tests never touch the real project. They run against the
+**Firebase Local Emulator Suite** (`firebase-tools`, a dev dependency; the
+database emulator needs Java 11+):
+
+```bash
+npm run test:rules   # the security rules, over REST (writes outside your lobby, oversized and malformed data: refused)
+npm run test:mp      # several independent browsers: lobbies, live names, a full lobby, leaving, and real WebRTC connections
+```
+
+Both start the emulators, run, and stop them. CI runs them in the
+`multiplayer` job.
 
 ## Controls
 
@@ -365,6 +435,8 @@ npm run serve        # http://localhost:8080 (or open index.html via any static 
 npm test             # headless sim tests (node --test)
 npm run test:e2e     # Playwright browser tests, desktop and mobile emulation (npx playwright install chromium first)
 npm run test:mobile  # the touch-only playthroughs, 1v1 and free-for-all (their own CI job)
+npm run test:rules   # Phase 10: the Firebase security rules, against the emulator (needs Java 11+)
+npm run test:mp      # Phase 10: lobbies and real peer connections in several browsers, against the emulator
 node tools/travel.mjs  # the free-for-all camp spacing measurement
 node tools/symmetry.mjs  # every free-for-all march vs its mirror twins (median of 24)
 node tools/mirror-trace.mjs boom 120  # first tick a camp and its mirror twin differ
@@ -382,8 +454,9 @@ npm run balance -- --seeds 150 --mirrors --out balance/m.json  # side-bias check
 npm run balance -- --seeds 100 --offset 1000 --tiers hard   # a disjoint seed set, one tier
 ```
 
-CI runs the headless, browser and fairness suites and the mobile playthrough
-on every push and PR, with fairness and the playthrough as parallel jobs. The
+CI runs the headless, browser and fairness suites, the mobile playthrough and
+the multiplayer suites (rules and browsers, against the Firebase emulator) on
+every push and PR, the last four as parallel jobs. The
 headless suite includes one full bot-vs-bot match played to a result. The
 batch runner is a tool, not a CI job; its results are committed in `balance/`
 and reported in [BALANCE.md](BALANCE.md). Every merge to `main` runs the
@@ -434,6 +507,10 @@ exact commit.
 | `test/auto-defend.test.js` | Phase 9: idle soldiers engage intruders anywhere in an owned zone; orders are never overridden, nothing is recalled, Peasants stay out; they walk back to their post, not into a zone that fell |
 | `test/relocate.test.js`, `e2e/relocate.spec.js` | Phase 9: moving a building costs half and takes half the time, is an inert site in transit, can't capture a zone; the Castle can't move; mouse and touch flows |
 | `test/hopeless.test.js`, `e2e/hopeless.spec.js` | Phase 9: every false-positive safeguard as its own scenario, the reachability proof, the confirmation window, elimination and loot through the Phase 6 pipeline, no double firing, the 1v1 result card |
+| `test/rules/rules.test.js` (`npm run test:rules`, emulator) | Phase 10: the security rules. Signed-out clients get nothing; nothing outside a lobby's four records exists; only a lobby's own host creates, starts or closes it; one free slot per player with a 1–16 character name, never a fifth; only members signal each other, in bounded well-formed pieces, readable only by the recipient; an hour-old lobby is inert and anyone may delete it; lobbies can't be listed |
+| `test/net-code.test.js`, `test/net-lineup.test.js` | Phase 10: match codes never contain 0/O/1/I and match the rules' pattern; with fewer than 4 players the empty camps get the single-player AI scripts through the unchanged `Match` |
+| `e2e/mp-lobby.spec.js` (`npm run test:mp`, emulator) | Phase 10: independent browser contexts create and join by code and see each other's names live (2 and 4 players); a fifth is refused; bad codes are explained; leaving by button or closed tab updates everyone; the host closing closes the lobby; starting shows the camps with AI in the empty ones; a refused server connection gets a plain message |
+| `e2e/mp-connect.spec.js` (`npm run test:mp`, emulator) | Phase 10: 2, 3 and 4 players (and 2 separate Chromium processes) each end with a real WebRTC connection to every other player, proven by messages received over every data channel in both directions; the handshake is cleared from the database |
 | `e2e/tapzoom.spec.js` | Rapid taps never trigger the browser's double-tap zoom and each counts; the game's pinch still works |
 | `e2e/groups.spec.js` | Control groups without the browser's reserved Ctrl+1–8: Shift+digit, the HUD group bar, and Fullscreen with Keyboard Lock |
 

@@ -78,8 +78,12 @@ async function act(fn) {
 
 async function open() {
   status('Connecting…');
-  const [{ connect }, { Lobby }] = await Promise.all([import('./firebase.js'), import('./lobby.js')]);
-  const fb = await connect();
+  const [{ connect }, { Lobby, LobbyError }] = await Promise.all([import('./firebase.js'), import('./lobby.js')]);
+  let fb;
+  try { fb = await connect(); } catch (e) {
+    console.warn(e);
+    throw new LobbyError('Multiplayer is not available right now (the lobby server did not accept the connection). Try again later.');
+  }
   const lobby = new Lobby(fb);
   status('');
   return lobby;

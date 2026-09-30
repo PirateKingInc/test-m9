@@ -17,5 +17,5 @@ test('PROJECT.md records all phases and the project-wide out-of-scope list', () 
 test('BACKLOG.md entries are tagged with a future phase', () => {
   const items = read('BACKLOG.md').split('\n').filter((l) => l.startsWith('- '));
   assert.ok(items.length > 0);
-  for (const item of items) assert.match(item, /^- \[P(?:[2-9]|10)\]/, item);
+  for (const item of items) assert.match(item, /^- \[P(?:[2-9]|1[01])\]/, item);
 });
