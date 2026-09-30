@@ -1,6 +1,6 @@
 // Overlays drawn with Phaser Graphics each frame: selection, markers, the
 // placement ghost, health and progress bars. Sprites live in src/art.
-
+import { PLAYER } from './player.js';
 
 // Construction progress bar under an unfinished building's footprint.
 export function drawProgress(g, b) {
@@ -15,7 +15,7 @@ const SELECT = 0x7dffb0;
 const MARKER_COLORS = { move: 0x7dffb0, attack: 0xff5a5a, gather: 0xf2c23a, build: 0xffc24a };
 
 export function drawSelection(g, e, x, y) {
-  g.lineStyle(2, e.team && e.team !== 1 ? 0xff5a5a : SELECT, 0.9);
+  g.lineStyle(2, e.team && e.team !== PLAYER ? 0xff5a5a : SELECT, 0.9);
   if (e.kind === 'unit') g.strokeEllipse(x, y + e.radius * 0.35, e.radius * 2.6, e.radius * 1.5);
   else g.strokeRect(x - e.pw / 2 - 2, y - e.ph / 2 - 2, e.pw + 4, e.ph + 4);
 }

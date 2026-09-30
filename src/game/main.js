@@ -70,12 +70,24 @@ function start(mode) {
   } else {
     world = new World({ seed, PF: globalThis.PF, setup: 'start' });
   }
+  launch({
+    world, match,
+    stepSim: match ? () => match.step() : () => world.step(),
+    opponent: match ? { difficulty: difficultyName(difficulty), strategy: strategyName(match.ai.strategyId), ffa: mode === 'ffa' } : null,
+    speed: params.get('speed'),
+  });
+}
+
+// Start the game screen for a world. Single-player comes through start();
+// a multiplayer free-for-all (Phase 11, src/net/play.js) calls it directly,
+// with the lockstep as stepSim and the world as the UI sees it.
+export function launch({ world, match = null, stepSim, opponent = null, speed = 1, tutorialOn = true, gameWorld = world }) {
   const hud = new Hud();
   hud.brains = match ? match.brains : null; // the dev panel's targeting view (Phase 7)
   const touch = setupInputMode(); // Phase 4: touch chrome when the device is touch-first
   const sfx = new Sfx();
-  const scene = new GameScene(world, hud, sfx, match ? () => match.step() : () => world.step());
-  hud.setOpponent(match ? { difficulty: difficultyName(difficulty), strategy: strategyName(match.ai.strategyId), ffa: mode === 'ffa' } : null);
+  const scene = new GameScene(world, hud, sfx, stepSim);
+  hud.setOpponent(opponent);
 
   // Audio may only start after a user gesture.
   let greeted = false;
@@ -102,15 +114,16 @@ function start(mode) {
   hud.touchMode = touch.on;
   hud.setMuted(sfx.muted); // wording depends on the input mode
   touch.onChange((on) => { hud.touchMode = on; hud.setMuted(sfx.muted); });
-  scene.speed = Math.min(16, Math.max(1, Math.round(Number(params.get('speed')) || 1)));
+  scene.speed = Math.min(16, Math.max(1, Math.round(Number(speed) || 1)));
   hud.bindTouchBar(() => scene.ui, scene);
-  const tutorial = startTutorial(sfx, !!match, touch.on ? 'touch' : 'mouse');
-  touch.onChange((on) => tutorial.setMode(on ? 'touch' : 'mouse'));
+  const tutorial = tutorialOn ? startTutorial(sfx, !!match, touch.on ? 'touch' : 'mouse') : null;
+  if (tutorial) touch.onChange((on) => tutorial.setMode(on ? 'touch' : 'mouse'));
   hud.onSoundTap = () => hud.setMuted(sfx.toggleMute());
-  setInterval(() => { if (scene.ui && !world.result) tutorial.update(world, scene.ui); }, 250);
+  if (tutorial) setInterval(() => { if (scene.ui && !world.result) tutorial.update(world, scene.ui); }, 250);
 
   // Handle for e2e tests and debugging.
-  window.__game = { world, scene, game, sfx, match, tutorial };
+  window.__game = { world: gameWorld, scene, game, sfx, match, tutorial, hud };
+  return window.__game;
 }
 
 // Touch mode: on for coarse-pointer devices or after the first touch, or forced

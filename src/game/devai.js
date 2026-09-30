@@ -4,6 +4,7 @@
 // a brain to compute one (that would change when the AI thinks).
 import { TEAM_TEXT, ZONE_TEXT } from '../theme/names.js';
 import { TEAM } from '../art/palette.js';
+import { PLAYER } from './player.js';
 
 const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
 const named = (s) => String(s).replace(/camp (\d)/g, (_, t) => TEAM_TEXT[t] || `camp ${t}`)
@@ -13,7 +14,7 @@ const camp = (t) => `<b style="color:${TEAM[t]?.base || '#ccc'}">${esc(TEAM_TEXT
 export function targetingHtml(brains) {
   const rows = [];
   for (const b of brains) {
-    if (b.team === 1 || !b.w.camps || b.w.camps.length <= 2) continue; // AI camps in a free-for-all
+    if (b.team === PLAYER || !b.w.camps || b.w.camps.length <= 2) continue; // AI camps in a free-for-all
     const i = b.intelCache;
     if (!b.core()) { rows.push(`<div class="dev-ai-camp">${camp(b.team)} · eliminated</div>`); continue; }
     const posture = b.stance ? named(b.stance) : 'building up (no wave yet)';

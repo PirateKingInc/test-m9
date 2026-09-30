@@ -1,6 +1,7 @@
 // Procedural sound effects via the Web Audio API (no asset files).
 // Driven by the sim's event stream plus UI notifications. Rate-limited per
 // sound and capped in total voices so 40 units fighting never clip.
+import { PLAYER } from './player.js';
 
 const MIN_GAP = { alert0: 1, alert1: 1, attack: 0.07, death: 0.05, dropoff: 0.12, select: 0.05, command: 0.05, rejected: 0.3, built: 0.2, trained: 0.15, placed: 0.1, cancelled: 0.1, depleted: 0.3, core: 0.5, zone: 0.5, bell: 1 };
 
@@ -122,7 +123,7 @@ export class Sfx {
   }
 
   // End-of-match stinger for the player's team.
-  stinger(result, team = 1) {
+  stinger(result, team = PLAYER) {
     if (result.winner === team) {
       [523, 659, 784, 1046].forEach((f, i) => this.tone(`victory${i}`, { freq: f, type: 'triangle', dur: i === 3 ? 0.7 : 0.16, vol: 0.32, delay: i * 0.14 }));
     } else if (result.winner == null) {
@@ -134,7 +135,7 @@ export class Sfx {
 
   // World events, attenuated by distance from the camera center (cx, cy).
   // `team` is the player's team: build/train/cancel cues are for it alone.
-  handle(events, cx = 0, cy = 0, team = 1) {
+  handle(events, cx = 0, cy = 0, team = PLAYER) {
     for (const e of events) {
       const d = e.x !== undefined ? Math.hypot(e.x - cx, e.y - cy) : 0;
       const near = Math.max(0, 1 - d / HEARING);

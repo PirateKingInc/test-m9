@@ -1,7 +1,7 @@
 // First-run tutorial (Phase 3; per input mode since Phase 4): a short, non-blocking sequence of hints that
 // advance as the player does each thing. Shown until finished or skipped; the
 // "done" flag lives in localStorage (guarded: storage may be unavailable).
-import { PLAYER } from '../sim/constants.js';
+import { PLAYER } from './player.js';
 
 const KEY = 'prism-tutorial-v1';
 

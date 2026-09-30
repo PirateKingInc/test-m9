@@ -1,4 +1,5 @@
 import { SIM_DT } from '../sim/constants.js';
+import { PLAYER } from './player.js';
 import { drawProgress, drawSelection, drawMarker, drawGhost, drawHealth, drawCrosshair } from './draw.js';
 import { InputController } from './input.js';
 import { Effects } from './effects.js';
@@ -87,7 +88,7 @@ export class GameScene extends Phaser.Scene {
 
   centerOnCore() {
     for (const b of this.world.ofKind('building')) {
-      if (b.type === 'core' && b.team === 1) { this.cameras.main.centerOn(b.x, b.y); return; }
+      if (b.type === 'core' && b.team === PLAYER) { this.cameras.main.centerOn(b.x, b.y); return; }
     }
   }
 
@@ -123,7 +124,8 @@ export class GameScene extends Phaser.Scene {
     this.acc += dt * speed;
     let steps = 0;
     while (this.acc >= SIM_DT && steps < maxSteps) {
-      this.stepSim();
+      // A multiplayer match returns false when it must wait (Phase 11).
+      if (this.stepSim() === false) { this.acc = Math.min(this.acc, SIM_DT); break; }
       this.acc -= SIM_DT;
       steps++;
     }
@@ -135,10 +137,10 @@ export class GameScene extends Phaser.Scene {
       this.effects.add(events, this.world.time);
       this.stats.add(events);
       for (const e of events) {
-        if (e.type === 'rejected' && e.team === 1) this.hud?.toast(reasonText(e.reason));
+        if (e.type === 'rejected' && e.team === PLAYER) this.hud?.toast(reasonText(e.reason));
         if (e.type === 'eliminated' || e.type === 'zoneCaptured') this.hud?.ffaEvent(e);
         // Under-attack cue: enemy fire hitting our units or buildings (throttled).
-        if (e.type === 'attack' && e.team !== 1 && this.world.get(e.target)?.team === 1) {
+        if (e.type === 'attack' && e.team !== PLAYER && this.world.get(e.target)?.team === PLAYER) {
           this.lastAttack = { x: e.tx, y: e.ty };
           if (this.world.time - (this.lastAlertAt ?? -Infinity) >= UNDER_ATTACK_COOLDOWN) {
             this.lastAlertAt = this.world.time;

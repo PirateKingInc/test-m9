@@ -2,6 +2,7 @@
 // shake, spawned from sim events. Never touches sim state, so it can use
 // Math.random freely without affecting determinism.
 import { TEAM, GOLD, hex } from '../art/palette.js';
+import { PLAYER } from './player.js';
 const LIFE = { arrow: 0.16, flame: 0.28, spark: 0.18, burst: 0.7, text: 0.9, ring: 0.5, flash: 0.12, shock: 1.1 };
 const MAX_EFFECTS = 400;
 const TEAM_FX = Object.fromEntries(Object.entries(TEAM).map(([t, c]) => [t, hex(c.base)]));
@@ -56,7 +57,7 @@ export class Effects {
         });
         this.push({ kind: 'burst', t: now, x: e.x, y: e.y, parts, color: GOLD_FX });
         this.floatText(e.x, e.y - 18, 'Mined out', GOLD.light);
-      } else if (e.type === 'dropoff' && e.team === 1) {
+      } else if (e.type === 'dropoff' && e.team === PLAYER) {
         this.floatText(e.x, e.y - 14, `+${e.amount}`, GOLD.base);
       } else if (e.type === 'built') {
         const b = this.scene.world.get(e.id);

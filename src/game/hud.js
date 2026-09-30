@@ -1,5 +1,5 @@
 import { targetingHtml } from './devai.js';
-import { PLAYER } from '../sim/constants.js';
+import { PLAYER } from './player.js';
 import { supplyOf } from '../sim/supply.js';
 import { UNITS } from '../data/units.js';
 import { BUILDINGS } from '../data/buildings.js';

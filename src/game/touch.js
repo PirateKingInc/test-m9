@@ -3,7 +3,7 @@
 // controller's selectAt/selectBox/command/attackMoveTo/place, which are the
 // only callers of world.issue(). See PHASE4_SPEC.md "The touch model".
 import { pickAt } from '../sim/selection.js';
-import { PLAYER } from '../sim/constants.js';
+import { PLAYER } from './player.js';
 import { ZOOM, zoomAbout } from './camera.js';
 
 export const TOUCH = {

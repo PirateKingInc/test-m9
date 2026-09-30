@@ -1,6 +1,6 @@
 // Mouse/keyboard -> selection state and world commands. Never mutates the sim directly.
 import { pickAt, boxSelect, Selection, ControlGroups } from '../sim/selection.js';
-import { PLAYER } from '../sim/constants.js';
+import { PLAYER } from './player.js';
 import { BUILDINGS, BUILD_ORDER, PRODUCTION } from '../data/buildings.js';
 import { UNITS } from '../data/units.js';
 import { unitName, buildingName } from '../theme/names.js';
