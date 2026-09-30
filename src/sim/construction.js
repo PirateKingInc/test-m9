@@ -1,5 +1,6 @@
 // Building placement and construction (SPEC.md "Buildings").
 import { BUILDINGS, CONSTRUCTION } from '../data/buildings.js';
+import { RELOCATE } from '../data/camp-rules.js';
 import { registerCommand, registerOrder, ownUnits } from './orders.js';
 import { gap } from './geometry.js';
 import { approach, canStand, clearPath } from './movement.js';
@@ -7,6 +8,31 @@ import { approach, canStand, clearPath } from './movement.js';
 export function canPlace(world, type, tx, ty) {
   const def = BUILDINGS[type];
   return !!def && world.grid.isRectFree(tx, ty, def.w, def.h);
+}
+
+// Moving a completed building (Phase 9, PHASE9_SPEC.md "Part B"): the same
+// placement rule, with the building's own current footprint counting as free.
+export function canRelocate(world, b, tx, ty) {
+  const def = BUILDINGS[b.type], g = world.grid;
+  for (let y = ty; y < ty + def.h; y++) {
+    for (let x = tx; x < tx + def.w; x++) {
+      if (!g.inBounds(x, y)) return false;
+      const i = g.idx(x, y);
+      if (g.rock[i] || (g.occupant[i] && g.occupant[i] !== b.id)) return false;
+    }
+  }
+  return true;
+}
+
+export const relocateCost = (type) => Math.floor(BUILDINGS[type].cost * RELOCATE.costShare);
+
+// Why a building can't be moved right now, or null.
+export function relocateBlocked(world, b) {
+  if (!b.built) return 'Finish building it first';
+  if (RELOCATE.fixed.includes(b.type)) return "The Castle can't be moved";
+  if (b.queue.length) return 'Finish or cancel training first';
+  if ((world.resources[b.team] || 0) < relocateCost(b.type)) return 'Not enough gold';
+  return null;
 }
 
 // Push units standing on a freshly blocked footprint to the nearest free tile.
@@ -39,6 +65,27 @@ registerCommand('build', (world, cmd) => {
   builder.order = { type: 'build', target: b.id };
   clearPath(builder);
   return { ok: true, id: b.id };
+});
+
+// Move: the old building is removed at once and a construction site of the
+// same type goes up at the new spot for costShare of the cost, in timeShare
+// of the build time. The crew moves with it: it needs no Peasant.
+registerCommand('relocate', (world, cmd) => {
+  const team = cmd.team ?? 1, b = world.get(cmd.id);
+  if (!b || b.kind !== 'building' || b.team !== team) return { ok: false };
+  const blocked = relocateBlocked(world, b);
+  if (blocked) return { ok: false, reason: blocked };
+  if (!canRelocate(world, b, cmd.tx, cmd.ty)) return { ok: false, reason: "Can't build there" };
+  const cost = relocateCost(b.type);
+  world.resources[team] -= cost;
+  const rally = b.rally;
+  world.removeEntity(b);
+  const nb = world.addBuilding(b.type, team, cmd.tx, cmd.ty);
+  nb.hp = nb.maxHp * CONSTRUCTION.startHpFraction;
+  nb.relocating = true;
+  nb.rally = rally;
+  evictUnits(world, nb);
+  return { ok: true, id: nb.id, cost };
 });
 
 registerCommand('assist', (world, cmd) => {
@@ -75,13 +122,14 @@ registerOrder('build', (world, u, dt) => {
 export function updateConstruction(world, dt) {
   for (const b of world.ofKind('building')) {
     if (b.built) continue;
-    if (b.buildingNow) {
+    if (b.buildingNow || b.relocating) { // a moving building rebuilds itself (Phase 9), at its own pace
       const def = BUILDINGS[b.type];
-      const k = dt / def.buildTime;
+      const k = dt / (def.buildTime * (b.relocating ? RELOCATE.timeShare : 1));
       b.progress = Math.min(1, b.progress + k);
       b.hp = Math.min(b.maxHp, b.hp + b.maxHp * (1 - CONSTRUCTION.startHpFraction) * k);
       if (b.progress >= 1) {
         b.built = true;
+        b.relocating = false;
         world.emit('built', { id: b.id, building: b.type, team: b.team });
       }
     }

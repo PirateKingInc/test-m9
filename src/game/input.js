@@ -4,7 +4,8 @@ import { PLAYER } from '../sim/constants.js';
 import { BUILDINGS, BUILD_ORDER, PRODUCTION } from '../data/buildings.js';
 import { UNITS } from '../data/units.js';
 import { unitName, buildingName } from '../theme/names.js';
-import { canPlace } from '../sim/construction.js';
+import { canPlace, canRelocate, relocateCost, relocateBlocked } from '../sim/construction.js';
+import { RELOCATE } from '../data/camp-rules.js';
 import { supplyOf } from '../sim/supply.js';
 import { TouchInput } from './touch.js';
 
@@ -22,6 +23,7 @@ export class InputController {
     this.lastGroup = { n: 0, at: -1 };
     this.listeners = new Set();
     this.placing = null; // building type while in placement mode
+    this.moving = null; // id of the building being moved while placing (Phase 9)
     this.attackMode = false; // A pressed: next left-click is an attack-move
     this.devSpawn = null; // dev panel: unit type to spawn for team 2 on next left-click
     this.hover = { x: 0, y: 0 };
@@ -151,11 +153,31 @@ export class InputController {
     if (!this.placing) return null;
     const def = BUILDINGS[this.placing], T = this.world.grid.tile;
     const tx = Math.round(this.hover.x / T - def.w / 2), ty = Math.round(this.hover.y / T - def.h / 2);
-    return { type: this.placing, tx, ty, w: def.w, h: def.h, valid: canPlace(this.world, this.placing, tx, ty) };
+    const moved = this.movingBuilding();
+    const valid = moved ? canRelocate(this.world, moved, tx, ty) : canPlace(this.world, this.placing, tx, ty);
+    return { type: this.placing, tx, ty, w: def.w, h: def.h, valid };
+  }
+
+  // The building being moved, while its new spot is being placed (Phase 9).
+  movingBuilding() {
+    if (!this.placing || this.moving == null) return null;
+    const b = this.world.get(this.moving);
+    return b && b.type === this.placing ? b : null;
   }
 
   place(keepPlacing) {
     const g = this.ghost();
+    const moved = this.movingBuilding();
+    if (moved) { // Phase 9: confirm the move
+      const res = this.world.issue({ type: 'relocate', id: moved.id, tx: g.tx, ty: g.ty });
+      if (res.ok) {
+        const T = this.world.grid.tile;
+        this.mark((g.tx + g.w / 2) * T, (g.ty + g.h / 2) * T, 'build');
+        this.placing = null; this.moving = null;
+        this.selection.set([res.id]);
+      }
+      return;
+    }
     const drones = this.ownSelected('unit').filter((u) => u.type === 'drone');
     const res = this.world.issue({ type: 'build', ids: drones.map((u) => u.id), building: g.type, tx: g.tx, ty: g.ty });
     if (res.ok) {
@@ -176,12 +198,17 @@ export class InputController {
       });
     }
     const trainer = sel.length === 1 && sel[0].kind === 'building' && sel[0].built ? sel[0] : null;
+    // Phase 9: any completed building but the Castle can be moved.
+    const move = trainer && !RELOCATE.fixed.includes(trainer.type)
+      ? [{ key: 'V', label: 'Move', cost: relocateCost(trainer.type), action: 'move', enabled: !relocateBlocked(this.world, trainer), active: this.moving === trainer.id }]
+      : [];
     if (trainer && BUILDINGS[trainer.type].trains.length) {
-      return BUILDINGS[trainer.type].trains.map((unit, i) => ({
+      return [...BUILDINGS[trainer.type].trains.map((unit, i) => ({
         key: 'QWER'[i], label: unitName(unit), cost: UNITS[unit].cost, action: `train:${unit}`,
         enabled: lumen >= UNITS[unit].cost && trainer.queue.length < PRODUCTION.maxQueue && supplyOf(this.world, PLAYER).free >= UNITS[unit].supply,
-      }));
+      })), ...move];
     }
+    if (move.length) return move;
     if (sel.length === 1 && sel[0].kind === 'building' && !sel[0].built) {
       return [{ key: 'X', label: 'Cancel build', cost: null, action: 'cancel-build', enabled: true }];
     }
@@ -190,8 +217,19 @@ export class InputController {
 
   action(name) {
     const [verb, arg] = name.split(':');
-    if (verb === 'build') {
+    if (verb === 'move') { // Phase 9: place the moved building's new spot
+      const b = this.ownSelected('building')[0];
+      const why = b && relocateBlocked(this.world, b);
+      if (!b || why) { if (why) this.world.emit('rejected', { reason: why, team: PLAYER }); this.notify('action', { name }); return; }
+      this.placing = b.type;
+      this.moving = b.id;
+      this.armed = null;
+      this.boxArmed = false;
+      if (this.scene.touchMode) { const v = this.scene.cameras.main.midPoint; this.hover = { x: v.x, y: v.y }; }
+    }
+    else if (verb === 'build') {
       this.placing = arg;
+      this.moving = null;
       this.armed = null;
       this.boxArmed = false;
       // On touch there is no hover: start the ghost in the middle of the screen.

@@ -23,7 +23,7 @@ import { createRng } from '../sim/rng.js';
 // Everything a player can do through the UI, and nothing else (no devSpawn).
 export const ALLOWED_COMMANDS = new Set([
   'build', 'assist', 'cancelBuild', 'train', 'cancelTrain', 'rally',
-  'gather', 'returnCargo', 'move', 'stop', 'attack', 'attackMove',
+  'gather', 'returnCargo', 'move', 'stop', 'attack', 'attackMove', 'relocate',
 ]);
 
 import { COMBAT_TYPES } from './engine-types.js';

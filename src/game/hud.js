@@ -100,7 +100,7 @@ export class Hud {
 
   // What the next tap will do, in words (touch only).
   armedText(ui, world) {
-    if (ui.placing) return `Drag to position the ${buildingName(ui.placing)}, lift your finger to build. ✕ cancels.`;
+    if (ui.placing) return `Drag to position the ${buildingName(ui.placing)}, lift your finger to ${ui.moving != null ? 'move it there' : 'build'}. ✕ cancels.`;
     if (ui.boxArmed) return '▭ Drag a box around your units';
     if (ui.armed === 'attack') return '⚔ Tap where to attack-move: units fight anything on the way';
     if (ui.armed === 'order') {
@@ -350,6 +350,7 @@ export function tooltip(b) {
     const d = BUILDINGS[type];
     return `${buildingName(type)} (${b.key}): ${BUILDING_HINTS[type](d)} ${d.cost} gold, ${d.buildTime}s, HP ${d.hp}.`;
   }
+  if (verb === 'move') return `Move (${b.key}): rebuild this building elsewhere for ${b.cost} gold (half its cost) in half its build time. It stops working until it is up again.`;
   return `${b.label} (${b.key})`;
 }
 
