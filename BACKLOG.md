@@ -97,6 +97,22 @@ These shipped in Phase 10:
 * a direct WebRTC connection between every pair of players, proven by a
   test message over each data channel
 
+## Phase 11: Lockstep play, disconnects, reconnection (done)
+
+These shipped in Phase 11:
+* deterministic lockstep over Phase 10's data channels (a 200 ms input
+  delay, no authoritative peer), with engine-independent Math and a
+  permanent whole-state desync check
+* a new AI hold mode for a disconnected player's camp (army home, queued
+  work finishes, no new decisions, Phase 9 auto-defend), with Firebase
+  presence as the arbiter so a peer that lost its own connection never
+  takes anyone over
+* reconnection after a reload from a snapshot served over the data channels
+  by any connected player, the host included, and handback after a steady
+  link
+* in-match chat over the data channels
+The deferred items are at the end of the list below, tagged [P11].
+
 ## Post-project (not scheduled)
 
 The project's phases are complete. These ideas were deliberately not
@@ -151,12 +167,15 @@ Phase 3.
 - [P10] **Hopeless elimination never fires in AI-vs-AI play** (0 of 2,697 falls in the Phase 9 matrix): the scripted camps always keep a Peasant, gold or a queued unit until their Castle falls. It is a safety net for human play; a real-player telemetry pass would show how often it fires and whether 5 s feels right.
 - [P10] A moving building shows as an ordinary construction site; a distinct "packed up" look (carts, crates) would tell the player it rebuilds itself without a Peasant.
 - [P10] **Turtle drifted up with auto-defend** (45% -> 48% on the same seeds; upper interval 51%): its home garrison benefits most from automatic defence. Inside the ~65% severe-outlier line of Phase 9 but at Phase 8's ~50% target line; see the Phase 8 strategy-spread item.
-- [P11] **Lockstep command sync.** Send each player's `world.issue()` commands over the data channels and step every browser's deterministic sim in lockstep (the seed and lineup are already agreed at the start). The sim is already deterministic and command-driven, which is what makes this tractable.
-- [P11] **AI takeover on disconnect.** When a player's connection drops mid-match, an AI engine (the free-for-all script for that camp) holds the camp until they return.
-- [P11] **Snapshot-based reconnection.** A returning player gets a snapshot of the world (or the command log) from a peer and catches up; this needs a way back into a started lobby, which Phase 10 deliberately does not have.
-- [P11] **In-match chat** over the existing data channels.
 - [P11] **TURN relay.** With public STUN only, players behind symmetric NAT or strict corporate/campus firewalls cannot connect directly; they see "could not connect directly". A TURN server (paid, or a free tier) would relay them. Phase 10's tests only prove same-machine connections (host candidates); real-world success rates across networks are unmeasured.
 - [P11] **Scheduled lobby sweeper.** Abandoned lobbies are removed by the host's disconnect handler and are inert after an hour, but one whose handler never ran and whose code is never tried again stays (about 1 KB). A scheduled job with an admin credential (a GitHub Actions cron with a service-account secret, or Cloud Functions on the paid plan) could sweep them. A query-restricted sweep in the rules was tried, but the emulator does not evaluate numeric `query.endAt` comparisons, so it could not be tested.
 - [P11] Rejoining a lobby after a network blip: a guest whose connection drops loses its slot (the server frees it); it has to join again with the code.
 - [P11] Host migration: if the host leaves, the lobby closes rather than passing to another player.
 - [P11] Mobile layout of the lobby screens is only checked at desktop size in the multiplayer tests; the lobby uses the menu's responsive card.
+- [P11] **The TURN relay is still missing, and now it matters for reconnection too.** A player who cannot connect directly can neither play nor rejoin: the rejoin re-opens WebRTC through the same STUN-only path. All multiplayer tests run on one machine (host candidates); success rates across real home, mobile and corporate networks are unmeasured.
+- [P11] **Determinism across engines is proven by tests, not guaranteed by the platform.** Every Math function the simulation uses that the language leaves engine-defined (sin, cos, atan2, hypot) is replaced during multiplayer, and CI plays Chromium, Firefox and WebKit together. A future sim change that calls another approximated function (exp, log, pow with non-integer exponents, tan, asin...) would reopen the risk; the desync check would catch it in play, and the cross-engine CI job should catch it first.
+- [P11] Rejoin needs the same tab (the anonymous Firebase user lives in the tab's session storage). A player who closes the tab, or switches device, cannot take their camp back; the AI holds it for the rest of the match.
+- [P11] The AI hold never gives a camp back to anyone else, and there is no way to hand a camp to the AI on purpose (a "leave, let the AI play" button).
+- [P11] A rejoin snapshot is about 120–135 KB of JSON in a four-camp match (measured at 5, 10 and 11 minutes), sent in 16 KB chunks, plus up to 30 s of turns. Compressing it (a CompressionStream over the JSON) would cut it several times; not needed at today's sizes.
+- [P11] Spectating a multiplayer match (a fifth person watching), and matchmaking or persistent identity: out of scope for Phase 11.
+- [P11] Real-network latency above the 200 ms input delay slows the game for everyone (it waits for the late turns: about 12 ticks per second at 150–400 ms per message, measured). An adaptive input delay (raised for the match when a peer's round trip is high) would keep the pace smooth at the cost of a laggier feel.

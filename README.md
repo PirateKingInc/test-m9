@@ -187,11 +187,12 @@ Three changes from player feedback ([PHASE9_SPEC.md](PHASE9_SPEC.md)):
   free-for-all its land becomes neutral and the gold it had is left in its
   home zone for whoever takes it; in a 1v1 the other side wins.
 
-## Multiplayer (Phase 10: lobby and connections)
+## Multiplayer (Phases 10 and 11)
 
-The first half of multiplayer free-for-all: players find each other and open
-direct connections. **Playing a match together over those connections is the
-next phase**; see [PHASE10_SPEC.md](PHASE10_SPEC.md).
+Free-for-all for 2–4 people, each in their own browser, plus AI for any empty
+camp. Phase 10 is the lobby and the direct connections
+([PHASE10_SPEC.md](PHASE10_SPEC.md)); Phase 11 is playing the match over them,
+disconnects, reconnection and chat ([PHASE11_SPEC.md](PHASE11_SPEC.md)).
 
 1. On the start screen choose **Free-for-all multiplayer** (the difficulty
    you picked applies to any AI camps).
@@ -214,6 +215,55 @@ next phase**; see [PHASE10_SPEC.md](PHASE10_SPEC.md).
    connection and its round trip. A connection that cannot be made directly
    (some strict corporate or campus networks) is reported as such: there is
    no relay server yet (backlog).
+7. Once every connection is proven, **the match starts by itself** (about
+   2 s later) on every screen. You command your own camp (the banner says
+   which colour you are); everything else works as in single-player.
+
+### Playing together: lockstep
+
+No computer is in charge (the host only runs the lobby). Every browser runs
+the whole simulation, and they stay identical by running the same commands
+at the same moments: your orders are sent to every other player and carried
+out **4 ticks (200 ms) after you give them**, on every screen at once. That
+short delay hides normal network lag, so play feels smooth up to a few
+hundred milliseconds of latency. If someone's orders are late, every game
+waits for them ("Waiting for Bram…") instead of guessing. The games check
+each other's full state every 5 s; if they ever differed, the match would
+stop and say so rather than carry on out of step (it has never happened in
+testing).
+
+### When a player disconnects: the AI holds their camp
+
+- A short drop (Wi-Fi hiccup, a phone switching networks) just pauses
+  everyone for a moment, and the connection is re-opened automatically.
+- A player gone for longer than **50 seconds** (and no longer seen by the
+  lobby server) is taken over by a **hold AI**. It pulls their army home,
+  lets anything already queued finish, and makes **no new decisions**: no
+  attacks, no building, no expansion. Their units still defend their own camp
+  (the Phase 9 auto-defend). Everyone is told: "Bram is disconnected: the AI
+  holds their camp."
+- The held camp is a normal camp for winning and losing. The match still ends
+  by last camp standing, a hopeless position or the time limit.
+
+### Coming back
+
+Reload the page (or reopen it in the same tab) and the game rejoins your
+match by itself. It reconnects to the others through the same lobby
+handshake, downloads a snapshot of the match from any player who is still
+connected (not from Firebase), fast-forwards through what happened since, and
+checks its state against that player's. You get your camp back
+automatically once your connection has been steady for **5 seconds** ("You
+are back in control of your camp."). This also works when the host is the
+one who left. If nobody is left to send you the snapshot, the screen says it
+is waiting for another player.
+
+### Chat
+
+The box at the top right sends a line to every player (Enter to send,
+Escape to leave the box). It goes over the same direct connections, shows
+lobby names, is limited to 200 characters and 5 lines per 5 seconds, and is
+kept only in memory: nothing is saved, and a reloaded page starts empty.
+Typing in it never triggers game shortcuts.
 
 ### Firebase, and why its config is in the code
 
@@ -230,7 +280,8 @@ What any client can read or write is decided on Google's servers by
 [`database.rules.json`](database.rules.json): default deny; lobbies can't be
 listed; a client writes only its own slot in a lobby it holds the code for;
 names and handshake data are size- and shape-checked; lobbies expire after
-an hour.
+an hour (a started match can still re-signal for 3 hours, for reconnection);
+during a match each player may mark only itself as present.
 
 **One-time production setup** (needs the project owner, in the Firebase
 console for `dragonmarch-7e5b8`):
@@ -249,11 +300,16 @@ database emulator needs Java 11+):
 
 ```bash
 npm run test:rules   # the security rules, over REST (writes outside your lobby, oversized and malformed data: refused)
-npm run test:mp      # several independent browsers: lobbies, live names, a full lobby, leaving, and real WebRTC connections
+npm run test:mp      # several independent browsers: lobbies, connections, whole matches, disconnects and rejoins, chat
+npm run test:engines # one match with a Chromium, a Firefox and a WebKit player (needs `npx playwright install firefox webkit`)
 ```
 
-Both start the emulators, run, and stop them. CI runs them in the
-`multiplayer` job.
+Each starts the emulators, runs, and stops them. CI runs them in the
+`multiplayer` and `cross-engine` jobs. The lockstep and the protocol also have
+Node tests that need no emulator (`npm test`): the determinism gate
+(`test/lockstep-gate.test.js`: 2–4 peers in one process, byte-identical at
+every tick) and the protocol on a simulated network (`test/session.test.js`:
+takeover, rejoin, hysteresis, the host leaving, chat).
 
 ## Controls
 

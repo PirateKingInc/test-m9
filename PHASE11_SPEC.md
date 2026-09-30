@@ -20,7 +20,9 @@ persistent identity.
 
 ```
 src/net/menu.js, lobby.js, mesh.js, firebase.js   Phase 10: lobby, signaling, connections
-src/net/transport.js   data channels -> Session (browser); a fake network in tests
+src/net/play.js        starts or rejoins a match, the metronome, the game screen, the panel
+src/net/links.js       the data channels under a match (reopened through Phase 10's signaling)
+src/net/presence.js    Firebase presence: the arbiter against split brain
 src/net/session.js     the protocol: turns, heartbeats, votes, snapshots, chat (no browser APIs)
 src/net/lockstep.js    the tick engine: turns in, Match steps out (no network at all)
 src/net/snapshot.js    whole-match serialization, restore, state hash
@@ -95,9 +97,12 @@ All JSON over the Phase 10 data channel (`dragonmarch`, reliable and ordered).
 | `hb` | `s`, `k` current tick | heartbeat, every 500 ms |
 | `need` | `s`, `x` slot, `from`, `to` | "send me `x`'s turns for these ticks" |
 | `vote` | `s`, `x` slot, `last` | "`x` is gone; the last turn of `x` I hold is `last`" |
+| `hold` | `s`, `x` slot, `from` | the vote's outcome: `x` is held from tick `from` |
+| `yield` | `s`, `x` slot | a returning player asks to be held first (see Rejoining) |
 | `hash` | `s`, `k`, `h` | state hash after tick `k` |
 | `snapreq` | `s` | "send me a snapshot" (a rejoining player) |
 | `snap` | `s`, `id`, `i`, `n`, `d` | chunk `i` of `n` of a snapshot |
+| `nosnap` | `s` | "not yet": the requester is not held yet; it asks again |
 | `chat` | `s`, `id`, `text` | a chat line |
 
 A command is the object the UI or AI passes to `world.issue`, e.g.
@@ -121,7 +126,7 @@ arrays only, so it survives JSON exactly.
   **split brain**: without them, two players who lose each other would each
   continue with the other's camp held by AI and see different realities. The
   player whose own connection died can't reach Firebase, so it freezes and
-  shows "Connection lost" instead of continuing alone.
+  shows "Connection lost. Reconnecting…" instead of continuing alone.
 - **Agreement.** Voters are the players still in control who are not
   themselves gone. When a peer holds votes about X from all of them, X is held
   from tick `C = max(last) + 1`. Every peer computes the same `C` from the same
@@ -143,7 +148,11 @@ arrays only, so it survives JSON exactly.
   (below), then have a **stable link for 5 s** (`handbackStableMs`: heartbeats
   with no gap over 1.5 s). Only then does the lowest-slot connected player put
   a `back` system command in its turn for tick *T*, returning the camp to its
-  player from tick *T + 4*. One heartbeat is never enough.
+  player from tick *T + 5* (one tick after the input delay, so every peer,
+  the returning one included, has the decision before it takes effect). One
+  heartbeat is never enough. "Caught up" means the returning player's own
+  heartbeats show it at the live edge and holding the same view of who is
+  held.
 - Every takeover and handback is announced to everyone ("Rose is disconnected:
   the AI holds their camp" / "Rose is back in control").
 
@@ -167,9 +176,15 @@ arrays only, so it survives JSON exactly.
   the connection, as in Phase 10.
 - **Rejoining:** the player reloads (or their tab reconnects); the same tab
   keeps its anonymous identity (session persistence) and is still a lobby
-  member; it re-signals every other player through Phase 10's signal paths,
-  receives a snapshot, restores it, replays the turns after it (hundreds of
-  ticks take well under a second), and is live, then handed back as above.
+  member; it re-signals every other player through Phase 10's signal paths.
+  **Clean cutover:** it first sends `yield` (asking to be held), because a
+  reload inside the grace period would otherwise leave turns its old tab sent
+  and turns its new tab will send competing for the same ticks. A snapshot is
+  only served to a player already held (else `nosnap`, and it asks again), so
+  the new tab's first turn is always after the hold. It then receives the
+  snapshot, restores it, replays the turns after it (catching up at up to 60
+  ticks per frame), compares its whole-state hash at the snapshot tick with
+  the server's, and is live, then handed back as above.
 - **No one to serve:** if no other player is connected, the screen shows
   "Waiting for another player to come back…" and keeps trying.
 - The lobby must outlive a disconnect during a match, so at the start the host
@@ -199,3 +214,87 @@ match; never touches the simulation.
   with identical final state; injected latency; a real disconnect, AI hold,
   reconnect with byte-identical state after catch-up, including the host; chat.
 - **Cross-engine (CI):** Chromium, Firefox and WebKit peers in one match.
+
+## Results
+
+Phase 11 shipped in PRs #174–#179 and the docs PR that follows them. The
+numbers below come from the test runs; each test prints its own line (`# ...`).
+
+**Part A gate, Node, one process** (`test/lockstep-gate.test.js`). Scripted
+players' commands travel as JSON turns with random latency and reordering, and
+peers compare whole-state hashes every 250 ticks and per-tick quick hashes at
+every tick:
+
+- 1v1 (Phase 3 scenarios), seeds 1–3: rush vs boom (hard), turtle vs rush
+  (normal), boom vs turtle (easy). 2 peers identical over 3,000 ticks each.
+- Free-for-all (Phases 6 and 8), seeds 1–3 × lineups HHAA, HHHA, HHHH: 2, 3
+  and 4 peers identical over 2,400 ticks each.
+- Free-for-all seed 5, HHHH, to the end: 4 peers identical over 18,965 ticks
+  (76 whole-state checks, 1,144 player commands), ending by last camp
+  standing.
+- Controls prove the gate isn't vacuous:
+  - different seeds end in different states;
+  - a peer built from another seed is caught;
+  - one command lost on one peer is caught at the next tick.
+
+**Protocol, Node, simulated network** (`test/session.test.js`, 13 tests):
+- 3 players with latency are identical at every tick.
+- A drop shorter than the grace period: the game waits, then continues, with
+  no takeover.
+- No takeover while Firebase still sees the player.
+- The side that lost its connection freezes.
+- Takeover after the grace period: every peer agrees on the tick, and the AI
+  holds the camp.
+- Rejoin: byte-identical at the catch-up tick, then handed back after a
+  steady link.
+- The host leaves and rejoins.
+- A flapping link resets the handback clock (hysteresis).
+- Nobody to serve a snapshot: "waiting", then a rejoin once someone is back.
+- A camp held for good: the match still ends by last camp standing (at 392 s).
+- Chat changes nothing in the game.
+- A corrupted peer is caught as a desync.
+- A reload within the grace period never mixes the old tab's turns with the
+  new tab's.
+
+The AI hold (`test/hold.test.js`): the army goes home, rallies point home,
+queued work finishes, nothing is decided for 60 s, and the idle garrison
+defends by itself.
+
+**Real browsers over WebRTC** (Chromium contexts, Firebase emulator,
+`npm run test:mp`):
+
+| Test | Result |
+|---|---|
+| 2 players, whole match (8x speed) | last-standing at tick 8,054 (CI: 9,969); the same final hash on both |
+| 4 players, whole match (8x speed) | last-standing at tick 16,768 (CI: 13,868, 63 shared checkpoints); the same final hash on all four |
+| A command from the game screen | issued at tick 15, carried out at tick 20 on both pages |
+| 40–150 ms per message, 1x speed | 20.0 ticks/s (full speed) for 60 s; 42 shared checkpoints identical |
+| 150–400 ms per message, 1x speed | 11.7 ticks/s (the game waits for late turns) for 60 s; 30 checkpoints identical |
+| A guest leaves (tab gone) | held 6.0 s later (5 s test grace); snapshot from slot 1; the same hash at the catch-up tick; back in control 4.3 s after returning; 32 checkpoints identical |
+| The host leaves | held 6.0 s later; snapshot from slot 2; the same hash; back 4.3 s after returning; 22 checkpoints identical |
+| A brief drop (peer connections closed, tab and Firebase up) | links reopened in about 4 s; no takeover; 42 checkpoints identical |
+| Chat | 9 lines, seen by all three players under lobby names; a burst of 8 cut to 5; checkpoints identical; empty after a reload |
+
+**Cross-engine** (CI job `cross-engine`, first run on PR #179):
+- Chromium, Firefox and WebKit all compute deterministic-Math fingerprint
+  `cc6ed4f6` (the golden value).
+- A Chromium, a Firefox and a WebKit player, each in their own engine,
+  play one match together: 42 shared hash checkpoints up to tick 3,062, all
+  identical.
+- The few native `Math` samples logged happened to agree too. That is not
+  a guarantee (the specification allows them to differ), which is why the
+  deterministic replacements stay.
+
+**Regression:**
+- `npm test` passes 331/331, including every single-player fingerprint
+  unchanged.
+- `npm run test:e2e` passes 61/61.
+- The Phase 10 rules (10/10) and lobby/connection specs pass.
+- The mobile touch playthrough (1v1 and free-for-all) passes.
+
+**What is not covered:**
+- Every browser test runs on one machine. Connections use host candidates,
+  latency is injected, and real NAT is absent. There is no TURN relay, so a
+  player who can't connect directly can neither play nor rejoin.
+- Players on different real networks and physical phones have not been
+  tested.

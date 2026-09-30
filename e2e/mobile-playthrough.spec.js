@@ -185,7 +185,13 @@ async function play(page, query, ffa) {
     const pending = mine(s, 'buildings').some((b) => !b.built);
     const cost = { depot: 100, foundry: 150, spire: 120 };
     // A Depot comes first whenever supply is running out; otherwise follow the plan.
-    const lowSupply = s.supply.cap < 60 && s.supply.cap - s.supply.used < 5;
+    // (Free-for-all, until the Tower is placed: low supply does not jump the
+    // queue. Each new soldier brought supply pressure back, so a Depot kept
+    // preempting the Tower, and the army kept training because the Tower was
+    // no longer "next": CI run 36762520807 fell at 438 s with no Tower.
+    // Being supply-blocked for a while just saves gold for it.)
+    const towerFirst = ffa && !placed.has('spire') && placed.has('foundry');
+    const lowSupply = !towerFirst && s.supply.cap < 60 && s.supply.cap - s.supply.used < 5;
     // Keep two Foundries and two Spires: rebuild whatever the enemy destroys.
     for (const [type, want, spots] of [['foundry', 2, [{ x: core.x + 150, y: core.y + 140 }, { x: core.x + 40, y: core.y + 220 }]], ['spire', 2, [{ x: core.x + 300, y: core.y - 70 }, { x: core.x + 300, y: core.y + 110 }]]]) {
       const have = mine(s, 'buildings', type).length + plan.filter((p) => p.type === type).length;
@@ -224,7 +230,8 @@ async function play(page, query, ffa) {
     }
     // Drones: up to 10, from the Core.
     const coreB = mine(s, 'buildings', 'core')[0];
-    if (coreB && mine(s, 'units', 'drone').length < 14 && coreB.queue === 0 && s.lumen >= 50) {
+    const peasantCap = towerFirst && s.lumen < cost.spire ? 8 : 14; // (saving for the Tower: no Peasants past 8)
+    if (coreB && mine(s, 'units', 'drone').length < peasantCap && coreB.queue === 0 && s.lumen >= 50) {
       await tapWorld(coreB.x, coreB.y);
       await cardTap('train:drone', 1);
     }
