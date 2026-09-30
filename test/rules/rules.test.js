@@ -32,9 +32,11 @@ test('nothing outside /lobbies/<code>/{meta,slots,members,signal} exists for a c
 test('create: a well-formed lobby by its own host only', async () => {
   const host = await user(), other = await user();
   allowed(await create(code(), host), 'a well-formed create');
-  denied(await patch(`lobbies/${code()}`, host, { meta: { host: other.uid, created: TS, status: 'open' } }), 'a lobby in someone else\'s name');
-  denied(await patch(`lobbies/${code()}`, host, { meta: { host: host.uid, created: 12345, status: 'open' } }), 'a made-up creation time');
-  denied(await patch(`lobbies/${code()}`, host, { meta: { host: host.uid, created: TS, status: 'started' } }), 'created already started');
+  denied(await patch(`lobbies/${code()}`, host, { meta: { host: other.uid, created: TS, status: 'open', difficulty: 'normal' } }), 'a lobby in someone else\'s name');
+  denied(await patch(`lobbies/${code()}`, host, { meta: { host: host.uid, created: 12345, status: 'open', difficulty: 'normal' } }), 'a made-up creation time');
+  denied(await patch(`lobbies/${code()}`, host, { meta: { host: host.uid, created: TS, status: 'started', difficulty: 'normal' } }), 'created already started');
+  denied(await patch(`lobbies/${code()}`, host, { meta: { host: host.uid, created: TS, status: 'open' } }), 'no AI difficulty');
+  denied(await patch(`lobbies/${code()}`, host, { meta: { host: host.uid, created: TS, status: 'open', difficulty: 'insane' } }), 'an unknown difficulty');
   denied(await create('ABC0O1', host), 'a code with ambiguous characters');
   denied(await create('ABCDEFG', host), 'a code of the wrong length');
   const c = code();
@@ -43,6 +45,7 @@ test('create: a well-formed lobby by its own host only', async () => {
   denied(await put(`lobbies/${c}/meta/host`, other, other.uid), 'rewrite the host');
   denied(await put(`lobbies/${c}/meta/status`, other, 'started'), 'start someone else\'s lobby');
   denied(await put(`lobbies/${c}/meta/created`, host, 1), 'even the host cannot backdate it');
+  denied(await patch(`lobbies/${c}/meta`, host, { difficulty: 'easy' }), 'or change the AI difficulty');
   const meta = (await read(`lobbies/${c}/meta`, other)).body;
   assert.equal(meta.host, host.uid, 'anyone holding the code can read the lobby');
   assert.equal(meta.status, 'open');
@@ -143,7 +146,7 @@ test('expiry: a lobby older than an hour is inert, and anyone may delete it; no 
   // Set up an hour-old lobby directly (the emulator's admin: time travel).
   const t = Date.now() - HOUR - 60000;
   allowed(await put(`lobbies/${old}`, 'owner', {
-    meta: { host: host.uid, created: t, status: 'open' },
+    meta: { host: host.uid, created: t, status: 'open', difficulty: 'hard' },
     slots: { 1: { uid: host.uid, name: 'Old', joined: t }, 2: { uid: a.uid, name: 'A', joined: t } },
     members: { [host.uid]: '1', [a.uid]: '2' },
   }), 'set up an expired lobby');

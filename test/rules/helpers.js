@@ -42,7 +42,7 @@ export function code() {
 
 // The client's own create and join writes (src/net/lobby.js does the same).
 export const create = (c, host, name = 'Host') => patch(`lobbies/${c}`, host, {
-  meta: { host: host.uid, created: TS, status: 'open' },
+  meta: { host: host.uid, created: TS, status: 'open', difficulty: 'normal' },
   'slots/1': { uid: host.uid, name, joined: TS },
   [`members/${host.uid}`]: '1',
 });
