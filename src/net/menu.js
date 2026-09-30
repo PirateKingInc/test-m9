@@ -156,12 +156,16 @@ function render(lobby) {
   if (lobby.meta?.status === 'started' && !state.mesh) startLinks(lobby);
 }
 
-// After the start: show the lineup (the peer connections come next).
-function startLinks(lobby) {
-  state.mesh = { close() {} };
+// After the start: show the lineup and open the peer connections (mesh.js).
+async function startLinks(lobby) {
+  state.mesh = { close() {} }; // placeholder until the mesh module is up
   show('mp-links');
   renderLineup(lobby);
-  $('mp-links-title').textContent = 'The match is set.';
+  const { Mesh } = await import('./mesh.js');
+  if (!state.lobby) return;
+  state.mesh = new Mesh(lobby, () => renderLinks(lobby));
+  renderLinks(lobby);
+  state.mesh.start();
 }
 
 function renderLineup(lobby) {
@@ -174,3 +178,25 @@ function renderLineup(lobby) {
   }));
   $('mp-lineup').dataset.lineup = lineup;
 }
+
+function renderLinks(lobby) {
+  const mesh = state.mesh;
+  if (!mesh?.peers) return;
+  const peers = [...mesh.peers.values()];
+  $('mp-peers').replaceChildren(...peers.map((p) => el('li', {
+    className: `peer peer-${p.state}`,
+    textContent: `${p.name}: ${PEER_TEXT[p.state]}${p.state === 'verified' ? ` (test message round trip ${p.rtt} ms)` : ''}`,
+  })));
+  const done = peers.filter((p) => p.state === 'verified').length, failed = peers.filter((p) => p.state === 'failed').length;
+  $('mp-links-title').textContent = done === peers.length ? `Connected directly to all ${peers.length} other player${peers.length > 1 ? 's' : ''}.`
+    : failed ? `Connected to ${done} of ${peers.length}. ${failed} could not connect directly (a strict network or firewall).`
+      : `Connecting to ${peers.length} other player${peers.length > 1 ? 's' : ''}…`;
+}
+
+const PEER_TEXT = {
+  waiting: 'waiting for its answer',
+  connecting: 'connecting',
+  open: 'connected, testing',
+  verified: 'connected, test message received',
+  failed: 'could not connect directly',
+};
