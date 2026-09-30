@@ -3,6 +3,9 @@
 // the same hash (test/detmath.test.js pins it; the browser tests recompute it).
 import { sin, cos, atan2, hypot } from './detmath.js';
 
+// The fingerprint every engine must produce.
+export const GOLDEN = 'cc6ed4f6';
+
 export function detMathFingerprint() {
   const dv = new DataView(new ArrayBuffer(8));
   let h = 0x811c9dc5, s = 12345;

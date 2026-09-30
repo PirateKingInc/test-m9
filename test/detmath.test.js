@@ -5,7 +5,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { sin, cos, atan, atan2, hypot, installDetMath, detMathInstalled } from '../src/net/detmath.js';
-import { detMathFingerprint } from '../src/net/detmath-golden.js';
+import { detMathFingerprint, GOLDEN } from '../src/net/detmath-golden.js';
 
 const NATIVE = { sin: Math.sin, cos: Math.cos, atan: Math.atan, atan2: Math.atan2, hypot: Math.hypot };
 const dv = new DataView(new ArrayBuffer(8));
@@ -35,6 +35,7 @@ test('special values match the native functions, signs of zero included', () => 
 
 test('the exact bits of 4,000 results are pinned (every engine must match)', () => {
   assert.equal(detMathFingerprint(), 'cc6ed4f6');
+  assert.equal(GOLDEN, 'cc6ed4f6');
 });
 
 test('installed only on demand, and removed again', () => {
