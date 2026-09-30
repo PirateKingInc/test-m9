@@ -259,14 +259,20 @@ is waiting for another player.
 
 ### Chat
 
-The box at the bottom right, just above the group slots, sends a line to
-every player (Enter to send, Escape to leave the box). On a phone it never
-covers the action bar or the group slots (in landscape it sits just left of
-the action bar), and only its input takes touches: the log over the map lets
-pans and pinches through. It goes over the same direct connections, shows
-lobby names, is limited to 200 characters and 5 lines per 5 seconds, and is
-kept only in memory: nothing is saved, and a reloaded page starts empty.
-Typing in it never triggers game shortcuts.
+Chat is on demand, so it never costs you any of the map. On a phone, the
+**Chat** button in the action bar (with Order, Attack, Stop, Box, Cancel and
+Base) opens the chat panel; the same button or the panel's ✕ closes it. With
+a mouse and keyboard, press **Enter** or click **Chat** in the top bar;
+Escape closes it. While it is closed, nothing of it lies over the map, and a
+red badge on the button counts the lines that came in since you last looked.
+While it is open, it sits at the bottom right just above the group slots,
+never over the action bar or the slots (on a landscape phone, just left of
+the action bar). Only its text box and ✕ take touches, so pans, pinches and
+taps on the map still go through it. Lines go over the same direct
+connections and show lobby names. They are limited to 200 characters and 5
+lines per 5 seconds, and kept only in memory: nothing is saved, and a
+reloaded page starts empty. Typing in the chat never triggers game
+shortcuts.
 
 ### Firebase, and why its config is in the code
 

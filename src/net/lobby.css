@@ -37,19 +37,35 @@
 .net-notice.net-hold { border-color: var(--enemy); }
 .net-notice.net-back { border-color: var(--accent); }
 .net-notice.net-error { border-color: var(--enemy); color: var(--enemy); }
-#net-chat { position: absolute; bottom: 124px; right: 8px; width: 250px; } /* placed above the group slots by play.js placeChat */
-/* Only the input takes touches: the log lies over the map, and a finger that
-   lands on it (half of a pinch, the start of a drag) must still move the map.
-   The log always shows the newest lines. */
-#net-chat-input { pointer-events: auto; }
-#net-chat-log { max-height: 120px; overflow-y: auto; font-size: 12px; background: rgba(20, 16, 10, 0.7); border-radius: 5px; padding: 0 6px; }
-#net-chat-log:empty { display: none; }
+#net-chat { position: absolute; bottom: 124px; right: 8px; width: 250px; background: rgba(20, 16, 10, 0.78);
+  border: 1px solid var(--edge); border-radius: 8px; padding: 4px 6px 6px; box-sizing: border-box; } /* placed by play.js placeChat */
+#net-chat[hidden] { display: none; } /* closed: nothing of it over the map */
+/* Only the input and the close button take touches: the log lies over the
+   map, and a finger that lands on it (half of a pinch, the start of a drag, a
+   tap on a unit) must still reach the game. The log always shows the newest lines. */
+#net-chat-input, #net-chat-close { pointer-events: auto; }
+#net-chat-head { display: flex; align-items: center; justify-content: space-between; color: var(--accent); font-size: 12px;
+  font-weight: 600; letter-spacing: 0.05em; margin-bottom: 2px; }
+#net-chat-close { background: var(--button); color: var(--text); border: 1px solid var(--edge); border-radius: 6px;
+  width: 30px; height: 26px; font-size: 14px; line-height: 1; padding: 0; cursor: pointer; }
+#net-chat-log { max-height: 140px; overflow-y: auto; font-size: 12px; padding: 0 2px; }
+#net-chat-log:empty::before { content: 'No messages yet.'; color: var(--dim); }
 .net-chat-line { padding: 2px 0; color: var(--text); overflow-wrap: anywhere; }
 #net-chat-input { width: 100%; box-sizing: border-box; margin-top: 4px; background: var(--button); color: var(--text); border: 1px solid var(--edge);
   border-radius: 5px; padding: 5px 8px; font-size: 13px; }
 #net-chat-input:focus { outline: none; border-color: var(--accent); }
+/* The toggles: the action bar's Chat button (touch) and the top bar's (mouse). */
+#touchbar button[data-chat], #net-chat-toggle { position: relative; }
+#touchbar button[data-chat].open, #net-chat-toggle.open { border-color: var(--accent); box-shadow: 0 0 10px var(--accent); }
+.net-unread { position: absolute; top: -6px; right: -6px; min-width: 18px; height: 18px; padding: 0 4px; box-sizing: border-box;
+  border-radius: 9px; background: #d8452f; color: #fff; font: 700 11px/18px sans-serif; text-align: center; pointer-events: none; }
+.net-unread[hidden] { display: none; }
+#net-chat-toggle { background: transparent; color: var(--dim); border: 1px solid var(--edge); border-radius: 3px; font-size: 11px;
+  cursor: pointer; pointer-events: auto; } /* like Fullscreen and Help beside it */
+#net-chat-toggle .net-unread { top: -7px; right: -9px; min-width: 15px; height: 15px; font-size: 9px; line-height: 15px; border-radius: 8px; }
+body.touch #net-chat-toggle { display: none; } /* touch uses the action bar's button */
 @media (max-width: 640px) {
-  #net-chat { width: 170px; }
+  #net-chat { width: 200px; }
   #net-status, #net-notices { top: 40px; max-width: 60vw; }
   #net-notices { top: 76px; }
 }

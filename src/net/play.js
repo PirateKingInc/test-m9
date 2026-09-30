@@ -126,32 +126,36 @@ async function play(session, me, names) {
   return g;
 }
 
-// The chat box sits bottom-right, just above the row of group slots (or the
-// bottom panel), and never over the touch action bar or the group slots: on a
-// phone the bar (Order, Attack, Stop, Box, Cancel, Base) and the slots are
-// the controls a player uses most. Where the bar leaves too little room above
-// that line (a landscape phone: the bar is a column at the top right), the box
-// moves just left of the bar. The log is capped to the room there is.
+// Chat is on demand: a Chat button in the touch action bar (beside Order,
+// Attack, Stop, Box, Cancel, Base; on a desktop, one in the top bar and the
+// Enter key) opens a panel with the log and an input; the same button, the
+// panel's ✕ or Escape closes it. Closed, nothing of it lies over the map; a
+// badge on the button counts lines that came in since it was last open.
+// Open, it sits bottom-right just above the row of group slots, never over
+// the action bar or the slots (where the bar leaves too little room above
+// that line, as on a landscape phone, it sits just left of the bar), and only
+// its input and ✕ take touches: the rest lets pans, pinches and taps through
+// to the map.
 const CHAT_GAP = 6, CHAT_MIN_LOG = 48;
 function placeChat() {
-  const chat = $('net-chat'), log = $('net-chat-log'), input = $('net-chat-input');
-  if (!chat) return;
+  const chat = $('net-chat'), log = $('net-chat-log'), input = $('net-chat-input'), head = $('net-chat-head');
+  if (!chat || chat.hidden) return;
   const W = document.documentElement.clientWidth, H = document.documentElement.clientHeight;
   const rect = (id) => { const e = $(id); if (!e || e.hidden || e.offsetParent === null) return null; const r = e.getBoundingClientRect(); return r.width && r.height ? r : null; };
   const top = rect('hud-top'), bottom = rect('hud-bottom'), groups = rect('groups'), bar = rect('touchbar');
-  const line = Math.min(bottom ? bottom.top : H, groups ? groups.top : H) - CHAT_GAP; // the box's bottom edge
+  const line = Math.min(bottom ? bottom.top : H, groups ? groups.top : H) - CHAT_GAP; // the panel's bottom edge
   const ceilingAll = (top ? top.bottom : 0) + CHAT_GAP;
-  const w = chat.offsetWidth, inputH = input.offsetHeight + 4;
+  const w = chat.offsetWidth, fixed = input.offsetHeight + head.offsetHeight + 8;
   let right = 8, ceiling = ceilingAll;
   const overBar = (r) => bar && W - r - w < bar.right && W - r > bar.left;
   if (overBar(right)) {
     ceiling = Math.max(ceiling, bar.bottom + CHAT_GAP);
-    if (line - ceiling < inputH + CHAT_MIN_LOG) { right = W - bar.left + CHAT_GAP; ceiling = ceilingAll; } // beside the bar instead
+    if (line - ceiling < fixed + CHAT_MIN_LOG) { right = W - bar.left + CHAT_GAP; ceiling = ceilingAll; } // beside the bar instead
   }
   chat.style.top = 'auto';
   chat.style.right = `${right}px`;
   chat.style.bottom = `${Math.max(0, H - line)}px`;
-  log.style.maxHeight = `${Math.max(0, Math.min(120, line - ceiling - inputH))}px`;
+  log.style.maxHeight = `${Math.max(0, Math.min(140, line - ceiling - fixed))}px`;
 }
 
 // A metronome: a tiny worker posting a message every `ms`; a page timer if
@@ -172,19 +176,46 @@ function panel(session, names, me) {
   const box = el('div', { id: 'net-panel' },
     el('div', { id: 'net-status', hidden: true }),
     el('div', { id: 'net-notices' }),
-    el('div', { id: 'net-chat' },
+    el('div', { id: 'net-chat', hidden: true },
+      el('div', { id: 'net-chat-head' }, el('span', { textContent: 'Chat' }),
+        el('button', { id: 'net-chat-close', type: 'button', title: 'Close the chat', textContent: '✕' })),
       el('div', { id: 'net-chat-log' }),
-      el('input', { id: 'net-chat-input', maxLength: NET.chatMax, placeholder: 'Chat (Enter to send)', autocomplete: 'off' })));
+      el('input', { id: 'net-chat-input', maxLength: NET.chatMax, placeholder: 'Message (Enter to send)', autocomplete: 'off' })));
   document.body.append(box);
-  const input = $('net-chat-input');
-  placeChat();
+  // The toggles: one in the touch action bar, one in the top bar for a mouse.
+  const badge = () => el('b', { className: 'net-unread', hidden: true });
+  const barBtn = el('button', { type: 'button', title: 'Chat with the other players' }, '✉', el('span', { textContent: 'Chat' }), badge());
+  barBtn.dataset.chat = '';
+  $('touchbar')?.append(barBtn);
+  const topBtn = el('button', { id: 'net-chat-toggle', type: 'button', title: 'Chat with the other players (Enter)' }, 'Chat', badge());
+  $('help')?.before(topBtn);
+  const chat = $('net-chat'), input = $('net-chat-input');
+  let unread = 0;
+  const showUnread = () => {
+    for (const b of document.querySelectorAll('.net-unread')) { b.hidden = !unread; b.textContent = unread > 9 ? '9+' : String(unread); }
+    for (const t of [barBtn, topBtn]) t.classList.toggle('open', !chat.hidden);
+  };
+  const setOpen = (open, { focus = false } = {}) => {
+    chat.hidden = !open;
+    if (open) { unread = 0; placeChat(); const log = $('net-chat-log'); log.scrollTop = log.scrollHeight; if (focus) input.focus(); }
+    else input.blur();
+    showUnread();
+  };
+  const toggle = (e) => { e.preventDefault(); setOpen(chat.hidden, { focus: !document.body.classList.contains('touch') }); };
+  barBtn.addEventListener('click', toggle);
+  topBtn.addEventListener('click', toggle);
+  $('net-chat-close').addEventListener('click', () => setOpen(false));
+  // Enter opens the chat from the game (a keyboard); Escape closes it.
+  addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && chat.hidden && !(e.target instanceof HTMLInputElement)) { e.preventDefault(); setOpen(true, { focus: true }); }
+  });
   addEventListener('resize', placeChat);
   setInterval(placeChat, 500); // the HUD's layout changes with input mode and orientation
   // Typing is not playing: keys in the chat box never reach the game.
   for (const ev of ['keydown', 'keyup', 'keypress']) input.addEventListener(ev, (e) => e.stopPropagation());
   input.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') { if (session.chat(input.value)) input.value = ''; }
-    if (e.key === 'Escape') input.blur();
+    if (e.key === 'Escape') setOpen(false);
   });
   const notices = $('net-notices');
   return {
@@ -199,6 +230,7 @@ function panel(session, names, me) {
       log.append(el('div', { className: 'net-chat-line' }, el('b', { textContent: `${c.s === me ? 'You' : c.name}: ` }), c.text));
       while (log.children.length > 30) log.firstChild.remove();
       log.scrollTop = log.scrollHeight;
+      if (chat.hidden && c.s !== me) { unread++; showUnread(); }
       placeChat();
     },
     status(st) {

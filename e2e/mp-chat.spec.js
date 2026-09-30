@@ -8,11 +8,27 @@ import { lobbyToGame, netState, sameHashes } from './mp-helpers.js';
 test('chat reaches every player under their lobby names, and never touches the game', async ({ browser }) => {
   test.setTimeout(5 * 60_000);
   const { ps } = await lobbyToGame(browser, ['Ava', 'Bram', 'Cora'], { net: { speed: 2, hashEvery: 50 } });
-  const say = async (p, text) => { const box = p.page.locator('#net-chat-input'); await box.click(); await box.fill(text); await box.press('Enter'); };
+  // Chat is on demand: closed at the start; Enter (or the top bar's Chat
+  // button) opens it, Escape closes it.
+  const panelOpen = (p) => p.page.locator('#net-chat').isVisible();
+  const open = async (p) => { if (!(await panelOpen(p))) await p.page.keyboard.press('Enter'); await expect(p.page.locator('#net-chat-input')).toBeFocused(); };
+  const say = async (p, text) => { await open(p); const box = p.page.locator('#net-chat-input'); await box.fill(text); await box.press('Enter'); };
   const log = (p) => p.page.locator('#net-chat-log .net-chat-line');
+  const badge = (p) => p.page.locator('#net-chat-toggle .net-unread');
 
+  for (const p of ps) expect(await panelOpen(p), 'closed by default').toBe(false);
   await say(ps[0], 'good luck all');
-  await say(ps[1], 'you too');
+  // Ava's panel is open; Bram's and Cora's are closed and count the line.
+  for (const p of ps.slice(1)) await expect(badge(p)).toHaveText('1');
+  await expect(badge(ps[0])).toBeHidden();
+  await say(ps[1], 'you too'); // opening Bram's panel clears his badge
+  await expect(badge(ps[1])).toBeHidden();
+  await expect(badge(ps[2])).toHaveText('2');
+  await ps[2].page.locator('#net-chat-toggle').click(); // the top bar's button opens it too
+  await expect(ps[2].page.locator('#net-chat')).toBeVisible();
+  await expect(badge(ps[2])).toBeHidden();
+  await ps[2].page.locator('#net-chat-input').press('Escape');
+  await expect(ps[2].page.locator('#net-chat')).toBeHidden();
   for (const [i, p] of ps.entries()) {
     await expect(log(p)).toHaveCount(2);
     const lines = await log(p).allTextContents();
@@ -24,7 +40,7 @@ test('chat reaches every player under their lobby names, and never touches the g
   // the camera stay as they were.
   const view = (p) => p.page.evaluate(() => { const { scene } = globalThis.__game, cam = scene.cameras.main; return { sel: scene.ui.selection.ids.join(), out: globalThis.__net.session.ls.outbox.length, x: cam.scrollX, y: cam.scrollY }; });
   const before = await view(ps[2]);
-  await ps[2].page.locator('#net-chat-input').click();
+  await open(ps[2]);
   await ps[2].page.keyboard.type('asdw qe 12345 hold');
   await ps[2].page.keyboard.press('Control+a');
   expect(await view(ps[2])).toEqual(before);
