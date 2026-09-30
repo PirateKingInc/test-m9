@@ -126,6 +126,34 @@ async function play(session, me, names) {
   return g;
 }
 
+// The chat box sits bottom-right, just above the row of group slots (or the
+// bottom panel), and never over the touch action bar or the group slots: on a
+// phone the bar (Order, Attack, Stop, Box, Cancel, Base) and the slots are
+// the controls a player uses most. Where the bar leaves too little room above
+// that line (a landscape phone: the bar is a column at the top right), the box
+// moves just left of the bar. The log is capped to the room there is.
+const CHAT_GAP = 6, CHAT_MIN_LOG = 48;
+function placeChat() {
+  const chat = $('net-chat'), log = $('net-chat-log'), input = $('net-chat-input');
+  if (!chat) return;
+  const W = document.documentElement.clientWidth, H = document.documentElement.clientHeight;
+  const rect = (id) => { const e = $(id); if (!e || e.hidden || e.offsetParent === null) return null; const r = e.getBoundingClientRect(); return r.width && r.height ? r : null; };
+  const top = rect('hud-top'), bottom = rect('hud-bottom'), groups = rect('groups'), bar = rect('touchbar');
+  const line = Math.min(bottom ? bottom.top : H, groups ? groups.top : H) - CHAT_GAP; // the box's bottom edge
+  const ceilingAll = (top ? top.bottom : 0) + CHAT_GAP;
+  const w = chat.offsetWidth, inputH = input.offsetHeight + 4;
+  let right = 8, ceiling = ceilingAll;
+  const overBar = (r) => bar && W - r - w < bar.right && W - r > bar.left;
+  if (overBar(right)) {
+    ceiling = Math.max(ceiling, bar.bottom + CHAT_GAP);
+    if (line - ceiling < inputH + CHAT_MIN_LOG) { right = W - bar.left + CHAT_GAP; ceiling = ceilingAll; } // beside the bar instead
+  }
+  chat.style.top = 'auto';
+  chat.style.right = `${right}px`;
+  chat.style.bottom = `${Math.max(0, H - line)}px`;
+  log.style.maxHeight = `${Math.max(0, Math.min(120, line - ceiling - inputH))}px`;
+}
+
 // A metronome: a tiny worker posting a message every `ms`; a page timer if
 // workers are unavailable.
 function metronome(ms, fn) {
@@ -149,6 +177,9 @@ function panel(session, names, me) {
       el('input', { id: 'net-chat-input', maxLength: NET.chatMax, placeholder: 'Chat (Enter to send)', autocomplete: 'off' })));
   document.body.append(box);
   const input = $('net-chat-input');
+  placeChat();
+  addEventListener('resize', placeChat);
+  setInterval(placeChat, 500); // the HUD's layout changes with input mode and orientation
   // Typing is not playing: keys in the chat box never reach the game.
   for (const ev of ['keydown', 'keyup', 'keypress']) input.addEventListener(ev, (e) => e.stopPropagation());
   input.addEventListener('keydown', (e) => {
@@ -168,6 +199,7 @@ function panel(session, names, me) {
       log.append(el('div', { className: 'net-chat-line' }, el('b', { textContent: `${c.s === me ? 'You' : c.name}: ` }), c.text));
       while (log.children.length > 30) log.firstChild.remove();
       log.scrollTop = log.scrollHeight;
+      placeChat();
     },
     status(st) {
       const s = $('net-status');

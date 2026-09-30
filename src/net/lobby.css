@@ -37,7 +37,11 @@
 .net-notice.net-hold { border-color: var(--enemy); }
 .net-notice.net-back { border-color: var(--accent); }
 .net-notice.net-error { border-color: var(--enemy); color: var(--enemy); }
-#net-chat { position: absolute; top: 44px; right: 8px; width: 250px; pointer-events: auto; }
+#net-chat { position: absolute; bottom: 124px; right: 8px; width: 250px; } /* placed above the group slots by play.js placeChat */
+/* Only the input takes touches: the log lies over the map, and a finger that
+   lands on it (half of a pinch, the start of a drag) must still move the map.
+   The log always shows the newest lines. */
+#net-chat-input { pointer-events: auto; }
 #net-chat-log { max-height: 120px; overflow-y: auto; font-size: 12px; background: rgba(20, 16, 10, 0.7); border-radius: 5px; padding: 0 6px; }
 #net-chat-log:empty { display: none; }
 .net-chat-line { padding: 2px 0; color: var(--text); overflow-wrap: anywhere; }
@@ -45,7 +49,7 @@
   border-radius: 5px; padding: 5px 8px; font-size: 13px; }
 #net-chat-input:focus { outline: none; border-color: var(--accent); }
 @media (max-width: 640px) {
-  #net-chat { width: 170px; top: 40px; }
+  #net-chat { width: 170px; }
   #net-status, #net-notices { top: 40px; max-width: 60vw; }
   #net-notices { top: 76px; }
 }

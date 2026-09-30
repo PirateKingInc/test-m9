@@ -19,8 +19,10 @@ export const EMULATOR = {
 // A new player: its own context, on the Multiplayer screen with its name typed.
 // net: Phase 11 timing overrides (shorter grace periods, faster play);
 // latency: [lo, hi] ms added to every data-channel message, order preserved.
-export async function player(browser, name, { net = null, latency = null, context: ctx = null } = {}) {
-  const context = ctx || await browser.newContext({ viewport: { width: 1280, height: 800 } });
+// contextOptions: extra options for the player's browser context (a phone's
+// viewport and touch, say).
+export async function player(browser, name, { net = null, latency = null, context: ctx = null, contextOptions = {} } = {}) {
+  const context = ctx || await browser.newContext({ viewport: { width: 1280, height: 800 }, ...contextOptions });
   const page = await context.newPage();
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message));

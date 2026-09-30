@@ -21,16 +21,51 @@ export function zoomAbout(cam, sx, sy, z) {
 }
 
 // Screen px the HUD covers at each map edge; the camera may scroll that far
-// past the map so its edges can be brought out from under the HUD. Touch mode
-// adds the action bar on the right.
+// past the map so its edges can be brought out from under the HUD. These are
+// the fallbacks; the game measures the real HUD (hudInsets) because it differs
+// by orientation: in portrait the row of group slots sits 154 px above the
+// bottom, not 104, and a fixed margin left the map's bottom edge under it.
 export const HUD_MARGIN = { top: 28, bottom: 104, right: 0, touchRight: 128 };
+export const BAR_GAP = 8;
 
-// Camera bounds for the current zoom: the margins are screen px, so they grow
-// in world px as the camera zooms out (at 1x they equal the Phase 4 bounds).
-export function hudBounds(zoom, width, height, touch) {
-  const right = touch ? HUD_MARGIN.touchRight : HUD_MARGIN.right;
-  const top = HUD_MARGIN.top / zoom, bottom = HUD_MARGIN.bottom / zoom;
-  return [0, -top, width + right / zoom, height + top + bottom];
+// The screen px the HUD covers on each side, measured from the page: the top
+// bar, the bottom panel and the group slots above it, and the touch action bar
+// on the right. Elements that are hidden or absent count as 0.
+export function hudInsets(doc = document, touch = false) {
+  const W = doc.documentElement.clientWidth, H = doc.documentElement.clientHeight;
+  const rect = (id) => { const e = doc.getElementById(id); if (!e || e.hidden || e.offsetParent === null) return null; const r = e.getBoundingClientRect(); return r.width && r.height ? r : null; };
+  const top = rect('hud-top'), bottom = rect('hud-bottom'), groups = rect('groups'), bar = touch ? rect('touchbar') : null;
+  const bottomEdge = Math.min(bottom ? bottom.top : H, groups ? groups.top : H);
+  return {
+    top: top ? Math.max(0, top.bottom) : HUD_MARGIN.top,
+    bottom: bottom || groups ? Math.max(0, H - bottomEdge) : HUD_MARGIN.bottom,
+    left: 0,
+    // (The action bar floats 8 px in from the screen edge; the map may come
+    // the same 8 px clear of it, so a base at the east edge fits beside it.)
+    right: bar ? Math.max(0, W - bar.left + BAR_GAP) : touch ? HUD_MARGIN.touchRight : HUD_MARGIN.right,
+  };
+}
+
+// Camera bounds (world px: x, y, width, height) for a map of mapW x mapH seen
+// at `zoom` on a view of viewW x viewH screen px, with the HUD covering
+// `insets` screen px on each side. Two rules, on each axis separately:
+// - the camera may scroll until any map edge sits just clear of the HUD on
+//   that side (the insets are screen px, so they grow in world px as the
+//   camera zooms out);
+// - where the whole map and its margins fit on screen at once (zoomed far out
+//   on a small map, or a tall portrait screen), the bounds grow to the view,
+//   centred on the map: the map sits in the middle of the free area instead of
+//   being pinned to one side, and there is nothing to pan to on that axis.
+export function hudBounds(zoom, mapW, mapH, insets, viewW, viewH) {
+  const axis = (lo, size, hi, view) => {
+    let a = -lo / zoom, len = size + (lo + hi) / zoom;
+    const v = view / zoom;
+    if (len < v) { a -= (v - len) / 2; len = v; }
+    return [a, len];
+  };
+  const [x, w] = axis(insets.left, mapW, insets.right, viewW);
+  const [y, h] = axis(insets.top, mapH, insets.bottom, viewH);
+  return [x, y, w, h];
 }
 
 // Mouse wheel: one notch (deltaY ~100) zooms by about 16%.

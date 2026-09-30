@@ -6,6 +6,11 @@ export const PHONE = { viewport: { width: 844, height: 390 }, hasTouch: true, is
 
 export async function openTouchGame(page, query = '?mode=sandbox', opts) {
   const errors = await openGame(page, query.includes('input=') ? query : `${query}&input=touch`, opts);
+  return { errors, touch: await touchOn(page) };
+}
+
+// Real touch gestures on any page already open (the multiplayer tests use it).
+export async function touchOn(page) {
   const cdp = await page.context().newCDPSession(page);
   const send = (type, points) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: points.map(([x, y], i) => ({ x, y, id: i })) });
   const touch = {
@@ -44,7 +49,7 @@ export async function openTouchGame(page, query = '?mode=sandbox', opts) {
       await this.tap(b.x + b.width / 2, b.y + b.height / 2);
     },
   };
-  return { errors, touch };
+  return touch;
 }
 
 // Screen position of a world point under the current camera.

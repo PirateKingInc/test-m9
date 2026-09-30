@@ -9,12 +9,13 @@ import { Hud } from './hud.js';
 import { Sfx } from './audio.js';
 import { Tutorial } from './tutorial.js';
 import { drawEmblem } from './emblem.js';
-import { blockNativeZoom } from './nozoom.js';
+import { blockNativeZoom, pinPage } from './nozoom.js';
 
 const Phaser = globalThis.Phaser;
 const params = new URLSearchParams(location.search);
 const mode = params.get('mode');
 blockNativeZoom(); // Phase 6: rapid taps are game input, never a browser zoom
+pinPage(); // the page never scrolls out from under the game
 
 // No mode chosen yet: show the start screen. Its choices become URL params, so
 // "Play again" simply reloads the same setup.

@@ -12,3 +12,11 @@ export function blockNativeZoom(doc = document) {
   const stop = (e) => { if (e.cancelable) e.preventDefault(); };
   for (const type of ['gesturestart', 'gesturechange', 'gestureend', 'dblclick']) doc.addEventListener(type, stop, { passive: false });
 }
+
+// The page itself never scrolls (hud.css keeps everything inside the screen),
+// but a phone browser can still scroll an overflow: hidden page, for example
+// when a drag starts on the HUD. Snap it back, so the game never ends up
+// shifted with its edge showing.
+export function pinPage(win = window) {
+  win.addEventListener('scroll', () => { if (win.scrollX || win.scrollY) win.scrollTo(0, 0); }, { passive: true });
+}

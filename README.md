@@ -259,8 +259,11 @@ is waiting for another player.
 
 ### Chat
 
-The box at the top right sends a line to every player (Enter to send,
-Escape to leave the box). It goes over the same direct connections, shows
+The box at the bottom right, just above the group slots, sends a line to
+every player (Enter to send, Escape to leave the box). On a phone it never
+covers the action bar or the group slots (in landscape it sits just left of
+the action bar), and only its input takes touches: the log over the map lets
+pans and pinches through. It goes over the same direct connections, shows
 lobby names, is limited to 200 characters and 5 lines per 5 seconds, and is
 kept only in memory: nothing is saved, and a reloaded page starts empty.
 Typing in it never triggers game shortcuts.
@@ -383,6 +386,14 @@ between the top bar, the bottom panel and the action bar, which fits that box
 at 0.355×. A 1280 × 720 desktop window fits it at 0.76×. So 0.35× shows a
 whole base on both. Zoomed out, units are drawn up to 2× larger so they stay
 readable (visual only). Details in [PHASE5_SPEC.md](PHASE5_SPEC.md).
+
+At every zoom, on every screen, the camera can pan until any map edge sits
+just clear of the HUD. The HUD is measured, not assumed: in portrait the row
+of group slots stands higher than the bottom panel. Where the whole map fits
+on one axis (zoomed far out on a tall screen), it sits centred there. The
+page itself never scrolls, so the game can't slide out of place.
+`e2e/camera-bounds.spec.js` pinches out as far as the gesture goes on five
+phone and tablet screens and checks every edge and every pan direction.
 
 ### Art
 

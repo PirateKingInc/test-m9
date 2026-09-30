@@ -6,7 +6,7 @@ import { Effects } from './effects.js';
 import { MatchStats } from './stats.js';
 import { bakeAll, TERRAIN_KEY } from '../art/atlas.js';
 import { SpriteLayer } from './sprites.js';
-import { zoomAbout, wheelZoom, hudBounds } from './camera.js';
+import { zoomAbout, wheelZoom, hudBounds, hudInsets } from './camera.js';
 import { reasonText } from '../theme/names.js';
 import { drawTerritory, ZONE_DEPTH, BANNER_DEPTH } from './territory.js';
 
@@ -74,12 +74,19 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
-  // Camera bounds follow the zoom and input mode (see camera.js hudBounds).
+  // Camera bounds follow the zoom, the screen size and what the HUD covers
+  // (see camera.js hudBounds). The HUD is re-measured at most every 250 ms:
+  // its layout changes with orientation, input mode and screen size.
   fitBounds() {
-    const cam = this.cameras.main, sig = `${cam.zoom}:${!!this.touchMode}`;
+    const cam = this.cameras.main, now = performance.now();
+    if (!this.insets || now - (this.insetsAt ?? 0) > 250) {
+      this.insets = hudInsets(document, !!this.touchMode);
+      this.insetsAt = now;
+    }
+    const i = this.insets, sig = `${cam.zoom}:${cam.width}x${cam.height}:${i.top},${i.right},${i.bottom},${i.left}`;
     if (sig === this.boundsSig) return;
     this.boundsSig = sig;
-    cam.setBounds(...hudBounds(cam.zoom, this.world.width, this.world.height, this.touchMode));
+    cam.setBounds(...hudBounds(cam.zoom, this.world.width, this.world.height, i, cam.width, cam.height));
   }
 
   jumpToAttack() {
