@@ -4,6 +4,7 @@
 // chosen. Everything a player typed is shown with textContent, never as HTML.
 import { LOBBY } from './config.js';
 import { parseCode, parseName, formatCode } from './code.js';
+import { campsFor } from './lineup.js';
 import { FFA_STRATEGIES } from '../data/ffa.js';
 import { strategyName, difficultyName, TEAM_TEXT } from '../theme/names.js';
 
@@ -11,7 +12,7 @@ const CORNER = { 1: 'north-west', 2: 'north-east', 3: 'south-east', 4: 'south-we
 const $ = (id) => document.getElementById(id);
 const el = (tag, props = {}, ...kids) => { const e = Object.assign(document.createElement(tag), props); e.append(...kids); return e; };
 
-const state = { lobby: null, difficulty: 'normal', stopLobby: null };
+const state = { lobby: null, mesh: null, difficulty: 'normal', stopLobby: null };
 globalThis.__net = state; // read by the browser tests
 
 document.getElementById('start-mp')?.addEventListener('click', () => {
@@ -41,7 +42,15 @@ function build() {
       el('ol', { id: 'mp-players', className: 'lobby-list' }),
       el('p', { id: 'mp-hint', className: 'dim' }),
       el('div', { className: 'result-actions' },
+        el('button', { id: 'mp-start', textContent: 'Start match', hidden: true }),
         el('button', { id: 'mp-leave', textContent: 'Leave' }))),
+    el('section', { id: 'mp-links', hidden: true },
+      el('p', { id: 'mp-links-title', className: 'lobby-title' }),
+      el('ul', { id: 'mp-peers', className: 'lobby-list' }),
+      el('p', { className: 'dim', textContent: 'Camps' }),
+      el('ol', { id: 'mp-lineup', className: 'lobby-list' }),
+      el('p', { className: 'dim', textContent: 'Playing the match together over these connections comes in the next update. This screen proves every player can reach every other one directly.' }),
+      el('div', { className: 'result-actions' }, el('button', { id: 'mp-menu', textContent: 'Back to menu' }))),
     el('p', { id: 'mp-status', className: 'lobby-status', role: 'status' }));
   document.body.append(el('div', { id: 'lobby' }, card));
   $('mp-create').addEventListener('click', () => act(create));
@@ -49,10 +58,12 @@ function build() {
   $('mp-code').addEventListener('keydown', (e) => { if (e.key === 'Enter') act(join); });
   $('mp-back').addEventListener('click', () => { location.search = ''; });
   $('mp-leave').addEventListener('click', () => act(leave));
+  $('mp-start').addEventListener('click', () => act(() => state.lobby.start()));
+  $('mp-menu').addEventListener('click', () => act(async () => { await leave(); location.search = ''; }));
 }
 
 function show(section) {
-  for (const id of ['mp-entry', 'mp-room']) $(id).hidden = id !== section;
+  for (const id of ['mp-entry', 'mp-room', 'mp-links']) $(id).hidden = id !== section;
 }
 const status = (text) => { $('mp-status').textContent = text || ''; };
 
@@ -109,15 +120,18 @@ function enter(lobby) {
 }
 
 async function leave() {
+  state.mesh?.close();
   state.stopLobby?.();
   await state.lobby?.leave();
   state.lobby = null;
+  state.mesh = null;
   show('mp-entry');
   status('You left the lobby.');
 }
 
 function render(lobby) {
   if (lobby.closed) {
+    state.mesh?.close();
     lobby.unwatch();
     state.lobby = null;
     show('mp-entry');
@@ -134,5 +148,29 @@ function render(lobby) {
   }));
   list.dataset.names = lobby.players().map((p) => p.name).join('|'); // for the tests
   const n = lobby.players().length;
-  $('mp-hint').textContent = `${n} of ${LOBBY.slots} players.`;
+  $('mp-start').hidden = !lobby.isHost;
+  $('mp-start').disabled = !lobby.canStart();
+  $('mp-hint').textContent = lobby.meta?.status === 'started' ? 'Starting…'
+    : lobby.isHost ? (n < LOBBY.minHumans ? `Waiting for players: at least ${LOBBY.minHumans} are needed to start.` : `${n} of ${LOBBY.slots} players. Start when everyone is here.`)
+      : `${n} of ${LOBBY.slots} players. Waiting for the host to start.`;
+  if (lobby.meta?.status === 'started' && !state.mesh) startLinks(lobby);
+}
+
+// After the start: show the lineup (the peer connections come next).
+function startLinks(lobby) {
+  state.mesh = { close() {} };
+  show('mp-links');
+  renderLineup(lobby);
+  $('mp-links-title').textContent = 'The match is set.';
+}
+
+function renderLineup(lobby) {
+  const lineup = lobby.meta.lineup;
+  const camps = campsFor(lineup, lobby.meta.difficulty);
+  $('mp-lineup').replaceChildren(...[...lineup].map((c, i) => {
+    const team = i + 1;
+    const who = c === 'H' ? (lobby.slots[team]?.name ?? 'a player who left') : `${strategyName(camps[team].strategy)} AI (${difficultyName(camps[team].difficulty)})`;
+    return el('li', { textContent: `${TEAM_TEXT[team]}, ${CORNER[team]}: ${who}`, className: c === 'H' ? 'filled' : 'open' });
+  }));
+  $('mp-lineup').dataset.lineup = lineup;
 }

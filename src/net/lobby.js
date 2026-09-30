@@ -4,6 +4,7 @@
 import { LOBBY } from './config.js';
 import { newCode } from './code.js';
 import { isDenied } from './firebase.js';
+import { lineupOf, humansIn } from './lineup.js';
 
 // A problem to show the player as is.
 export class LobbyError extends Error { name = 'LobbyError'; }
@@ -104,6 +105,20 @@ export class Lobby {
 
   players() {
     return Object.entries(this.slots).map(([slot, p]) => ({ slot: Number(slot), ...p })).sort((a, b) => a.slot - b.slot);
+  }
+
+  canStart() { return this.isHost && this.meta?.status === 'open' && humansIn(lineupOf(this.slots)) >= LOBBY.minHumans; }
+
+  // The host starts: a seed and the lineup, which fixes who plays each camp.
+  async start() {
+    if (!this.canStart()) throw new LobbyError(`At least ${LOBBY.minHumans} players are needed to start.`);
+    const seed = 1 + (crypto.getRandomValues(new Uint32Array(1))[0] % 999999);
+    try {
+      await this.fb.update(this.ref('meta'), { status: 'started', seed, lineup: lineupOf(this.slots) });
+    } catch (e) {
+      if (isDenied(e)) throw new LobbyError('The lobby changed; try starting again.');
+      throw e;
+    }
   }
 
   // Leave on purpose: the host closes the lobby, a guest frees its slot.

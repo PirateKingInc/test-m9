@@ -8,13 +8,17 @@ test.describe.configure({ timeout: 90_000 });
 
 test('two players: create, join by code, each sees the other live', async ({ browser }) => {
   const a = await player(browser, 'Ava'), b = await player(browser, 'Bram');
+  await expect(a.page.locator('#mp-start')).toBeHidden(); // nothing yet
   const code = await create(a);
   await sees(a, ['Ava']);
+  await expect(a.page.locator('#mp-start')).toBeDisabled(); // alone: cannot start
   await join(b, `${code.slice(0, 3).toLowerCase()}-${code.slice(3)}`); // typed loosely
   await sees(b, ['Ava', 'Bram']);
   await sees(a, ['Ava', 'Bram']); // appeared on the host's screen without a reload
   await expect(a.page.locator('#mp-players li').nth(1)).toContainText('Crimson, north-east: Bram');
   await expect(a.page.locator('#mp-players li').nth(2)).toContainText('Rose, south-east: Open — Merchant Kingdom AI (Normal)'); // an open slot shows the AI that would play it
+  await expect(b.page.locator('#mp-start')).toBeHidden(); // only the host starts
+  await expect(a.page.locator('#mp-start')).toBeEnabled();
   expect([...a.errors, ...b.errors]).toEqual([]);
   await a.context.close(); await b.context.close();
 });
@@ -75,4 +79,24 @@ test('players leaving mid-lobby update everyone; the host leaving closes it', as
   await expect(status(b)).toHaveText('No lobby has that code. Check it with the host.', { timeout: 15000 });
   expect([b, c].flatMap((p) => p.errors)).toEqual([]);
   await b.context.close(); await c.context.close();
+});
+
+test('the host starts with two players: everyone sees the camps, the AI in the empty ones; nobody joins after', async ({ browser }) => {
+  const [a, b, c] = await Promise.all(['Ava', 'Bram', 'Cora'].map((n) => player(browser, n)));
+  const code = await create(a);
+  await join(b, code);
+  await sees(a, ['Ava', 'Bram']);
+  await a.page.locator('#mp-start').click();
+  for (const p of [a, b]) {
+    await expect(p.page.locator('#mp-links')).toBeVisible({ timeout: 15000 });
+    await expect(p.page.locator('#mp-lineup')).toHaveAttribute('data-lineup', 'HHAA');
+    await expect(p.page.locator('#mp-lineup li')).toHaveText([
+      'Azure, north-west: Ava', 'Crimson, north-east: Bram',
+      'Rose, south-east: Merchant Kingdom AI (Normal)', 'Jade, south-west: Stone Bastion AI (Normal)',
+    ]);
+  }
+  await join(c, code);
+  await expect(status(c)).toHaveText('That match has already started.', { timeout: 15000 });
+  expect([a, b, c].flatMap((p) => p.errors)).toEqual([]);
+  for (const p of [a, b, c]) await p.context.close();
 });
