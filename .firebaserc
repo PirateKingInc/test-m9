@@ -1,0 +1,6 @@
+{
+  "projects": {
+    "default": "dragonmarch-7e5b8",
+    "emulator": "demo-dragonmarch"
+  }
+}

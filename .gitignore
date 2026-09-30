@@ -3,3 +3,4 @@ test-results/
 playwright-report/
 _site/
 e2e/zz-*.spec.js
+*-debug.log

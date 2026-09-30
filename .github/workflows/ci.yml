@@ -56,3 +56,27 @@ jobs:
         with:
           name: fairness-results
           path: test-results/fairness.json
+
+  multiplayer:
+    # Phase 10: the security rules and the multiplayer lobby/connection tests,
+    # against the Firebase Local Emulator Suite: never the production project,
+    # no credentials. The database emulator needs Java.
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/firebase/emulators
+          key: firebase-emulators-${{ hashFiles('package-lock.json') }}
+      - run: npm ci
+      - name: Security rules (emulator)
+        run: npm run test:rules

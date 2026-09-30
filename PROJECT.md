@@ -44,6 +44,7 @@ PHASE5_SPEC.md.
 | **7 — Multi-rival AI** | Not in the original plan. Replaces Phase 6's placeholder targeting with real multi-rival decisions in the free-for-all. Each AI camp assesses every living rival from what it has actually scouted (seen army strength, zones owned, whether it **witnessed** the rival fighting a third camp, Castle damage, measured travel time) and ranks them with a documented formula. It piles on a rival it saw weakened or engaged elsewhere, holds back from a clearly stronger one (claiming empty land instead), reacts to massing per rival, and defends or retakes the zones it holds. A dev-panel view shows each camp's ranking and why. Still 4 camps; build/train scripts, stats and balance are unchanged, and the 1v1 match is byte-identical. See [PHASE7_SPEC.md](PHASE7_SPEC.md). | done |
 | **8 — Symmetry & N-way balance** | Not in the original plan. Closes the gaps Phase 7 named. Fixes the free-for-all's **north-south pathfinding tie-break asymmetry** (root-caused with Phase 3's mirror trace). **Measures four-camp balance** for the first time with a batch runner over every corner arrangement, and tunes it within a **bounded stop condition set in advance** (no strategy above ~50% of wins, no corner above ~35%; one tuning pass plus at most 3 hypothesis-driven adjustments, then stop and document any exception). Gives Boom and Turtle free-for-all attack triggers so every strategy acts, and adds **re-scouting with an intel staleness window**. The 1v1 match stays byte-identical. See [PHASE8_SPEC.md](PHASE8_SPEC.md). | done |
 | **9 — Auto-defend, moving structures, hopeless camps** | Not in the original plan. Three pieces of player feedback: **idle combat units in a zone their camp owns now engage intruders automatically** (never overriding an order, never recalled from elsewhere, walking back to their post afterwards); a completed building can be **moved** for half its cost and half its build time (the Castle cannot move); and a camp with no army and **provably no way to ever produce a unit or income** is eliminated after a short confirmation window instead of watching itself lose. The balance matrix is re-measured and reported, with intervention only for a severe outlier. See [PHASE9_SPEC.md](PHASE9_SPEC.md). | done |
+| **10 — Multiplayer foundation** | Not in the original plan. The first half of real multiplayer free-for-all: a **Multiplayer** option next to "vs AI" in the free-for-all menu, a **lobby** created or joined with a short **match code** (display names, a live player list, up to 4 humans, the host starts with 2 or more), and a **direct WebRTC connection between every pair of human players** (full mesh, public STUN), each proven by a test message over its data channel. Unfilled camps go to the existing free-for-all AI scripts, unchanged. **No game state is sent**: lockstep sync, AI takeover on disconnect, reconnection and chat are Phase 11. Adds Firebase Realtime Database as a logged exception to "no external services" (below). **Sim, AI and balance are untouched.** See [PHASE10_SPEC.md](PHASE10_SPEC.md). | in progress |
 
 ## Explicitly OUT OF SCOPE for the whole project
 
@@ -53,7 +54,10 @@ the project small:
 - Fog of war or any vision/line-of-sight mechanic
 - More than one faction or asymmetric races
 - Deep tech trees. There are **at most 2 tech tiers, ever**. Phase 1 has one tier.
-- Multiplayer, networking or lockstep netcode
+- Multiplayer, networking or lockstep netcode. (Phase 10 was asked to build
+  multiplayer free-for-all, so this rule changed on purpose: free-for-all
+  multiplayer between human players is now in scope, in two phases. 1v1
+  multiplayer, matchmaking and accounts stay out.)
 - Map editors or procedural maps. (Until Phase 6 this read "more than one
   map". Phase 6's request added a second, hand-made map for the free-for-all
   mode, so the rule now bans map editors and generated maps only.)
@@ -62,6 +66,24 @@ the project small:
 
 Any other idea goes into `BACKLOG.md`, tagged with the phase it belongs to.
 Ideas are not built on the side.
+
+## Logged exceptions
+
+- **Phase 10: an external service.** Until Phase 10 the game used no external
+  services, no runtime dependencies beyond CDN-loaded libraries and no build
+  step. Multiplayer needs a way for browsers to find each other, so **Firebase
+  Realtime Database** (free Spark plan, with Firebase anonymous
+  authentication) is now a dependency, loaded as Google's standard web SDK
+  from its CDN (gstatic.com), and **only when a player opens Multiplayer**. It
+  holds only lobby records keyed by match code and the one-time WebRTC
+  handshake (offers, answers, ICE candidates); never game state, never
+  ongoing traffic. Game traffic goes directly between browsers over WebRTC.
+  Single-player modes load and run exactly as before, with no Firebase code.
+  The web config in `src/net/config.js` is public by design (it identifies the
+  project, it is not a credential); the security boundary is the server-side
+  rules in `database.rules.json`. Tests run against the Firebase Local Emulator
+  Suite (`firebase-tools`, a dev dependency), never the production project.
+  There is still no build step. See PHASE10_SPEC.md.
 
 ## Counter relationships (design contract)
 
@@ -114,6 +136,10 @@ Bulwark. Every unit has at least one counter.
   its own team. It runs outside `World` in the match loop and has no Phaser or
   DOM code. Strategy and difficulty numbers live in `src/data/strategies.js`
   and `src/data/difficulty.js`.
+- `src/net/*.js` (Phase 10): multiplayer lobby and peer connections. A
+  separate layer: it never imports from `src/sim` or `src/ai` except the
+  free-for-all camp table it reuses, and nothing in the game imports it.
+  `index.html` loads `src/net/menu.js`, which loads Firebase on demand.
 - `src/game/*.js`: the Phaser scene (rendering and input), the DOM HUD and
   Web Audio. It only reads sim state and sends commands.
 - `test/*.test.js`: `node --test`. Unit, economy, counter, pathfinding and
