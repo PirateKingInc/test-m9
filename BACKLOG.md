@@ -75,6 +75,17 @@ These shipped in Phase 8:
   tuning pass (rejected under the rule fixed in advance), targets met
 * Boom/Turtle opportunity attacks; stale-intel confidence and re-scouting
 
+## Phase 9: Auto-defend, moving structures, hopeless camps (done)
+
+These shipped in Phase 9:
+* auto-defend: idle combat units in a zone their camp owns engage intruders
+  in that zone, never overriding an order, and walk back to their post
+* moving a completed Storehouse, Barracks or Watchtower for half its cost and
+  half its build time (the Castle cannot move)
+* hopeless camps, proven by a reachability search, eliminated after a 5 s
+  window with nothing transferred
+* the balance matrix re-measured (no severe outlier, no intervention)
+
 ## Post-project (not scheduled)
 
 The project's phases are complete. These ideas were deliberately not
@@ -123,3 +134,9 @@ Phase 3.
 - [P6] Zone income or upkeep: owning land only matters for loot and the time-limit ranking; a per-zone bonus could make territory matter during the match.
 - [P6] More than four camps or other free-for-all maps (the map data format supports it; colours and symmetry would need new work).
 - [P9] **The opportunity trigger does not scale with difficulty.** Easy and Normal free-for-all camps launch the same 16-supply opportunity waves as Hard, so a weak-looking player (or the scripted touch bot) can be raided at about 5 minutes instead of about 7. Scaling `RIVALS.attack` per difficulty tier (and measuring it) is the fix.
+
+- [P10] **No auto-defend in the 1v1.** Auto-defend is keyed to zones, and the 1v1 map has none, so there the Phase 1 rule (idle units attack within 200 px, give up past 320 px) still applies. A home radius around the Castle would bring the same behaviour to the 1v1, at the cost of its frozen fingerprints.
+- [P10] The scripted AI never moves a building. A Turtle AI shifting a Watchtower toward a contested zone, or any AI rescuing a Storehouse from a raided field, would use the new command.
+- [P10] **Hopeless elimination never fires in AI-vs-AI play** (0 of 2,697 falls in the Phase 9 matrix): the scripted camps always keep a Peasant, gold or a queued unit until their Castle falls. It is a safety net for human play; a real-player telemetry pass would show how often it fires and whether 5 s feels right.
+- [P10] A moving building shows as an ordinary construction site; a distinct "packed up" look (carts, crates) would tell the player it rebuilds itself without a Peasant.
+- [P10] **Turtle drifted up with auto-defend** (45% -> 48% on the same seeds; upper interval 51%): its home garrison benefits most from automatic defence. Inside the ~65% severe-outlier line of Phase 9 but at Phase 8's ~50% target line; see the Phase 8 strategy-spread item.

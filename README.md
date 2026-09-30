@@ -156,6 +156,35 @@ on a larger map; the other three are AI camps at the chosen difficulty.
   holding, any zone squad) and its ranking of rivals, best first, with the
   score and the reasons. It is a verification view, not part of the HUD.
 
+## Camp rules (Phase 9)
+
+Three changes from player feedback ([PHASE9_SPEC.md](PHASE9_SPEC.md)):
+
+- **Auto-defend (free-for-all).** Your idle soldiers standing in a zone you
+  own go after any enemy unit that enters that zone, anywhere in it, not just
+  near them. Peasants don't. A soldier you gave an order to is never
+  interrupted, and nothing is pulled in from another zone. When the zone is
+  clear they walk back to where they stood (unless that spot has since fallen
+  to a rival). The same rule holds for every camp, AI included. The 1v1 map
+  has no zones: there, as before, idle soldiers answer enemies that come
+  close.
+- **Move a building.** Select a finished Storehouse, Barracks or Watchtower
+  and press **Move** (**V**), then place it like a new building. It costs
+  half the building's price and goes up in half its build time, by itself (no
+  Peasant needed). Until it is up it does nothing (no training, supply, gold
+  drop-off or Tower fire) and can be destroyed like any site; moving into a
+  rival's zone takes nothing from them. The old building disappears the
+  moment you confirm. The Castle can't be moved, and training must be
+  finished or cancelled first.
+- **Hopeless camps are out.** A camp with no soldiers, nothing in training,
+  no Storehouse, no Peasant with gold left to dig, and no way at all to ever
+  train a unit or earn gold again is out of the game after 5 seconds, instead
+  of sitting there until someone gets around to its Castle. The check proves
+  there is no way forward (it explores every possible sequence of builds,
+  cancels and trainings) and leans toward leaving camps in. In a
+  free-for-all its land becomes neutral and the gold it had is left in its
+  home zone for whoever takes it; in a 1v1 the other side wins.
+
 ## Controls
 
 The game takes mouse and keyboard, or touch; both work in the same build. On a
@@ -178,6 +207,7 @@ touch device an **action bar** appears on the right of the screen (see
 | **Q W E R** with the Barracks selected | Train a Horseman, Archer, Shield Knight or Dragon Rider |
 | Click a queue slot / **Backspace** | Cancel that item / the last queued item (100% refund) |
 | **X** | Cancel an unfinished building (75% refund) |
+| **V** with a finished Storehouse, Barracks or Watchtower selected | Move it: then place it like a new building (half its cost, half its build time) |
 | Arrow keys, screen edge, middle-drag | Pan the camera. **Home** recenters on the Castle. |
 | **Mouse wheel** | Zoom in and out about the cursor (0.35×–1.6×, the same range as pinch on touch) |
 | **Space** | Jump the camera to where your lands were last attacked |
@@ -339,6 +369,7 @@ node tools/travel.mjs  # the free-for-all camp spacing measurement
 node tools/symmetry.mjs  # every free-for-all march vs its mirror twins (median of 24)
 node tools/mirror-trace.mjs boom 120  # first tick a camp and its mirror twin differ
 node tools/ffa-balance.mjs --seeds 100 --out balance/ffa-latest.json  # four-camp balance, 900 matches (about an hour)
+node tools/ffa-playthrough.mjs 2 3 5  # Phase 9 free-for-all playthroughs: results, auto-defend, a moved building
 ```
 
 Add `?speed=N` to the URL to run the game N× faster (up to 16×). The mobile
@@ -400,6 +431,9 @@ exact commit.
 | `test/symmetry-ns.test.js` | Phase 8: the free-for-all's north-south mirror — spiral, A* under both mirrors, approach tile, spawn corner, 90 s mirror-exact games for each strategy, diagonal marches equal |
 | `test/stale-intel.test.js`, `test/attack-trigger.test.js` | Phase 8: intel confidence over time, no acting on a stale "weak" read, a re-scout that catches a rebuilt army; Boom/Turtle opportunity waves |
 | `test/ffa-balance.test.js` | Phase 8: the four-camp batch runner's arrangements, mirror classes and match records |
+| `test/auto-defend.test.js` | Phase 9: idle soldiers engage intruders anywhere in an owned zone; orders are never overridden, nothing is recalled, Peasants stay out; they walk back to their post, not into a zone that fell |
+| `test/relocate.test.js`, `e2e/relocate.spec.js` | Phase 9: moving a building costs half and takes half the time, is an inert site in transit, can't capture a zone; the Castle can't move; mouse and touch flows |
+| `test/hopeless.test.js`, `e2e/hopeless.spec.js` | Phase 9: every false-positive safeguard as its own scenario, the reachability proof, the confirmation window, elimination and loot through the Phase 6 pipeline, no double firing, the 1v1 result card |
 | `e2e/tapzoom.spec.js` | Rapid taps never trigger the browser's double-tap zoom and each counts; the game's pinch still works |
 | `e2e/groups.spec.js` | Control groups without the browser's reserved Ctrl+1–8: Shift+digit, the HUD group bar, and Fullscreen with Keyboard Lock |
 

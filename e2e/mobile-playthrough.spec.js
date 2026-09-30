@@ -165,6 +165,11 @@ async function play(page, query, ffa) {
     { type: 'depot', spot: { x: core.x - 20, y: core.y + 170 } },
     { type: 'depot', spot: { x: core.x - 120, y: core.y - 60 } },
   ];
+  // Free-for-all: the Tower goes up before the second Depot. Neighbours raid a
+  // weak-looking camp from about 4 minutes, and this bot can fall before a
+  // Tower 4th in line is ever affordable (the test checks touch placement of
+  // every building type, not how long the bot survives).
+  if (ffa) plan.splice(2, 2, plan[3], plan[2]);
   let wave = 0, grouped = false, maxArmy = 0, defends = 0;
   const placed = new Set();
   const rallied = new Set();

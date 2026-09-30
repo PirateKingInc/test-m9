@@ -602,3 +602,75 @@ One tuning pass was run and rejected (it widened the spread); no further
 adjustment step was triggered, and there is **no accepted exception**.
 Remaining imbalances within the targets: Turtle ahead of Rush by about 20
 points, and a 55/45 west/east lean.
+
+## Phase 9 re-measurement (auto-defend, moving structures, hopeless camps)
+
+Phase 9 added three sim rules that apply to every camp
+([PHASE9_SPEC.md](PHASE9_SPEC.md)). The matrix was re-measured once, after
+all three shipped, on the same 900 seeds as Phase 8 (seeds 1–100 per class,
+Hard). The rule set in advance: intervene **only** for a severe outlier (any
+strategy above ~65% or any corner above ~45%); otherwise record the numbers as
+the new baseline, with no tuning loop.
+
+`balance/ffa-phase9.json`:
+
+| Strategy | FFAs won (chance 33%) | Per camp | Avg place | Avg elimination | Attacks per camp (mean / median) | Camps attacking ≥ once | Retargets per camp |
+|---|---|---|---|---|---|---|---|
+| Rush | **24%** (22–27%) | 18% | 2.78 | 9.1 min | 1.71 / 1 | 99% | 2.41 |
+| Boom | **28%** (25–31%) | 21% | 2.70 | 9.2 min | 3.66 / 3 | 100% | 1.19 |
+| Turtle | **48%** (45–51%) | 36% | 2.02 | 11.3 min | 4.10 / 4 | 99% | 1.78 |
+
+| Corner | FFAs won (chance 25%) | Avg place |
+|---|---|---|
+| NW | 28% (25–31%) | 2.45 |
+| NE | 23% (20–26%) | 2.51 |
+| SE | 22% (20–25%) | 2.57 |
+| SW | 27% (24–30%) | 2.47 |
+
+| Class (100 seeds each) | Rush wins | Boom wins | Turtle wins |
+|---|---|---|---|
+| Rush ×2, east-west neighbours | 20 | 39 | 41 |
+| Rush ×2, diagonal | 47 | 13 | 40 |
+| Rush ×2, north-south neighbours | 38 | 20 | 42 |
+| Boom ×2, east-west neighbours | 31 | 38 | 31 |
+| Boom ×2, diagonal | 30 | 37 | 33 |
+| Boom ×2, north-south neighbours | 12 | 50 | 38 |
+| Turtle ×2, east-west neighbours | 15 | 8 | 77 |
+| Turtle ×2, diagonal | 12 | 18 | 70 |
+| Turtle ×2, north-south neighbours | 13 | 25 | 62 |
+
+900 matches, no draws, 2 decided at the 30:00 limit, 13.1 minutes on average.
+
+**Against Phase 8 (same seeds):**
+
+| | Phase 8 shipped (seeds 1–100) | Phase 9 |
+|---|---|---|
+| Rush | 24% | 24% |
+| Boom | 31% | 28% |
+| Turtle | 45% | **48%** |
+| NW / NE / SE / SW | 28 / 22 / 23 / 28% | 28 / 23 / 22 / 27% |
+| West / east | 55 / 45% | 55 / 45% |
+
+**No severe outlier, so no intervention.** The strongest strategy (Turtle)
+wins 48%, far below the ~65% trigger (and still inside Phase 8's own ~50%
+target, though its upper interval now reaches 51%); the strongest corner (NW)
+28%, far below ~45%. These numbers are the new baseline.
+
+**What moved and why (a reading, not a tuning input):**
+
+- **Turtle +3, Boom −3.** Auto-defend helps the camp that keeps the most
+  idle soldiers at home: Turtle's garrison now meets every raid in its zones
+  without waiting for its AI's defense trigger. Boom's early opportunity
+  waves leave fewer idle units behind, so it gains least. The shift is about
+  one interval wide; the rank order is unchanged.
+- **Rush is unchanged at 24%.** Its waves are always under orders, which
+  auto-defend never touches.
+- **The east-west lean is unchanged** (west 55%); it is not a Phase 9 effect
+  (backlog).
+- **Hopeless elimination never fired in the 900 AI matches:** every one of
+  the 2,697 falls was a Castle loss with a conqueror. Scripted AI camps always
+  keep a Peasant, gold, or a unit in training until their Castle falls, so the
+  rule is a safety net for human-shaped states (a player who spent
+  everything and lost the army), not a factor in AI-vs-AI balance.
+- **Moving structures** is not used by the scripted AI, so it cannot move the
+  matrix; it is a player tool.

@@ -153,3 +153,88 @@ window) is eliminated. It is checked once a second.
   whose Castle falls is eliminated by Castle destruction, and the hopeless
   check only ever looks at camps still standing.
 - Everyone alike: player and AI camps.
+
+## Results
+
+### Auto-defend (`test/auto-defend.test.js`, 10 tests)
+
+An idle soldier engages an intruder anywhere in its home zone, beyond the
+old 200 px aggro range; any owned zone counts, not only home; nothing
+happens in a zone the camp does not own and nothing is pulled in from
+another zone; a unit carrying out an order is never interrupted; Peasants
+never engage; after the fight the unit walks back to its post, but not into a
+zone that has turned hostile; an owner's order cancels the automatic one and
+forgets the post; AI camps defend the same way; the 1v1 is unchanged.
+
+### Moving a structure (`test/relocate.test.js`, 6 tests; `e2e/relocate.spec.js`, 3)
+
+Half cost paid at confirmation and half build time with no Peasant, for all
+three movable types; the old building is gone at once; in transit there is
+no training, supply, drop-off or Tower fire; the Castle, a training
+building, an unfinished one, an unaffordable move and a blocked spot are all
+refused with nothing charged; a building can shift onto its own old
+footprint. **Contested zones:** moving a Watchtower into a zone a rival holds
+does not capture it, and the rival's guards destroy the site while it goes
+up; a moved Watchtower that finishes in a rival's zone makes it contested
+without taking it. In the browser: mouse (select, **V**, click), the Castle
+has no Move button, and touch (tap, Move, drag, lift).
+
+### Hopeless camps (`test/hopeless.test.js`, 16 tests; `e2e/hopeless.spec.js`, 1)
+
+False-positive safeguards, each its own scenario, none flagged: a Peasant
+with gold left in a mine; a Peasant on a mined-out map with gold for a
+Storehouse; exactly enough gold for a Peasant at the Castle (49 gold is
+flagged, 50 is not); a Barracks with gold for a soldier (60 / 59); a queued
+unit; any combat unit; an unfinished site whose refund buys something; a
+completed Storehouse; a camp hopeless for less than the window. The search
+chains actions (cancel a site, build a Storehouse with the refund, mine).
+Positive cases: a genuinely hopeless camp goes out after the window with no
+conqueror, its zones neutral, nothing razed left, its gold left as loot in
+its home zone and nothing paid to anyone; whoever next captures that zone
+gets the gold; a same-tick Castle loss is an ordinary conquest, eliminated
+once; the player's camp is judged the same way; in the 1v1 the other camp
+wins with reason `hopeless`, and the result card says so.
+
+In the 900-match re-measurement the rule **never fired**: all 2,697 falls
+were Castle losses. Scripted AI camps always keep a Peasant, gold or a queued
+unit until their Castle falls. It is a safety net for human play.
+
+### Fingerprints
+
+- 1v1 (`GOLDEN`, `GOLDEN_PHASE5`, `GAMEPLAY_HASH` pins): **unchanged**. The
+  1v1 has no zones, and the hopeless rule never fires in those matches.
+- Phase 6 and Phase 8 free-for-all fingerprints: **reproduced unchanged** with
+  the Phase 9 rules switched off (`world.autoDefend = world.hopelessCheck =
+  false`), proving build and train logic are untouched.
+- **New `GOLDEN_PHASE9_FFA`** (seeds 1–3, 600 s): auto-defend changes who
+  fights where, so the free-for-all production logs with the rules on are
+  different by design and re-pinned under their own name.
+- `test/ffa-rivals.test.js` "claims": the Phase 7 check that a zone claim
+  *completes* was relaxed to "the AI issues claims": auto-defending units
+  now contest those zones, so on the fixed seed the claims are fought over
+  instead of walked in.
+
+### Balance
+
+See BALANCE.md "Phase 9 re-measurement": Rush 24%, Boom 28%, Turtle 48%;
+corners 22–28%. No severe outlier (~65% / ~45%), so no intervention.
+
+### Free-for-all playthroughs (`node tools/ffa-playthrough.mjs 2 3 5 7 11 13`)
+
+Camp 1 is a scripted Boom player that moves its first finished building at
+5:00; the others are the Hard AI (2 Rush, 3 Boom, 4 Turtle).
+
+| Seed | Result | Falls (all to a conqueror) | Auto-defend engagements (camps 1/2/3/4) | Walks back | The player's move |
+|---|---|---|---|---|---|
+| 2 | Turtle (4) last standing, 14.6 min | 1 by 2 @7.8, 3 by 4 @12.8, 2 by 4 @14.6 | 8 / 37 / 86 / 21 | 12 | Storehouse, up in 10.0 s |
+| 3 | Turtle (4), 13.1 min | 3 by 2 @7.2, 1 by 4 @7.2, 2 by 4 @13.1 | 0 / 53 / 2 / 3 | 2 | Storehouse, 10.0 s |
+| 5 | Boom (3), 15.6 min | 2 by 3 @7.2, 4 by 1 @12.3, 1 by 3 @15.6 | 87 / 24 / 114 / 0 | 9 | Storehouse, 10.0 s |
+| 7 | Rush (2), 20.5 min | 3 by 2 @4.5, 1 by 4 @5.7, 4 by 2 @20.5 | 0 / 91 / 0 / 27 | 2 | Storehouse, 10.0 s |
+| 11 | Boom (3), 13.9 min | 2 by 3 @6.1, 1 by 3 @11.9, 4 by 3 @13.9 | 18 / 9 / 91 / 46 | 8 | Storehouse, 10.0 s |
+| 13 | Turtle (4), 13.9 min | 3 by 2 @5.1, 1 by 2 @10.4, 2 by 4 @13.9 | 8 / 67 / 4 / 29 | 6 | Storehouse, 10.0 s |
+
+Every match reached a last-standing result; auto-defend engaged in every
+match (a camp showing 0 had no idle soldier in an owned zone when raided); the
+move completed in exactly half the Storehouse's build time in every match.
+No hopeless elimination fired. Touch play: `npm run test:mobile` (1v1 and
+free-for-all) passes on the final code.
