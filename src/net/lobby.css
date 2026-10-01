@@ -43,7 +43,7 @@
 /* Only the input and the close button take touches: the log lies over the
    map, and a finger that lands on it (half of a pinch, the start of a drag, a
    tap on a unit) must still reach the game. The log always shows the newest lines. */
-#net-chat-input, #net-chat-close { pointer-events: auto; }
+#net-chat-input, #net-chat-close, #net-chat-send { pointer-events: auto; }
 #net-chat-head { display: flex; align-items: center; justify-content: space-between; color: var(--accent); font-size: 12px;
   font-weight: 600; letter-spacing: 0.05em; margin-bottom: 2px; }
 #net-chat-close { background: var(--button); color: var(--text); border: 1px solid var(--edge); border-radius: 6px;
@@ -51,8 +51,18 @@
 #net-chat-log { max-height: 140px; overflow-y: auto; font-size: 12px; padding: 0 2px; }
 #net-chat-log:empty::before { content: 'No messages yet.'; color: var(--dim); }
 .net-chat-line { padding: 2px 0; color: var(--text); overflow-wrap: anywhere; }
-#net-chat-input { width: 100%; box-sizing: border-box; margin-top: 4px; background: var(--button); color: var(--text); border: 1px solid var(--edge);
+#net-chat-row { display: flex; gap: 6px; margin-top: 4px; align-items: stretch; }
+#net-chat-input { flex: 1; min-width: 0; box-sizing: border-box; background: var(--button); color: var(--text); border: 1px solid var(--edge);
   border-radius: 5px; padding: 5px 8px; font-size: 13px; }
+#net-chat-send { flex: none; width: 40px; min-height: 30px; background: var(--accent); color: #1c1408; border: 1px solid var(--accent);
+  border-radius: 6px; font-size: 16px; line-height: 1; padding: 0; cursor: pointer; touch-action: manipulation; }
+#net-chat-send:disabled { background: var(--button); color: var(--dim); border-color: var(--edge); cursor: default; }
+/* Phones: 16 px text, or iOS zooms the page in on the field when it is focused. */
+body.touch #net-chat-input { font-size: 16px; padding: 6px 8px; }
+body.touch #net-chat-send { width: 46px; min-height: 38px; font-size: 18px; }
+/* Typing with a phone keyboard up: docked across the bottom of the visible
+   area, just above the keyboard (placed by play.js placeChat). */
+#net-chat.docked { background: #1a140b; z-index: 30; } /* solid: nothing of the game shows through while typing */
 #net-chat-input:focus { outline: none; border-color: var(--accent); }
 /* The toggles: the action bar's Chat button (touch) and the top bar's (mouse). */
 #touchbar button[data-chat], #net-chat-toggle { position: relative; }

@@ -17,6 +17,13 @@ export function blockNativeZoom(doc = document) {
 // but a phone browser can still scroll an overflow: hidden page, for example
 // when a drag starts on the HUD. Snap it back, so the game never ends up
 // shifted with its edge showing.
+// Except while the player types: a phone scrolls the page to keep the
+// focused field above its keyboard, and undoing that hid the field under the
+// keyboard ("blind typing" in the chat). It snaps back when typing ends.
 export function pinPage(win = window) {
-  win.addEventListener('scroll', () => { if (win.scrollX || win.scrollY) win.scrollTo(0, 0); }, { passive: true });
+  const doc = win.document;
+  const typing = () => { const e = doc.activeElement; return !!e && (e.tagName === 'INPUT' || e.tagName === 'TEXTAREA' || e.isContentEditable); };
+  const pin = () => { if ((win.scrollX || win.scrollY) && !typing()) win.scrollTo(0, 0); };
+  win.addEventListener('scroll', pin, { passive: true });
+  doc.addEventListener('focusout', () => setTimeout(pin, 0));
 }

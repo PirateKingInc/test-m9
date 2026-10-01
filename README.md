@@ -268,7 +268,11 @@ red badge on the button counts the lines that came in since you last looked.
 While it is open, it sits at the bottom right just above the group slots,
 never over the action bar or the slots (on a landscape phone, just left of
 the action bar). Only its text box and ✕ take touches, so pans, pinches and
-taps on the map still go through it. Lines go over the same direct
+taps on the map still go through it. Send with the **➤** button next to the
+text box, or with Enter. On a phone, while you type, the panel docks right
+above the on-screen keyboard, so the text box and what you are typing are
+always in view, and ➤ leaves the keyboard up for the next line. Lines go
+over the same direct
 connections and show lobby names. They are limited to 200 characters and 5
 lines per 5 seconds, and kept only in memory: nothing is saved, and a
 reloaded page starts empty. Typing in the chat never triggers game

@@ -56,6 +56,41 @@ const layout = (page) => page.evaluate(() => {
   };
 });
 
+// Keyboard heights (CSS px) of common phone keyboards at these screen sizes,
+// suggestions row included.
+const KEYBOARD = { 'landscape phone': 200, 'small landscape phone': 190, 'portrait phone': 336, 'small portrait phone': 280 };
+
+async function keyboardUp(page, model, viewport, kb) {
+  if (model === 'content') { await page.setViewportSize({ width: viewport.width, height: viewport.height - kb }); return; }
+  await page.evaluate((h) => {
+    const real = window.__realVV || (window.__realVV = window.visualViewport);
+    const fake = new Proxy(real, { get: (t, p) => (p === 'height' ? h : typeof t[p] === 'function' ? t[p].bind(t) : t[p]) });
+    Object.defineProperty(window, 'visualViewport', { value: fake, configurable: true });
+    real.dispatchEvent(new Event('resize'));
+  }, viewport.height - kb);
+}
+async function keyboardDown(page, model, viewport) {
+  if (model === 'content') { await page.setViewportSize(viewport); return; }
+  await page.evaluate(() => { Object.defineProperty(window, 'visualViewport', { value: window.__realVV, configurable: true }); window.__realVV.dispatchEvent(new Event('resize')); });
+}
+// Where the chat's field and Send button are, against the visible area.
+const typingView = (page) => page.evaluate(() => {
+  const $ = (id) => document.getElementById(id);
+  const box = (e) => { const r = e.getBoundingClientRect(); return { l: r.left + scrollX, t: r.top + scrollY, r: r.right + scrollX, b: r.bottom + scrollY }; };
+  const onTop = (e) => { const r = e.getBoundingClientRect(); const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2); return hit === e || e.contains(hit); };
+  const vv = window.visualViewport, input = $('net-chat-input');
+  const style = getComputedStyle(input), ctx = document.createElement('canvas').getContext('2d');
+  ctx.font = `${style.fontSize} ${style.fontFamily}`;
+  const textW = ctx.measureText(input.value).width, roomW = input.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+  return {
+    vis: { l: vv.pageLeft, t: vv.pageTop, w: vv.width, h: vv.height },
+    docked: $('net-chat').classList.contains('docked'),
+    chat: box($('net-chat')), input: box(input), send: box($('net-chat-send')),
+    inputOnTop: onTop(input), sendOnTop: onTop($('net-chat-send')),
+    value: input.value, textFits: roomW > 120 && roomW > Math.min(textW, 200), sendEnabled: !$('net-chat-send').disabled,
+  };
+});
+
 const overlap = (a, b) => Math.min(a.r, b.r) - Math.max(a.l, b.l) > 0.5 && Math.min(a.b, b.b) - Math.max(a.t, b.t) > 0.5;
 const inside = (a, W, H) => a.l >= -0.5 && a.t >= -0.5 && a.r <= W + 0.5 && a.b <= H + 0.5;
 const mid = (r) => [(r.l + r.r) / 2, (r.t + r.b) / 2];
@@ -132,12 +167,56 @@ for (const [label, viewport] of Object.entries(SCREENS)) {
     await touch.pinch(lx, ly, 40, 90);
     expect((await cam()).z, 'a pinch on the open panel zooms the map').toBeGreaterThan(c0.z * 1.3);
 
-    // The input takes a real tap; a line typed there reaches Bram.
-    await touch.tap(...mid(L.input));
-    expect(await p.page.evaluate(() => document.activeElement?.id)).toBe('net-chat-input');
-    await p.page.keyboard.type('hello from the phone');
-    await p.page.keyboard.press('Enter');
-    await expect.poll(() => q.page.evaluate(() => globalThis.__net.session.chatLog.map((c) => `${c.name}: ${c.text}`))).toContain('Ava: hello from the phone');
+    // Typing with the on-screen keyboard up, under both ways phones report
+    // it (headless Chromium has no on-screen keyboard; each model reproduces
+    // what the page sees and does):
+    // - 'visual': iOS Safari, and Chrome on Android since v108: the visual
+    //   viewport shrinks to the area above the keyboard; the page keeps its size.
+    // - 'content': older Android browsers, Firefox: the page itself shrinks.
+    // The field, what is typed in it and the Send button must stay in view
+    // above the keyboard, and Send must work without dismissing the keyboard.
+    for (const model of ['visual', 'content']) {
+      const kb = KEYBOARD[label], at = `${model} keyboard (${kb} px)`;
+      L = await layout(p.page);
+      await touch.tap(...mid(L.input));
+      expect(await p.page.evaluate(() => document.activeElement?.id), `${at}: the field takes a real tap`).toBe('net-chat-input');
+      await keyboardUp(p.page, model, viewport, kb);
+      await p.page.keyboard.type(`typing on a ${model} keyboard`);
+      await p.page.waitForTimeout(450);
+      const K = await typingView(p.page);
+      expect(K.docked, `${at}: the panel docks above the keyboard`).toBe(true);
+      for (const [name, r] of [['field', K.input], ['Send button', K.send], ['panel', K.chat]]) {
+        expect(r.t, `${at}: the ${name} is below the top of the visible area`).toBeGreaterThanOrEqual(K.vis.t - 0.5);
+        expect(r.b, `${at}: the ${name} (bottom ${r.b.toFixed(1)}) is above the keyboard (visible area ends ${(K.vis.t + K.vis.h).toFixed(1)})`).toBeLessThanOrEqual(K.vis.t + K.vis.h + 0.5);
+        expect(r.l >= K.vis.l - 0.5 && r.r <= K.vis.l + K.vis.w + 0.5, `${at}: the ${name} is within the screen's width`).toBe(true);
+      }
+      expect(K.inputOnTop && K.sendOnTop, `${at}: the field and Send are not covered`).toBe(true);
+      expect(K.value, `${at}: what is typed is in the field`).toBe(`typing on a ${model} keyboard`);
+      expect(K.textFits, `${at}: the field is wide enough to see what is being typed`).toBe(true);
+      expect(K.sendEnabled, `${at}: Send is enabled once there is text`).toBe(true);
+      // What the player sees above the keyboard.
+      if (SHOTS) await p.page.screenshot({ path: `${SHOTS}/mp-${label.replace(/ /g, '-')}-keyboard-${model}.png`, clip: { x: 0, y: 0, width: viewport.width, height: viewport.height - kb } });
+      // A real tap on Send (where it is now, above the keyboard) sends; the
+      // field keeps the focus, so the keyboard stays up.
+      await touch.tap(...mid(K.send));
+      await expect.poll(() => q.page.evaluate(() => globalThis.__net.session.chatLog.map((c) => `${c.name}: ${c.text}`)), { message: `${at}: Send delivers` }).toContain(`Ava: typing on a ${model} keyboard`);
+      expect(await p.page.evaluate(() => [document.activeElement?.id, document.getElementById('net-chat-input').value]), `${at}: the field keeps the focus and is cleared`).toEqual(['net-chat-input', '']);
+      expect((await typingView(p.page)).sendEnabled, `${at}: Send is disabled with nothing to send`).toBe(false);
+      // Enter still sends, as an alternative.
+      await p.page.keyboard.type(`enter on a ${model} keyboard`);
+      await p.page.keyboard.press('Enter');
+      await expect.poll(() => q.page.evaluate(() => globalThis.__net.session.chatLog.map((c) => `${c.name}: ${c.text}`)), { message: `${at}: Enter delivers` }).toContain(`Ava: enter on a ${model} keyboard`);
+      // Done typing: the keyboard goes down and the panel goes back to its place.
+      await p.page.evaluate(() => document.activeElement.blur());
+      await keyboardDown(p.page, model, viewport);
+      await p.page.waitForTimeout(600);
+      L = await layout(p.page);
+      expect(await p.page.evaluate(() => document.getElementById('net-chat').classList.contains('docked')), `${at}: undocked after typing`).toBe(false);
+      expect(overlap(L.chat, L.bar) || overlap(L.chat, L.groups), `${at}: back clear of the bar and the slots`).toBe(false);
+      expect(L.page, `${at}: the page is back in place`).toEqual({ dw: L.W, dh: L.H });
+      expect(await p.page.evaluate(() => [scrollX, scrollY]), `${at}: not scrolled`).toEqual([0, 0]);
+    }
+    await shot('typed');
 
     // ✕ closes it; Chat opens it again; Chat again closes it. (The panel grows
     // upward from above the slots, so the new line moved its ✕: look again.)
@@ -176,6 +255,8 @@ for (const [label, viewport] of Object.entries(SCREENS)) {
       expect(Math.hypot(c1.x - c0.x, c1.y - c0.y), `a ${dx},${dy} drag pans after pinching all the way out`).toBeGreaterThan(140 / 0.35 * 0.5);
     }
 
+    // And the match itself has been running all along on both phones.
+    for (const x of ps) expect(await x.page.evaluate(() => globalThis.__net.session.ls.tick), `${x.name}'s game is running`).toBeGreaterThan(200);
     expect(ps.flatMap((x) => x.errors)).toEqual([]);
     for (const x of ps) await x.context.close();
   });

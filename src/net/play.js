@@ -136,16 +136,43 @@ async function play(session, me, names) {
 // that line, as on a landscape phone, it sits just left of the bar), and only
 // its input and ✕ take touches: the rest lets pans, pinches and taps through
 // to the map.
-const CHAT_GAP = 6, CHAT_MIN_LOG = 48;
+const CHAT_GAP = 6, CHAT_MIN_LOG = 48, KEYBOARD_MIN = 100;
+// The tallest the page has been at this width (no keyboard): a keyboard is up
+// when the visible area is clearly shorter than that.
+const fullHeight = new Map();
 function placeChat() {
-  const chat = $('net-chat'), log = $('net-chat-log'), input = $('net-chat-input'), head = $('net-chat-head');
+  const chat = $('net-chat'), log = $('net-chat-log'), input = $('net-chat-input'), head = $('net-chat-head'), row = $('net-chat-row');
   if (!chat || chat.hidden) return;
   const W = document.documentElement.clientWidth, H = document.documentElement.clientHeight;
+  // The visible part of the page, in page coordinates. A phone keyboard
+  // shrinks it: iOS and Chrome on Android shrink the visual viewport (and
+  // scroll the page to the focused field); others resize the page itself.
+  const vv = window.visualViewport;
+  const vis = vv ? { l: vv.pageLeft, t: vv.pageTop, w: vv.width, h: vv.height } : { l: scrollX, t: scrollY, w: W, h: H };
+  const typing = document.activeElement === input;
+  if (!typing) fullHeight.set(W, Math.max(fullHeight.get(W) || 0, H, vis.h));
+  const keyboard = typing && vis.h < (fullHeight.get(W) || H) - KEYBOARD_MIN;
+  chat.classList.toggle('docked', keyboard);
+  if (keyboard) {
+    // Typing with the keyboard up: dock across the bottom of what is still
+    // visible, just above the keyboard, so the field and what is being typed
+    // are always in view (the game's controls are under the keyboard anyway).
+    chat.style.left = `${vis.l + 8}px`;
+    chat.style.right = 'auto';
+    chat.style.width = `${vis.w - 16}px`;
+    const fixed = row.offsetHeight + head.offsetHeight + 12;
+    log.style.maxHeight = `${Math.max(0, Math.min(66, vis.h - fixed - 2 * CHAT_GAP))}px`;
+    log.scrollTop = log.scrollHeight; // the newest lines, in full
+    chat.style.bottom = 'auto';
+    chat.style.top = `${vis.t + vis.h - chat.offsetHeight - CHAT_GAP}px`;
+    return;
+  }
+  chat.style.left = chat.style.width = '';
   const rect = (id) => { const e = $(id); if (!e || e.hidden || e.offsetParent === null) return null; const r = e.getBoundingClientRect(); return r.width && r.height ? r : null; };
   const top = rect('hud-top'), bottom = rect('hud-bottom'), groups = rect('groups'), bar = rect('touchbar');
   const line = Math.min(bottom ? bottom.top : H, groups ? groups.top : H) - CHAT_GAP; // the panel's bottom edge
   const ceilingAll = (top ? top.bottom : 0) + CHAT_GAP;
-  const w = chat.offsetWidth, fixed = input.offsetHeight + head.offsetHeight + 8;
+  const w = chat.offsetWidth, fixed = row.offsetHeight + head.offsetHeight + 8;
   let right = 8, ceiling = ceilingAll;
   const overBar = (r) => bar && W - r - w < bar.right && W - r > bar.left;
   if (overBar(right)) {
@@ -180,7 +207,9 @@ function panel(session, names, me) {
       el('div', { id: 'net-chat-head' }, el('span', { textContent: 'Chat' }),
         el('button', { id: 'net-chat-close', type: 'button', title: 'Close the chat', textContent: '✕' })),
       el('div', { id: 'net-chat-log' }),
-      el('input', { id: 'net-chat-input', maxLength: NET.chatMax, placeholder: 'Message (Enter to send)', autocomplete: 'off' })));
+      el('div', { id: 'net-chat-row' },
+        el('input', { id: 'net-chat-input', maxLength: NET.chatMax, placeholder: 'Message', autocomplete: 'off', enterKeyHint: 'send' }),
+        el('button', { id: 'net-chat-send', type: 'button', title: 'Send (or press Enter)', textContent: '➤' }))));
   document.body.append(box);
   // The toggles: one in the touch action bar, one in the top bar for a mouse.
   const badge = () => el('b', { className: 'net-unread', hidden: true });
@@ -210,11 +239,26 @@ function panel(session, names, me) {
     if (e.key === 'Enter' && chat.hidden && !(e.target instanceof HTMLInputElement)) { e.preventDefault(); setOpen(true, { focus: true }); }
   });
   addEventListener('resize', placeChat);
+  // A phone keyboard opening or closing changes the visual viewport.
+  window.visualViewport?.addEventListener('resize', placeChat);
+  window.visualViewport?.addEventListener('scroll', placeChat);
+  input.addEventListener('focus', () => { placeChat(); setTimeout(placeChat, 300); }); // and again once the keyboard is up
+  input.addEventListener('blur', () => setTimeout(placeChat, 50));
   setInterval(placeChat, 500); // the HUD's layout changes with input mode and orientation
   // Typing is not playing: keys in the chat box never reach the game.
   for (const ev of ['keydown', 'keyup', 'keypress']) input.addEventListener(ev, (e) => e.stopPropagation());
+  // Send: the ➤ button or Enter. The button never takes the focus from the
+  // field, so a phone keyboard stays up for the next line.
+  const sendBtn = $('net-chat-send');
+  const send = () => { if (session.chat(input.value)) input.value = ''; sendBtn.disabled = !input.value.trim(); };
+  sendBtn.disabled = true;
+  input.addEventListener('input', () => { sendBtn.disabled = !input.value.trim(); });
+  // (Cancelling pointerdown/mousedown keeps the focus in the field; touchstart
+  // must not be cancelled: that would cancel the tap's click too.)
+  for (const ev of ['pointerdown', 'mousedown']) sendBtn.addEventListener(ev, (e) => { if (document.activeElement === input) e.preventDefault(); });
+  sendBtn.addEventListener('click', () => { const typing = document.activeElement === input || !document.body.classList.contains('touch'); send(); if (typing) input.focus(); });
   input.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') { if (session.chat(input.value)) input.value = ''; }
+    if (e.key === 'Enter') send();
     if (e.key === 'Escape') setOpen(false);
   });
   const notices = $('net-notices');

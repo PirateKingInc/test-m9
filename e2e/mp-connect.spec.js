@@ -25,15 +25,18 @@ const links = (p) => p.page.evaluate(async () => {
   for (const peer of globalThis.__net.mesh.peers.values()) {
     const stats = await peer.pc.getStats();
     // The pair ICE selected, as the transport reports it.
-    let pair = null;
-    stats.forEach((s) => { if (s.type === 'transport' && s.selectedCandidatePairId) pair = stats.get(s.selectedCandidatePairId); });
+    let pair = null, transport = null;
+    stats.forEach((s) => { if (s.type === 'transport' && s.selectedCandidatePairId) { transport = s; pair = stats.get(s.selectedCandidatePairId); } });
     const cand = (id) => { const c = stats.get(id); return c && { type: c.candidateType, protocol: c.protocol }; };
     out.push({
       uid: peer.uid, name: peer.name, state: peer.state, rtt: peer.rtt,
       connection: peer.pc.connectionState, ice: peer.pc.iceConnectionState,
       channel: peer.channel.readyState, label: peer.channel.label,
       hello: peer.hello?.name, local: pair && cand(pair.localCandidateId), remote: pair && cand(pair.remoteCandidateId),
-      bytesSent: pair?.bytesSent, bytesReceived: pair?.bytesReceived,
+      // The transport's totals, not the selected pair's: ICE may switch to
+      // another working pair after the hello (renomination, more than one
+      // local interface), and that pair's own counters start again at 0.
+      bytesSent: transport?.bytesSent ?? pair?.bytesSent, bytesReceived: transport?.bytesReceived ?? pair?.bytesReceived,
     });
   }
   return out;
