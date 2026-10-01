@@ -229,8 +229,8 @@ This applies identically to every team; the rules are in the sim, not in the AI.
 | Item | Value |
 |---|---|
 | Supply per unit | Drone 1, Striker 1, Sparker 1, Lancer 2, Bulwark 3 |
-| Supply provided | Command Core **10**, Lumen Depot **8** (completed buildings only) |
-| Hard maximum | **60** per team, however many providers |
+| Supply provided | Command Core **10**, Lumen Depot **10** (completed buildings only; 8 until Phase 12) |
+| Hard maximum | **100** per team, however many providers (60 until Phase 12, PHASE12_SPEC.md) |
 | Starting use | 4 / 10 |
 
 - `used` = the supply of living units **plus queued production** (reserved when

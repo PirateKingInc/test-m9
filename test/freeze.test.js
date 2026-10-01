@@ -18,6 +18,7 @@ import { Match } from '../src/ai/match.js';
 import { SandboxBot } from '../src/ai/engine.js';
 import { gameplayHash } from './gameplay-values.js';
 import { FFA_MAP, FFA_STRATEGIES } from '../src/data/ffa.js';
+import { withPhase11 } from './phase11-data.js';
 
 const sha = (buf) => createHash('sha256').update(buf).digest('hex');
 
@@ -34,8 +35,12 @@ const sha = (buf) => createHash('sha256').update(buf).digest('hex');
 // play at the Phase 11 scale never reaches (peak 90). Every fingerprint below
 // is unchanged by them, and test/path-budget.test.js checks the routes
 // against a fresh grid query by query.
+// It also re-pins src/data/buildings.js (supply cap 100, Storehouse 10) and
+// src/ai/engine.js (the AI builds Storehouses up to SUPPLY.max, not a literal
+// 60): with the Phase 11 values put back (test/phase11-data.js) every
+// fingerprint and the gameplay hash below reproduce exactly.
 export const FROZEN = {
-  "src/data/buildings.js": "0176c4b3f71568db3421a3f661c96fbf64b9b78d7d3d2f812770307c8b204ec8",
+  "src/data/buildings.js": "bace30ca3494c0e456f561a07292923cec16fb67598daec23c21913dd420037a",
   "src/data/camp-rules.js": "eaba6b6ba317c1a0a1027eedb46a1888ca23b860bce20b49cf2a8618406049da",
   "src/data/difficulty.js": "5edbe78a9ebb8172eed5c945f34732d549375eeb806df9265e684577b1a0ea6e",
   "src/data/ffa.js": "aae3f1f3cef2a7e34f8b923414f643189ffb44872e105f25b9d9d30a021877df",
@@ -64,7 +69,7 @@ export const FROZEN = {
   "src/sim/victory.js": "7361a2180bd9485a989352eac8ca7f40d6b6ddd369f057a32ba48fd1fa4301e1",
   "src/sim/world.js": "8ed7678c152ccbe3287977b8466167b3d400ff2361caf8ef9503df0dee2b6073",
   "src/ai/engine-types.js": "af5469d73733f3337336b5217b6a9186f1c3c0fd36e9623477c786b4f5b1c643",
-  "src/ai/engine.js": "4066de8ee3929528059f84ce8b20b1d83cc06f9b7f35c8ecef7e7e14a4936357",
+  "src/ai/engine.js": "2ab5c7af54b92c5e9be370538154d343059e2d8048ec11afec7f65071cc2a80a",
   "src/ai/match.js": "c833058cc4533c4e947693dfaf25602c02b16b24772b21d2f2c6a57565747442",
   "src/ai/readonly.js": "85d635a231882096209c77af1e34820ecae488fde5da79d390b5dfdee07850f7",
   "src/ai/rivals.js": "f23a6d6da53c7edb400983396f9894bba876c0a0179b8fe5f2247b74dc7d30ec",
@@ -85,8 +90,14 @@ test('src/data is byte-identical to its Phase 5 split; src/sim and src/ai to the
 // the Phase 4 release (commit f08f2d8) before the Phase 5 split.
 export const GAMEPLAY_HASH = '9fd621ee00b78dd2e7123d0492c21ba28d79c1e80cf0b60046ad1f92a0f11900';
 
-test('every gameplay value in src/data is unchanged from the Phase 4 release', () => {
-  assert.equal(gameplayHash(), GAMEPLAY_HASH);
+// Phase 12 changed gameplay data (the supply cap, the Storehouse; see
+// test/phase11-data.js). With exactly those Phase 11 values put back, the hash
+// is the Phase 4 one, so nothing else moved; the Phase 12 values are pinned too.
+export const GAMEPLAY_HASH_PHASE12 = '2c2ddeed0a1ae04bd53237011e884020315890ed6e96b69ac2f4c61b6fc78800';
+
+test('every gameplay value in src/data is the Phase 4 release, but for the Phase 12 changes', () => {
+  assert.equal(withPhase11(gameplayHash), GAMEPLAY_HASH);
+  assert.equal(gameplayHash(), GAMEPLAY_HASH_PHASE12);
 });
 
 // A fingerprint of everything collision and combat touch: positions, HP, orders.
@@ -122,7 +133,7 @@ export const GOLDEN = {
 };
 
 test('fixed-seed games play out exactly as in Phase 3 and 4 (collision, pathing, combat)', () => {
-  assert.deepEqual(fingerprints(), GOLDEN);
+  assert.deepEqual(withPhase11(fingerprints), GOLDEN); // (Phase 12: with its data changes undone)
 });
 
 // Phase 6 equivalence proof. The sim and the AI were refactored from two teams
@@ -168,7 +179,7 @@ export const GOLDEN_PHASE5 = {
 };
 
 test('Phase 6 equivalence: 1v1 matches through the N-team code reproduce Phase 5 exactly', () => {
-  assert.deepEqual(phase5Fingerprints(), GOLDEN_PHASE5);
+  assert.deepEqual(withPhase11(phase5Fingerprints), GOLDEN_PHASE5);
 });
 
 // Phase 7 equivalence proof (PHASE7_SPEC.md "What stays the same"). The new
@@ -211,7 +222,7 @@ test('Phase 7 equivalence: with placeholder targeting, the free-for-all builds a
   // Phase 8 changed the free-for-all's pathing (north-south mirrored
   // tie-breaks, PHASE8_SPEC.md "Pathfinding symmetry"). With exactly that
   // switched off, every order still lands on the same tick as in Phase 6.
-  assert.deepEqual(ffaProductionLogs({ mirrorY: false, phase9: false }), GOLDEN_PHASE6_FFA);
+  assert.deepEqual(withPhase11(() => ffaProductionLogs({ mirrorY: false, phase9: false })), GOLDEN_PHASE6_FFA);
 });
 
 // Phase 8 gate (PHASE8_SPEC.md "Pathfinding symmetry"): the same production
@@ -228,7 +239,7 @@ export const GOLDEN_PHASE8_FFA = {
 
 test('Phase 8 equivalence: the free-for-all with the pathfinding fix builds and trains as pinned', () => {
   // With Phase 9's camp rules (auto-defend, hopeless camps) switched off.
-  assert.deepEqual(ffaProductionLogs({ phase9: false }), GOLDEN_PHASE8_FFA);
+  assert.deepEqual(withPhase11(() => ffaProductionLogs({ phase9: false })), GOLDEN_PHASE8_FFA);
 });
 
 // Phase 9 (PHASE9_SPEC.md): the same log with the camp rules on. Auto-defend
@@ -241,5 +252,34 @@ export const GOLDEN_PHASE9_FFA = {
 };
 
 test('Phase 9 equivalence: the free-for-all with auto-defend and hopeless camps builds and trains as pinned', () => {
-  assert.deepEqual(ffaProductionLogs(), GOLDEN_PHASE9_FFA);
+  assert.deepEqual(withPhase11(() => ffaProductionLogs()), GOLDEN_PHASE9_FFA);
+});
+
+// Phase 12 (PHASE12_SPEC.md): the same 1v1 fingerprints and free-for-all
+// production logs with the Phase 12 data (supply cap 100, Storehouse 10).
+// A larger Storehouse moves every AI's build order, so all of these move;
+// the tests above prove they move only through the data.
+export const GOLDEN_PHASE12 = {
+  sandboxBot: '109126657f0ba006',
+  'rush-boom-hard-1': '2d6c39c6c640565b',
+  'turtle-rush-normal-2': '49d90ce405543be0',
+  'boom-turtle-easy-3': '2ab8b97f486895f2',
+  'rush-rush-easy-11': '1bc8e67018320084 1/core-destroyed/767.95 {"1":6562,"2":5136}',
+  'rush-boom-normal-12': '337d0cd9f7647f64 2/core-destroyed/878.55 {"1":4116,"2":5285}',
+  'rush-turtle-hard-13': '51d7bbc747900e0e 2/core-destroyed/661.05 {"1":942,"2":6637}',
+  'boom-rush-easy-14': '55e5a4956d1d033d 1/core-destroyed/781.70 {"1":11372,"2":10237}',
+  'boom-boom-normal-15': '19a9e4254e1fbbad 2/core-destroyed/582.25 {"1":4730,"2":9204}',
+  'boom-turtle-hard-16': '35366a6155fe72aa 1/core-destroyed/684.55 {"1":6850,"2":4225}',
+  'turtle-rush-easy-17': '5eee61489d028b10 1/core-destroyed/500.40 {"1":6261,"2":3396}',
+  'turtle-boom-normal-18': 'c33099125a448d87 2/core-destroyed/529.35 {"1":1609,"2":10678}',
+  'turtle-turtle-hard-19': 'a6557f70ca75614a 2/core-destroyed/428.85 {"1":2755,"2":5730}',
+  'idlePlayer-rush-hard-5': 'f5847976ce56956f 2/core-destroyed/255.70',
+  'sentinel-sentinel-timeLimit-7': '2846b2454266795b 1/time-limit/1800.05 {"1":13406,"2":12882}',
+  'seed1-600s': 'c87705652fef76e7 (401 build/train orders)',
+  'seed2-600s': 'ca74fba9295fac27 (412 build/train orders)',
+  'seed3-600s': '68db27e89dcdbb1b (397 build/train orders)',
+};
+
+test('Phase 12: fixed-seed games with the Phase 12 data play out as pinned', () => {
+  assert.deepEqual({ ...fingerprints(), ...phase5Fingerprints(), ...ffaProductionLogs() }, GOLDEN_PHASE12);
 });

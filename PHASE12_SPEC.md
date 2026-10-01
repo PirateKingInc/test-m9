@@ -306,3 +306,28 @@ container. The phone numbers are an emulation: a desktop CPU slowed 4x,
 which models a mid-range phone's JavaScript speed but not its GPU, memory,
 thermal throttling or browser. No physical phone has run any of this, in
 this phase or any earlier one.
+
+### 4. The cap and the Storehouse (issue #190)
+
+- **`SUPPLY.max` 60 → 100**, for every mode: 1v1, single-player
+  free-for-all and multiplayer read the same value, and nothing in the data
+  called for an exception (the free-for-all, with four armies, is the
+  heavier case and still passes at 100).
+- **Storehouse 8 → 10 supply.** With the Castle's 10, **9 Storehouses**
+  reach the cap. For the old cap it took 7. With 8 supply each, it would take 12 (1,200
+  gold and twelve 3 × 3 footprints in the base); with 10, a player builds two
+  more Storehouses than before and every one of them still raises the army
+  ceiling, which is the feedback this phase answers. 10 is also a number a
+  player can count with: Castle + 9 Storehouses = 100. The price stays 100
+  gold, so housing costs 10 gold a supply instead of 12.5.
+- **The AI** now builds Storehouses up to `SUPPLY.max` instead of a literal
+  60 (`src/ai/engine.js`), so its camps can house a bigger army. Its attack
+  thresholds (waves at about 30 supply) are unit design and not touched;
+  whether an economy-focused camp actually approaches the cap is measured on
+  the resized maps (section 5).
+- **Equivalence.** `test/phase11-data.js` holds the Phase 11 values of
+  exactly the fields this phase changes. With them put back, the gameplay
+  hash is the Phase 4 release's and every fixed-seed fingerprint from
+  Phases 3-9 reproduces. So the code changes alter nothing except through these
+  values. The fingerprints with the new values are pinned beside them
+  (`GOLDEN_PHASE12`, `GAMEPLAY_HASH_PHASE12`).

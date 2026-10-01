@@ -9,7 +9,7 @@
 //   read-only proxy) and *acts* only through `this.issue()`, which forwards to
 //   world.issue() with the engine's own team stamped on and a command whitelist.
 // - No Phaser, no DOM, no direct state mutation, no cheating.
-import { BUILDINGS } from '../data/buildings.js';
+import { BUILDINGS, SUPPLY } from '../data/buildings.js';
 import { UNITS } from '../data/units.js';
 import { STRATEGIES, SPOTS, ARMY, SCOUTING, EXPANSION } from '../data/strategies.js';
 import { Scout } from './scout.js';
@@ -242,7 +242,7 @@ export class AiEngine {
     const s = this.s, sup = this.supply();
     // 1. Supply: a new Depot before we run out.
     const producers = this.mine('building', 'foundry').length + 1;
-    if (sup.cap < 60 && sup.free <= s.supplyBuffer + producers && !this.pendingBuild) {
+    if (sup.cap < SUPPLY.max && sup.free <= s.supplyBuffer + producers && !this.pendingBuild) {
       const keys = s.depotSpots || ['depot'];
       const key = keys[Math.min(this.mine('building', 'depot').length, keys.length - 1)];
       if (this.tryBuild('depot', key)) return;

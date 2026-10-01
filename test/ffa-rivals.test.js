@@ -8,6 +8,7 @@ import { PF } from './helpers.js';
 import { Match } from '../src/ai/match.js';
 import { readonly } from '../src/ai/readonly.js';
 import { FFA_MAP, FFA_STRATEGIES } from '../src/data/ffa.js';
+import { withPhase11 } from './phase11-data.js';
 
 // The same seeds played with `targeting: 'nearest'` (which reproduces Phase 6
 // exactly, see the freeze guard): winner and elimination order ("fallen<-by").
@@ -72,6 +73,6 @@ test('multi-rival FFA playthroughs: camps turn on weakened rivals, avoid stronge
 });
 
 test('the Phase 6 outcomes above are what targeting: nearest produces (on Phase 6 pathing)', () => {
-  const { r, falls } = play(2, 'nearest', false, false);
+  const { r, falls } = withPhase11(() => play(2, 'nearest', false, false)); // (with Phase 12's data changes undone)
   assert.equal(`${r.winner} ${falls.map((f) => `${f.team}<-${f.by}`).join(' ')}`, PHASE6[2]);
 });

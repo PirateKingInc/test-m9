@@ -7,7 +7,7 @@ export const BUILDINGS = {
   },
   depot: {
     w: 3, h: 3, hp: 600, armor: 'structure',
-    cost: 100, buildTime: 20, trains: [], dropOff: true, hotkey: 'W', supply: 8,
+    cost: 100, buildTime: 20, trains: [], dropOff: true, hotkey: 'W', supply: 10,
   },
   foundry: {
     w: 3, h: 3, hp: 800, armor: 'structure',
@@ -33,7 +33,10 @@ export const PRODUCTION = {
   cancelRefund: 1.0,
 };
 
-// Population cap (SPEC.md Phase 2 "Population (supply)"). Applies to every team.
+// Population cap (SPEC.md Phase 2 "Population (supply)"). Applies to every team
+// and every mode. Phase 12 (PHASE12_SPEC.md) raised it from 60 to the highest
+// cap the performance budget supports on a phone, and the Storehouse from 8
+// to 10 supply: the Castle (10) and 9 Storehouses reach it, against 7 for 60.
 export const SUPPLY = {
-  max: 60, // hard ceiling, however many providers a team has
+  max: 100, // hard ceiling, however many providers a team has
 };

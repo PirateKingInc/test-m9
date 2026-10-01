@@ -20,10 +20,10 @@ function twoTeams() {
 test('supply numbers match SPEC.md', () => {
   const spec = readFileSync(new URL('../SPEC.md', import.meta.url), 'utf8');
   assert.match(spec, /Drone 1, Striker 1, Sparker 1, Lancer 2, Bulwark 3/);
-  assert.match(spec, /Command Core \*\*10\*\*, Lumen Depot \*\*8\*\*/);
-  assert.match(spec, /\*\*60\*\* per team/);
+  assert.match(spec, /Command Core \*\*10\*\*, Lumen Depot \*\*10\*\*/);
+  assert.match(spec, /\*\*100\*\* per team/);
   assert.deepEqual(['drone', 'striker', 'sparker', 'lancer', 'bulwark'].map((u) => UNITS[u].supply), [1, 1, 1, 2, 3]);
-  assert.deepEqual([BUILDINGS.core.supply, BUILDINGS.depot.supply, SUPPLY.max], [10, 8, 60]);
+  assert.deepEqual([BUILDINGS.core.supply, BUILDINGS.depot.supply, SUPPLY.max], [10, 10, 100]);
 });
 
 test('both teams are capped identically', () => {
@@ -53,14 +53,18 @@ test('queueing reserves supply, cancelling releases it, and the rejection says w
   assert.equal(w.issue({ type: 'train', building: f1.id, unit: 'lancer', team: 1 }).ok, true);
 });
 
-test('completed Depots raise the cap (+8 each) up to the hard max of 60; unfinished ones do not', () => {
+test('completed Depots raise the cap (+10 each) up to the hard max of 100; unfinished ones do not', () => {
   const { w } = twoTeams();
   const site = w.addBuilding('depot', 1, 12, 4);
   assert.equal(supplyOf(w, 1).cap, 10, 'unfinished depot provides nothing');
   site.built = true;
-  assert.equal(supplyOf(w, 1).cap, 18);
-  for (let i = 0; i < 8; i++) w.addBuilding('depot', 1, 12 + 4 * (i % 4), 12 + 4 * Math.floor(i / 4), { built: true });
-  assert.equal(supplyOf(w, 1).cap, 60, '10 + 9x8 = 82, clamped to 60');
+  assert.equal(supplyOf(w, 1).cap, 20);
+  for (let i = 0; i < 7; i++) w.addBuilding('depot', 1, 12 + 4 * (i % 4), 12 + 4 * Math.floor(i / 4), { built: true });
+  assert.equal(supplyOf(w, 1).cap, 90, 'the Castle and 8 Storehouses: 10 + 8x10');
+  w.addBuilding('depot', 1, 28, 4, { built: true });
+  assert.equal(supplyOf(w, 1).cap, 100, 'the ninth reaches the cap');
+  w.addBuilding('depot', 1, 32, 4, { built: true });
+  assert.equal(supplyOf(w, 1).cap, 100, '10 + 10x10 = 110, clamped to 100');
   assert.equal(supplyOf(w, 2).cap, 10, 'the other team is unaffected');
 });
 
@@ -70,7 +74,7 @@ test('trained units hold their supply; losing a provider blocks training but kil
   for (let i = 0; i < 4; i++) w.issue({ type: 'train', building: f1.id, unit: 'bulwark', team: 1 });
   runUntil(w, () => f1.queue.length === 0, 200);
   assert.equal([...w.ofKind('unit')].filter((u) => u.type === 'bulwark').length, 4);
-  assert.deepEqual(supplyOf(w, 1), { used: 12, cap: 18, free: 6 });
+  assert.deepEqual(supplyOf(w, 1), { used: 12, cap: 20, free: 8 });
   depot.hp = 0; // destroyed
   w.step();
   assert.equal(w.get(depot.id), undefined);
@@ -81,7 +85,7 @@ test('trained units hold their supply; losing a provider blocks training but kil
 
 test('a full match-sized army is bounded by the cap', () => {
   const { w, f1 } = twoTeams();
-  for (let i = 0; i < 7; i++) w.addBuilding('depot', 1, 12 + 4 * (i % 4), 12 + 4 * Math.floor(i / 4), { built: true });
+  for (let i = 0; i < 9; i++) w.addBuilding('depot', 1, 12 + 4 * (i % 5), 12 + 4 * Math.floor(i / 5), { built: true });
   let trained = 0;
   for (let round = 0; round < 200; round++) {
     while (f1.queue.length < 5 && w.issue({ type: 'train', building: f1.id, unit: 'striker', team: 1 }).ok) trained++;
@@ -89,8 +93,8 @@ test('a full match-sized army is bounded by the cap', () => {
     runUntil(w, () => f1.queue.length < 5, 60);
   }
   runUntil(w, () => f1.queue.length === 0, 100);
-  assert.equal(trained, 60, '60 one-supply units, then the hard max stops production');
-  assert.equal(supplyOf(w, 1).used, 60);
+  assert.equal(trained, 100, '100 one-supply units, then the hard max stops production');
+  assert.equal(supplyOf(w, 1).used, 100);
   assert.equal(w.issue({ type: 'train', building: f1.id, unit: 'striker', team: 1 }).ok, false);
   void tileCenter;
 });

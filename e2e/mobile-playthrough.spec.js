@@ -5,6 +5,7 @@
 // panning the camera to wherever it needs to act. It never calls game code.
 import { test, expect } from '@playwright/test';
 import { PHONE, openTouchGame } from './touch-helpers.js';
+import { SUPPLY } from '../src/data/buildings.js';
 
 test.use(PHONE);
 test.setTimeout(16 * 60_000);
@@ -39,7 +40,8 @@ async function play(page, query, ffa) {
       units: [...w.ofKind('unit')].map(pick), buildings: [...w.ofKind('building')].map(pick),
       nodes: [...w.ofKind('node')].map((n) => ({ id: n.id, x: n.x, y: n.y })),
       cam: { x: cam.worldView.x, y: cam.worldView.y, zoom: cam.zoom }, armed: window.__game.scene.ui.boxArmed ? 'box' : window.__game.scene.ui.armed,
-      supply: (() => { let used = 0, cap = 0; for (const u of w.ofKind('unit')) if (u.team === 1) used += { drone: 1, striker: 1, sparker: 1, bulwark: 3, lancer: 2 }[u.type] || 0; for (const b of w.ofKind('building')) if (b.team === 1 && b.built) cap += b.type === 'core' ? 10 : b.type === 'depot' ? 8 : 0; return { used, cap: Math.min(60, cap) }; })(),
+      // What the player reads on the HUD ("used/cap"), so the plan follows the game's own supply numbers.
+      supply: (() => { const [used, cap] = document.getElementById('supply').textContent.split('/').map(Number); return { used, cap }; })(),
     };
   });
   const toScreen = (s, x, y) => ({ x: (x - s.cam.x) * s.cam.zoom, y: (y - s.cam.y) * s.cam.zoom });
@@ -191,7 +193,7 @@ async function play(page, query, ffa) {
     // no longer "next": CI run 36762520807 fell at 438 s with no Tower.
     // Being supply-blocked for a while just saves gold for it.)
     const towerFirst = ffa && !placed.has('spire') && placed.has('foundry');
-    const lowSupply = !towerFirst && s.supply.cap < 60 && s.supply.cap - s.supply.used < 5;
+    const lowSupply = !towerFirst && s.supply.cap < SUPPLY.max && s.supply.cap - s.supply.used < 5;
     // Keep two Foundries and two Spires: rebuild whatever the enemy destroys.
     for (const [type, want, spots] of [['foundry', 2, [{ x: core.x + 150, y: core.y + 140 }, { x: core.x + 40, y: core.y + 220 }]], ['spire', 2, [{ x: core.x + 300, y: core.y - 70 }, { x: core.x + 300, y: core.y + 110 }]]]) {
       const have = mine(s, 'buildings', type).length + plan.filter((p) => p.type === type).length;
