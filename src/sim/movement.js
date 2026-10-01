@@ -5,15 +5,27 @@ const STUCK_WINDOW = 1.0; // s
 const STUCK_MIN_PROGRESS = 4; // px per window
 const MAX_REPATHS = 3;
 const MAX_CROWD_WAIT = 15; // s a unit will queue behind moving traffic before giving up
+const PATH_BUDGET = 96; // route searches per tick (Phase 12, see setDestination)
 
 // Give the unit a new destination. Returns false if no route exists.
+//
+// Phase 12: at most PATH_BUDGET searches run in one tick. An order to a
+// whole army (hundreds of units at a high supply cap) would otherwise plan
+// every route in the same tick, a stall longer than the 0.05 s the tick
+// simulates (PHASE12_SPEC.md). Past the budget the unit keeps its new
+// destination with its route pending (an empty path) and plans it in a later
+// tick, in unit order, so a big army sets off over a few ticks. Normal play
+// at the Phase 11 scale never reached the budget (peak 90 searches in a tick).
 export function setDestination(world, u, x, y) {
-  const path = world.pathfinder.find(u.x, u.y, x, y);
   u.dest = { x, y };
-  u.path = path || [];
   u.pathIdx = 0;
   u.stuck = { t: 0, best: Infinity, repaths: 0, waited: 0 };
   u.pathVersion = world.grid.version;
+  if (world.pathTick !== world.tick) { world.pathTick = world.tick; world.pathCount = 0; }
+  if (world.pathCount >= PATH_BUDGET) { u.path = []; u.pathPending = true; return true; }
+  world.pathCount++;
+  if (u.pathPending) u.pathPending = false;
+  u.path = world.pathfinder.find(u.x, u.y, x, y) || [];
   return u.path.length > 0;
 }
 
@@ -66,16 +78,18 @@ function range(a, b, rev) {
 export function clearPath(u) {
   u.path = null;
   u.dest = null;
+  if (u.pathPending) u.pathPending = false;
 }
 
 // A unit's circle may stand here if the tiles under its (shrunken) footprint are walkable.
+// (Phase 12: the same five points without allocating; called for every move.)
 export function canStand(grid, x, y, r) {
-  const k = Math.min(r, 10) * 0.6;
-  for (const [ox, oy] of [[0, 0], [-k, -k], [k, -k], [-k, k], [k, k]]) {
-    const t = grid.tileOf(x + ox, y + oy);
-    if (!grid.isWalkable(t.tx, t.ty)) return false;
-  }
-  return true;
+  const k = Math.min(r, 10) * 0.6, T = grid.tile;
+  return grid.isWalkable(Math.floor((x + 0) / T), Math.floor((y + 0) / T))
+    && grid.isWalkable(Math.floor((x + -k) / T), Math.floor((y + -k) / T))
+    && grid.isWalkable(Math.floor((x + k) / T), Math.floor((y + -k) / T))
+    && grid.isWalkable(Math.floor((x + -k) / T), Math.floor((y + k) / T))
+    && grid.isWalkable(Math.floor((x + k) / T), Math.floor((y + k) / T));
 }
 
 // Move by (dx,dy), sliding along walls when the full move is blocked.
@@ -93,6 +107,14 @@ export function tryMove(world, u, dx, dy) {
 // Advance along the path. Returns 'moving', 'arrived' or 'failed'.
 export function followPath(world, u, dt) {
   if (!u.path) return 'arrived';
+  // A route left pending by the search budget: plan it as soon as there is room.
+  if (u.pathPending) {
+    const stuck = u.stuck;
+    setDestination(world, u, u.dest.x, u.dest.y);
+    u.stuck = stuck;
+    if (u.pathPending) return 'moving';
+    if (u.path.length === 0) { clearPath(u); return 'failed'; }
+  }
   // The map changed (building placed or removed): re-route once.
   if (u.pathVersion !== world.grid.version && u.dest) {
     const stuck = u.stuck;
@@ -170,6 +192,6 @@ function checkStuck(world, u, dt) {
   setDestination(world, u, u.dest.x, u.dest.y);
   u.stuck.repaths = crowd ? repaths : repaths + 1;
   u.stuck.waited = crowd ? waited + STUCK_WINDOW : waited;
-  if (u.path.length === 0) { clearPath(u); return 'failed'; }
+  if (u.path.length === 0 && !u.pathPending) { clearPath(u); return 'failed'; }
   return 'moving';
 }

@@ -26,6 +26,14 @@ const sha = (buf) => createHash('sha256').update(buf).digest('hex');
 // 6, which had to change them for N teams; they are re-pinned to the Phase 6
 // refactor, so any later change is deliberate. The proof that the refactor
 // changed no behaviour is the fingerprints below, not these pins.
+//
+// Phase 12 re-pins pathfinder.js, movement.js and steering.js for speed at
+// high supply caps (PHASE12_SPEC.md "Results"): a reset of only the nodes a
+// search touched, allocation-free clearance and standing checks, numeric
+// separation keys, and a per-tick budget of route searches (96) that normal
+// play at the Phase 11 scale never reaches (peak 90). Every fingerprint below
+// is unchanged by them, and test/path-budget.test.js checks the routes
+// against a fresh grid query by query.
 export const FROZEN = {
   "src/data/buildings.js": "0176c4b3f71568db3421a3f661c96fbf64b9b78d7d3d2f812770307c8b204ec8",
   "src/data/camp-rules.js": "eaba6b6ba317c1a0a1027eedb46a1888ca23b860bce20b49cf2a8618406049da",
@@ -43,14 +51,14 @@ export const FROZEN = {
   "src/sim/geometry.js": "15ee1ec57af7007c22ed774bdddf71647a22085dd89c00e30f269270d0f06d49",
   "src/sim/grid.js": "f990df96f1d979bf2302f8d5567e8aed7fa9148e5e6411144c7b91cb66b137c9",
   "src/sim/hopeless.js": "6b6f232c23bef7d7a065ca700d20de21b129026b1c7767c4c819cc3ddcfd7f8b",
-  "src/sim/movement.js": "562c46403acd2d35a176276af6d7e5507d75912ad4c9929cb57fca425d9ce879",
+  "src/sim/movement.js": "9a9357576e795e6e7cae5bb1f2672ba56a81086c4a1820835a3ace1a761cff34",
   "src/sim/orders.js": "e1a2790c0ae437911afa30e2149b642b4770ea195cdc4171c516ce77385e1ba0",
-  "src/sim/pathfinder.js": "b8593ee11c52c3247b42777621159ec3199df01260b54d3986ab5ef99123e1f8",
+  "src/sim/pathfinder.js": "238fcbac8aa26f8aa83eade1e5859bf0a7fb5913097dd88b623a938d47338bf9",
   "src/sim/production.js": "4a4d10ec7300e92407a80a5ee2a8c975dc749b8a87b0b9300cb9911864e9f578",
   "src/sim/rng.js": "16b01e7963ce86441359bdea3b68f2b4479afbcc9ea3d1018ef4da36614d95f0",
   "src/sim/selection.js": "cf20075f76b5ac3023454f2392cab4f47b0ca50d8ef5f49b885c1e4e04abe3ef",
   "src/sim/spatial.js": "9c8ca85c581fcb61e63338d7c19c286018ea01410272dfd4ba0bd79be1b8334d",
-  "src/sim/steering.js": "1c43b5dbe49cd82ce421f44143534cb0678f26fe6e91297a8c097d954f1f1369",
+  "src/sim/steering.js": "74f783e5696a230fca9faa386aa6f3a513a34144d8a1355f612e7b6dab8870e1",
   "src/sim/supply.js": "3dafb9550ca87e902d153392eb319697a6559fa6b84c05d75cee160e1f0d6824",
   "src/sim/territory.js": "fee37dd402325984869d955157822817e35388881dc1ef3962a13f2ad7f49d4a",
   "src/sim/victory.js": "7361a2180bd9485a989352eac8ca7f40d6b6ddd369f057a32ba48fd1fa4301e1",

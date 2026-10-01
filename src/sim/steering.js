@@ -22,13 +22,18 @@ function mobility(u) {
 // convention) so mining traffic never jams at nodes or depots.
 const ghost = (u) => u.order.type === 'gather';
 
+// Distinct for every cell of any map up to 4096 cells across (one past each edge included).
+const cellKey = (cx, cy) => (cx + 1) * 8192 + (cy + 1);
+
 export function separate(world) {
   const units = [];
   for (const u of world.ofKind('unit')) if (!ghost(u)) units.push(u);
   for (let pass = 0; pass < PASSES; pass++) {
+    // (Phase 12: a numeric cell key, not a string per unit and neighbour;
+    // the same cells, so the same pushes in the same order.)
     const hash = new Map();
     for (const u of units) {
-      const k = `${Math.floor(u.x / CELL)},${Math.floor(u.y / CELL)}`;
+      const k = cellKey(Math.floor(u.x / CELL), Math.floor(u.y / CELL));
       let cell = hash.get(k);
       if (!cell) hash.set(k, (cell = []));
       cell.push(u);
@@ -46,7 +51,7 @@ export function separate(world) {
         const dy = sy * j;
         for (let i = -1; i <= 1; i++) {
           const dx = sx * i;
-          const cell = hash.get(`${cx + dx},${cy + dy}`);
+          const cell = hash.get(cellKey(cx + dx, cy + dy));
           if (!cell) continue;
           for (const b of cell) {
             if (b.id <= a.id) continue;

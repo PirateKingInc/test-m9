@@ -24,15 +24,27 @@ export class Pathfinder {
   // Phase 8: on maps mirrored north-south as well (grid.mirrorY, the
   // free-for-all), queries that start in the south half also flip y
   // (y -> rows-1-y), so the north and south camps plan identically too.
+  //
+  // Phase 12: only the nodes the previous search touched are reset (A* reaches
+  // a node only through getNodeAt or getNeighbors, both recorded), not every
+  // node of the map: the same state, without a full-map sweep per search, which
+  // was most of the cost of a big army's simultaneous orders.
   pfGrid(g = this.frame) {
     const key = g.frameKey || 'n';
     const c = (this.cache ||= {})[key] ||= { version: -1 };
     if (c.version !== this.grid.version) {
-      c.base = new this.PF.Grid(g.cols, g.rows, g.toMatrix());
-      c.nodes = c.base.nodes.flat();
+      const matrix = g.toMatrix();
+      const base = (c.base = new this.PF.Grid(g.cols, g.rows, matrix));
+      const touched = (c.touched = []);
+      const at = base.getNodeAt, near = base.getNeighbors;
+      base.getNodeAt = function (...a) { const n = at.apply(this, a); touched.push(n); return n; };
+      base.getNeighbors = function (...a) { const ns = near.apply(this, a); for (const n of ns) touched.push(n); return ns; };
+      c.walk = Uint8Array.from(matrix.flat(), (v) => (v ? 0 : 1)); // for clear()
       c.version = this.grid.version;
     }
-    for (const n of c.nodes) n.opened = n.closed = n.parent = n.g = n.h = n.f = undefined;
+    for (const n of c.touched) n.opened = n.closed = n.parent = n.g = n.h = n.f = undefined;
+    c.touched.length = 0;
+    this.walk = c.walk;
     return c.base;
   }
 
@@ -82,16 +94,19 @@ export class Pathfinder {
   // True if a band CLEARANCE px either side of the segment between two tile
   // centers is walkable. Wider than a plain line-of-sight check, so smoothed
   // paths keep units off rock corners instead of funnelling them along walls.
+  // (Phase 12: reads the frame's walkability from the array pfGrid() keeps,
+  // the same tiles as tileOf + isWalkable without an object per sample.)
   clear(a, b) {
-    const g = this.frame, T = g.tile, CLEARANCE = 12;
+    const g = this.frame, T = g.tile, CLEARANCE = 12, cols = g.cols, rows = g.rows, walk = this.walk;
     const ax = (a[0] + 0.5) * T, ay = (a[1] + 0.5) * T, bx = (b[0] + 0.5) * T, by = (b[1] + 0.5) * T;
     const len = Math.hypot(bx - ax, by - ay);
     const nx = -(by - ay) / len, ny = (bx - ax) / len;
     for (let d = 0; d <= len; d += 8) {
       const px = ax + ((bx - ax) * d) / len, py = ay + ((by - ay) * d) / len;
-      for (const o of [-CLEARANCE, 0, CLEARANCE]) {
-        const t = g.tileOf(px + nx * o, py + ny * o);
-        if (!g.isWalkable(t.tx, t.ty)) return false;
+      for (let k = -1; k <= 1; k++) {
+        const o = k * CLEARANCE;
+        const tx = Math.floor((px + nx * o) / T), ty = Math.floor((py + ny * o) / T);
+        if (tx < 0 || ty < 0 || tx >= cols || ty >= rows || !walk[ty * cols + tx]) return false;
       }
     }
     return true;

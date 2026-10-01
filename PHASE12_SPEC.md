@@ -185,4 +185,124 @@ So the first finding of the phase is that the ceiling is set by **route
 planning bursts** in the sim, then by **per-tick sim cost on a phone**, not by
 drawing: render time per frame stays at 1-10 ms everywhere.
 
-(Results after the pathfinding work, and the chosen cap, follow in section 2.)
+### 2. Making the sim scale, without changing the game (issue #189)
+
+Four changes, all in `src/sim`, guided by CPU profiles of the clash:
+
+| Change | What it removes | Behaviour |
+|---|---|---|
+| The pathfinder resets only the nodes the last search touched (A* reaches a node only through `getNodeAt`/`getNeighbors`, both recorded) | a sweep of all 9,216 free-for-all nodes before every search: 73% of the clash tick | identical routes |
+| Route smoothing's clearance check reads a flat walkability array | an object per sample point | identical routes |
+| Separation hashes cells by number, `canStand` allocates nothing | thousands of short strings and arrays per tick | identical pushes, same order |
+| **At most 96 route searches a tick**; past that a unit keeps its new destination with its route pending and plans it in a following tick, in unit order | the whole-army planning burst | a 400-unit order sets off over about four ticks (0.2 s) instead of one |
+
+The first three cannot change anything a player sees: they compute the same
+values, and `test/path-budget.test.js` checks 600 random routes on both maps
+against a fresh-grid query. The search budget is the one deliberate behaviour
+change, sized so that it **never triggers at the Phase 11 scale**: across 36
+full 1v1 matches and 18 full free-for-alls at cap 60 the busiest tick planned
+90 routes. Every fixed-seed fingerprint in `test/freeze.test.js` (Phases 3,
+5, 6, 8, 9) and the fairness suite are unchanged; only the three file hashes
+are re-pinned, with this justification beside them.
+
+**Headless after** (`perf/scale-headless.json`, caps 60-300):
+
+| Map | Army | Cap | Units | Tick mean (≤ 5) | p95 | p99 (≤ 16.7) | p99 range | Slowest (≤ 50) | Ticks > 50 ms per run | First tick |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 1v1 | mix | 60 | 96 | 0.13 | 0.4 | 1.3 | 1.3–2.2 | 25.5 | 0 / 0 / 0 | 67.9 |
+| 1v1 | mix | 100 | 150 | 0.48 | 1.6 | 3.1 | 3.0–3.3 | 46.0 | 0 / 0 / 0 | 54.3 |
+| 1v1 | mix | 150 | 216 | 0.45 | 1.8 | 4.7 | 3.8–4.9 | 38.2 | 0 / 0 / 0 | 47.9 |
+| 1v1 | mix | 200 | 280 | 1.41 | 4.2 | 7.5 | 7.0–7.9 | **51.1** | 0 / 1 / 0 | 62.0 |
+| 1v1 | mix | 250 | 350 | 2.03 | 5.8 | 10.8 | 9.7–12.1 | **57.5** | 1 / 2 / 0 | 65.9 |
+| 1v1 | mix | 300 | 414 | 0.90 | 4.4 | 8.8 | 8.3–11.0 | **51.9** | 1 / 0 / 1 | 65.9 |
+| 1v1 | swarm | 60 | 120 | 0.32 | 1.4 | 3.4 | 2.3–3.5 | 25.6 | 0 / 0 / 0 | 39.5 |
+| 1v1 | swarm | 100 | 200 | 1.12 | 3.5 | 6.8 | 6.2–7.5 | 45.8 | 0 / 0 / 0 | 61.0 |
+| 1v1 | swarm | 150 | 300 | 1.84 | 5.8 | 9.5 | 7.2–13.6 | **53.7** | 1 / 0 / 0 | 80.3 |
+| 1v1 | swarm | 200 | 400 | 2.65 | 8.4 | 16.2 | 12.7–17.1 | **71.6** | 1 / 2 / 3 | 53.2 |
+| 1v1 | swarm | 250 | 500 | 4.33 | 12.3 | **29.6** | 29.2–33.8 | **63.8** | 1 / 0 / 2 | 78.8 |
+| 1v1 | swarm | 300 | 600 | 4.73 | 14.6 | **36.4** | 34.5–38.6 | **68.0** | 0 / 5 / 3 | 74.8 |
+| ffa | mix | 60 | 192 | 0.30 | 1.1 | 1.9 | 1.4–3.1 | 21.2 | 0 / 0 / 0 | 35.6 |
+| ffa | mix | 100 | 300 | 0.52 | 2.1 | 3.7 | 3.6–3.8 | 22.0 | 0 / 0 / 0 | 36.5 |
+| ffa | mix | 150 | 432 | 1.15 | 4.2 | 7.1 | 6.0–8.9 | 29.1 | 0 / 0 / 0 | 46.3 |
+| ffa | mix | 200 | 560 | 1.46 | 6.5 | 10.7 | 10.5–11.0 | 27.2 | 0 / 0 / 0 | 48.1 |
+| ffa | mix | 250 | 700 | 2.19 | 7.5 | 12.9 | 12.0–16.5 | 32.7 | 0 / 0 / 0 | 39.2 |
+| ffa | mix | 300 | 828 | 3.69 | 11.2 | **20.0** | 19.4–20.3 | 41.7 | 0 / 0 / 0 | 47.3 |
+| ffa | swarm | 60 | 240 | 0.36 | 1.1 | 2.1 | 2.1–2.7 | 15.4 | 0 / 0 / 0 | 25.2 |
+| ffa | swarm | 100 | 400 | 0.70 | 3.3 | 5.9 | 5.8–7.0 | 21.9 | 0 / 0 / 0 | 36.1 |
+| ffa | swarm | 150 | 600 | 1.74 | 7.1 | 12.7 | 12.1–13.5 | 28.8 | 0 / 0 / 0 | 38.9 |
+| ffa | swarm | 200 | 800 | 2.74 | 11.2 | **17.5** | 17.4–18.7 | 41.1 | 0 / 0 / 0 | 93.7 |
+| ffa | swarm | 250 | 1000 | 4.02 | 16.4 | **28.5** | 19.7–28.9 | **56.0** | 0 / 0 / 1 | 70.2 |
+| ffa | swarm | 300 | 1200 | 4.46 | 17.9 | **26.2** | 25.3–27.3 | **59.9** | 1 / 0 / 2 | 67.6 |
+
+**Mobile proxy (844 × 390, touch, 4x CPU throttle)** — ms of main-thread JavaScript; budget p50 ≤ 33.3, p95 ≤ 66.7, sim ≥ 19 ticks/s
+
+| Map | Army | Cap | Units | Sim ticks/s | One-tick frame p50 | One-tick frame p95 | Raw frame p50 | Raw frame p95 | Ticks per frame | Tick p50 / p95 | fps (not judged) |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| 1v1 | mix | 60 | 96 | 20.0 | 8.4 | 22.8 | 7.9 | 22.9 | 1.1 | 1.5 / 7.0 | 18.6 |
+| 1v1 | mix | 100 | 150 | 20.0 | 15.3 | 39.8 | 16.3 | 50.2 | 1.5 | 3.2 / 14.7 | 13.2 |
+| 1v1 | mix | 150 | 216 | 20.0 | 25.2 | 64.2 | 28.8 | **94.8** | 2.2 | 5.4 / 24.6 | 9.3 |
+| 1v1 | mix | 200 | 280 | 19.9 | 32.0 | 66.0 | **38.2** | **123.2** | 2.6 | 6.9 / 22.0 | 7.7 |
+| 1v1 | swarm | 60 | 120 | 20.0 | 7.3 | 27.7 | 6.8 | 31.5 | 1.1 | 2.2 / 9.6 | 18.3 |
+| 1v1 | swarm | 100 | 200 | 20.1 | 10.3 | 52.6 | 11.2 | **71.8** | 1.6 | 3.8 / 19.1 | 12.9 |
+| 1v1 | swarm | 150 | 300 | 19.6 | 11.4 | **69.7** | 14.5 | **134.9** | 2.0 | 7.6 / 30.2 | 10.0 |
+| 1v1 | swarm | 200 | 400 | **16.9** | **38.9** | **135.7** | **57.3** | **279.3** | 3.3 | 14.4 / 46.0 | 5.2 |
+| ffa | mix | 60 | 192 | 20.0 | 12.8 | 28.1 | 13.0 | 31.7 | 1.3 | 3.6 / 8.8 | 16.0 |
+| ffa | mix | 100 | 300 | 20.0 | 19.7 | 45.6 | 22.3 | 59.1 | 1.7 | 6.1 / 14.7 | 11.9 |
+| ffa | mix | 150 | 432 | 19.9 | **34.7** | **70.9** | **53.7** | **126.5** | 2.7 | 11.3 / 25.1 | 7.4 |
+| ffa | mix | 200 | 560 | **17.7** | **40.7** | **113.5** | **93.2** | **223.6** | 3.5 | 18.8 / 35.5 | 5.1 |
+| ffa | swarm | 60 | 240 | 20.0 | 16.2 | 36.3 | 18.6 | 44.1 | 1.5 | 5.0 / 11.9 | 13.2 |
+| ffa | swarm | 100 | 400 | 20.0 | 22.0 | 55.6 | 28.5 | **95.2** | 2.1 | 9.9 / 21.4 | 9.5 |
+| ffa | swarm | 150 | 600 | **18.7** | **45.9** | **95.8** | **88.0** | **198.4** | 3.6 | 17.8 / 36.3 | 5.2 |
+| ffa | swarm | 200 | 800 | **15.7** | **80.2** | **106.5** | **206.4** | **265.8** | 4.8 | 28.8 / 55.2 | 3.3 |
+
+**Desktop (1280 × 800)** — ms of main-thread JavaScript; budget p50 ≤ 16.7, p95 ≤ 33.3, sim ≥ 19.5 ticks/s
+
+| Map | Army | Cap | Units | Sim ticks/s | One-tick frame p50 | One-tick frame p95 | Raw frame p50 | Raw frame p95 | Ticks per frame | Tick p50 / p95 | fps (not judged) |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| 1v1 | mix | 60 | 96 | 20.0 | 1.8 | 5.5 | 1.7 | 5.5 | 1.0 | 0.4 / 1.9 | 20.9 |
+| 1v1 | mix | 100 | 150 | 20.0 | 3.1 | 8.2 | 3.2 | 9.8 | 1.2 | 0.8 / 3.0 | 17.0 |
+| 1v1 | mix | 150 | 216 | 20.0 | 4.3 | 11.5 | 4.6 | 13.1 | 1.3 | 1.2 / 5.0 | 14.8 |
+| 1v1 | mix | 200 | 280 | 20.0 | 6.8 | 14.2 | 7.5 | 19.1 | 1.6 | 1.8 / 6.4 | 12.2 |
+| 1v1 | swarm | 60 | 120 | 20.0 | 1.8 | 6.3 | 1.7 | 6.5 | 1.0 | 0.6 / 2.6 | 20.0 |
+| 1v1 | swarm | 100 | 200 | 20.0 | 3.1 | 11.7 | 3.1 | 13.8 | 1.2 | 1.0 / 4.6 | 16.6 |
+| 1v1 | swarm | 150 | 300 | 20.0 | 3.7 | 15.8 | 4.0 | 21.7 | 1.4 | 1.7 / 6.2 | 14.1 |
+| 1v1 | swarm | 200 | 400 | 20.0 | 5.6 | 18.5 | 6.5 | 29.6 | 1.6 | 2.8 / 8.9 | 12.4 |
+| ffa | mix | 60 | 192 | 20.0 | 2.7 | 6.2 | 3.3 | 8.1 | 1.6 | 0.8 / 2.2 | 12.2 |
+| ffa | mix | 100 | 300 | 20.0 | 5.1 | 10.0 | 6.7 | 13.6 | 2.1 | 1.5 / 3.4 | 9.6 |
+| ffa | mix | 150 | 432 | 20.0 | 7.9 | 16.6 | 11.8 | 23.4 | 2.5 | 2.3 / 5.3 | 8.0 |
+| ffa | mix | 200 | 560 | 20.0 | 10.7 | 21.1 | **16.9** | 31.5 | 2.9 | 3.1 / 6.5 | 6.8 |
+| ffa | swarm | 60 | 240 | 20.0 | 3.5 | 9.1 | 4.5 | 11.0 | 1.8 | 1.1 / 2.7 | 11.1 |
+| ffa | swarm | 100 | 400 | 20.0 | 6.4 | 13.9 | 9.2 | 19.1 | 2.3 | 2.1 / 5.6 | 8.7 |
+| ffa | swarm | 150 | 600 | 20.0 | 10.6 | 25.5 | **18.2** | **42.4** | 3.1 | 3.8 / 8.0 | 6.5 |
+| ffa | swarm | 200 | 800 | 19.8 | **17.4** | 30.2 | **35.5** | **72.2** | 4.1 | 6.1 / 12.3 | 4.9 |
+
+### 3. The supported cap
+
+Under the rule set before measuring (every budget, both armies, both maps):
+
+| Environment | Highest passing cap | First failing cap and why |
+|---|---|---|
+| Headless sim | **100** (150 if the slowest tick were taken as the median of the three runs) | 150: one tick of 53.7 ms in one of three 1v1 swarm runs; 200: free-for-all swarm 99th percentile 17.5 ms in all three seeds |
+| Desktop browser | **100** raw; 150 one-tick | 150 raw: free-for-all swarm frame p50 18.2 / p95 42.4 ms; 200 one-tick: free-for-all swarm p50 17.4 ms |
+| Mobile proxy, one-tick frame | **100** | 150: one-tick p95 70-96 ms in three of four cells, swarm sim rate 18.7 ticks/s |
+| Mobile proxy, raw frame (the budget's literal reading) | **60** | 100: raw p95 71.8 ms (1v1 swarm) and 95.2 ms (free-for-all swarm) against 66.7 |
+
+**The new cap is 100.** It is the highest cap every environment passes
+under the measure that tests the game rather than the container's software
+GPU (amendment 3), and it is also what the headless sim (strictly) and the
+desktop give under the raw measure. The one reading that does not support it
+is stated plainly: under the raw frame measure, the 4x-throttled phone proxy
+misses at 100 in the two **swarm** cells (every camp an all-1-supply army),
+by 5 ms in the 1v1 and 29 ms in the free-for-all, while those frames each
+carried 1.6-2.1 ticks because the software GPU held the frame rate at 9-13
+fps. The realistic mixed armies pass at 100 under both measures.
+
+Cap 200, the number discussed before this phase, fails everywhere except
+headless, by wide margins on the phone (one-tick p95 66-136 ms, sim rate down
+to 15.7 ticks/s). 150 is not supported on a phone by either measure.
+
+**Confidence.** The headless and desktop numbers are solid for this
+container. The phone numbers are an emulation: a desktop CPU slowed 4x,
+which models a mid-range phone's JavaScript speed but not its GPU, memory,
+thermal throttling or browser. No physical phone has run any of this, in
+this phase or any earlier one.
