@@ -30,8 +30,12 @@ function roster(slots, lineup) {
   return { names, uids };
 }
 
-// Right after Phase 10's mesh verified every pair: start the match.
+// Right after Phase 10's mesh verified every pair: start the match. Returns
+// false (and starts nothing) unless every pair is verified with an open
+// channel at this moment.
 export async function startMatch(lobby, mesh) {
+  const peers = [...(mesh.peers?.values() || [])];
+  if (!peers.length || !peers.every((p) => p.state === 'verified' && p.channel?.readyState === 'open')) return false;
   const { meta, slot: me, fb, code } = lobby;
   const { names, uids } = roster(lobby.slots, meta.lineup);
   saveMatch({ code, slot: me, names, uids, meta: { seed: meta.seed, lineup: meta.lineup, difficulty: meta.difficulty } });
@@ -43,6 +47,7 @@ export async function startMatch(lobby, mesh) {
   const uninstall = installDetMath(); // before the match is built: every peer alike
   const ls = new Lockstep({ match: lobbyMatch(meta, globalThis.PF), humans: humansOf(meta.lineup), me });
   run({ fb, code, me, names, uids, links, ls, uninstall });
+  return true;
 }
 
 // After a reload: the same tab (same anonymous id) rejoins its match.

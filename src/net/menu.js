@@ -195,12 +195,20 @@ function renderLinks(lobby) {
   $('mp-links-title').textContent = done === peers.length ? `Connected directly to all ${peers.length} other player${peers.length > 1 ? 's' : ''}.`
     : failed ? `Connected to ${done} of ${peers.length}. ${failed} could not connect directly (a strict network or firewall).`
       : `Connecting to ${peers.length} other player${peers.length > 1 ? 's' : ''}…`;
-  if (failed && !done) $('mp-links-note').textContent = 'The match cannot start without a direct connection to every player.';
+  if (failed && !done) $('mp-links-note').textContent = NOT_CONNECTED;
   // Phase 11: everyone connected: the match starts (after a moment on this screen).
-  if (done === peers.length && !state.starting) {
+  // (Phase 13: not on an empty list. The screen is first drawn before the mesh
+  // has added its peers, and 0 of 0 used to count as everyone: the start then
+  // ran on a player whose connections all failed, and threw.)
+  if (peers.length > 0 && done === peers.length && !state.starting) {
     state.starting = true;
     $('mp-links-note').textContent = 'Everyone is connected: the match is starting…';
-    setTimeout(() => import('./play.js').then((m) => m.startMatch(lobby, mesh)).catch((e) => status(`Could not start: ${e.message}`)), 2500);
+    setTimeout(() => import('./play.js').then((m) => m.startMatch(lobby, mesh)).then((started) => {
+      if (started === false) { // a link was lost in the moment before the start
+        state.starting = false;
+        $('mp-links-note').textContent = NOT_CONNECTED;
+      }
+    }).catch((e) => { console.warn('match start failed', e); state.starting = false; $('mp-links-note').textContent = NOT_CONNECTED; }), 2500);
   }
 }
 
@@ -225,6 +233,8 @@ async function rejoinOnLoad() {
   $('menu').hidden = false;
 }
 rejoinOnLoad();
+
+const NOT_CONNECTED = 'The match cannot start without a direct connection to every player.';
 
 const PEER_TEXT = {
   waiting: 'waiting for its answer',

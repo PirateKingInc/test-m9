@@ -26,11 +26,13 @@ export class Links {
   // Take over a channel Phase 10's Mesh opened and verified.
   adopt(slot, pc, ch) {
     const l = this.links.get(slot);
+    if (!l || !pc || !ch) return false; // nothing to adopt: the link is down, and reopened like any other
     Object.assign(l, { pc, ch });
     // The offer that opened it, so the listener does not take it for a new one.
     if (pc.remoteDescription?.type === 'offer') l.lastRemote = pc.remoteDescription.sdp;
     this.wire(slot, ch);
     if (ch.readyState === 'open') this.markUp(slot);
+    return true;
   }
 
   wire(slot, ch) {
