@@ -674,3 +674,67 @@ target, though its upper interval now reaches 51%); the strongest corner (NW)
   everything and lost the army), not a factor in AI-vs-AI balance.
 - **Moving structures** is not used by the scripted AI, so it cannot move the
   matrix; it is a player tool.
+
+## Phase 12 re-measurement (supply cap 100, larger maps)
+
+Phase 12 ([PHASE12_SPEC.md](PHASE12_SPEC.md)) raised the supply cap from 60
+to 100, gave the Storehouse 10 supply instead of 8, made both maps 1.25x
+larger with 5/3 the gold per mine, and bounded the route planning a tick may
+do. No unit stat, cost or counter changed. The matrix was re-measured once,
+on the same 900 seeds as Phases 8 and 9 (seeds 1–100 per class, Hard), with
+Phase 9's rule set in advance: intervene **only** for a severe outlier (any
+strategy above ~65% or any corner above ~45%), otherwise record the numbers
+as the new baseline.
+
+`balance/ffa-phase12.json` (run in five chunks of 20 seeds and merged with
+`tools/ffa-merge.mjs`; chunks of a multiple of 4 seeds are exactly the jobs
+of one run):
+
+| Strategy | FFAs won (chance 33%) | Per camp | Avg place | Avg elimination | Attacks per camp (mean / median) | Camps attacking ≥ once | Retargets per camp |
+|---|---|---|---|---|---|---|---|
+| Rush | **25%** (22–28%) | 19% | 2.72 | 9.9 min | 1.76 / 1 | 100% | 3.59 |
+| Boom | **17%** (15–20%) | 13% | 2.82 | 10.2 min | 4.71 / 3 | 100% | 1.62 |
+| Turtle | **58%** (55–61%) | 43% | 1.96 | 11.8 min | 5.74 / 5 | 100% | 2.16 |
+
+| Corner | FFAs won (chance 25%) | Avg place |
+|---|---|---|
+| NW | 25% (23–28%) | 2.53 |
+| NE | 22% (20–25%) | 2.54 |
+| SE | 23% (21–26%) | 2.54 |
+| SW | 29% (26–32%) | 2.40 |
+
+| Class (100 seeds each) | Rush wins | Boom wins | Turtle wins |
+|---|---|---|---|
+| Rush ×2, east-west neighbours | 30 | 18 | 52 |
+| Rush ×2, diagonal | 46 | 7 | 47 |
+| Rush ×2, north-south neighbours | 32 | 22 | 46 |
+| Boom ×2, east-west neighbours | 27 | 27 | 46 |
+| Boom ×2, diagonal | 23 | 29 | 48 |
+| Boom ×2, north-south neighbours | 23 | 27 | 50 |
+| Turtle ×2, east-west neighbours | 20 | 4 | 76 |
+| Turtle ×2, diagonal | 9 | 18 | 73 |
+| Turtle ×2, north-south neighbours | 12 | 5 | 83 |
+
+900 matches, no draws, 13 decided at the 30:00 limit, 14.9 minutes on average.
+
+**Against Phase 9 (same seeds):**
+
+| | Phase 9 | Phase 12 |
+|---|---|---|
+| Rush / Boom / Turtle | 24% / 28% / 48% | 25% / 17% / **58%** |
+| Worst corner | NW 28% | SW 29% |
+| Average length | 13.1 min | 14.9 min |
+| Decided at the time limit | 2 | 13 |
+
+**Outlier handling: none needed, none done.** The worst strategy (Stone
+Bastion, 58%) is below the 65% line and the worst corner (29%) far below
+45%, so by the rule set in advance there is no tuning pass. The shift is
+real and is recorded rather than tuned away: Turtle gains 10 points and Boom
+loses 11. The likely reason, stated as a hypothesis and not tested further:
+longer marches (the nearest round trip is 109 s instead of 82 s) and a cap
+that no longer stops a defensive camp from banking a large army favour the
+camp that sits behind Watchtowers and attacks late, and Boom, which is
+strongest when it out-produces a capped opponent, loses some of that edge.
+Corners stay even (22–29%); the four-camp game is still decided by
+strategy, not position. The 1v1 matrix has no outlier rule of its own
+in this phase and was not re-run; the fixed-seed 1v1 games are re-pinned.

@@ -95,9 +95,22 @@ function run({ fb, code, me, names, uids, links, ls, uninstall }) {
     session.pump();
     if (session.mode === 'play' && !session.desync && game) {
       let budget = session.stepBudget(Math.floor(acc / 50));
+      // This frame's pace is unchanged: a player whose turns are needed runs
+      // up to the turns it had committed when the frame began, as when turns
+      // were only committed once a frame (a held, returning player is not
+      // limited by its own turns). Handback relies on that pace: CI run
+      // 36883494112 with no limit left a returning player 30 ticks behind.
+      const ls = session.ls, limit = ls.nextCommit;
       while (budget-- > 0) {
-        if (!session.ls.step()) { acc = Math.min(acc, 50); break; }
+        if (ls.isHuman(ls.me, ls.tick) && ls.tick >= limit) { acc = Math.min(acc, 50); break; }
+        if (!ls.step()) { acc = Math.min(acc, 50); break; }
         acc = Math.max(0, acc - 50);
+        // But keep this player's turns committed `delay` ticks ahead after
+        // every tick, not only once a frame: when a frame runs more ticks than
+        // the delay (faster than real time, or catching up), it could otherwise
+        // reach a tick whose turn was still open, and a UI command given then
+        // ran with no input delay (CI run 36873821731: given and run at tick 17).
+        for (const turn of ls.commit()) session.broadcast(turn);
       }
       if (session.ls.done) { forgetMatch(); }
     }

@@ -173,15 +173,50 @@ async function play(page, query, ffa) {
   // every building type, not how long the bot survives).
   if (ffa) plan.splice(2, 2, plan[3], plan[2]);
   let wave = 0, grouped = false, maxArmy = 0, defends = 0, lastArmy = 0;
+  // Every soldier the bot has trained (seen at any look): 'trained an army by
+  // touch' counts these, not how many are alive at once, which depends on
+  // the fights (a bot that defends early loses them as fast as it trains).
+  const soldiers = new Set();
+  const see = () => { for (const u of mine(s, 'units')) if (u.type !== 'drone') soldiers.add(u.id); };
   const placed = new Set();
   const rallied = new Set();
   const log = [];
   const started = Date.now();
   let fell = null;
+  // Defense: enemy combat units near the base -> the whole army goes at them.
+  // Looked for at the start of every round and again after its touch work: a
+  // round of touch actions spans 10-20 game seconds, and a raid can wipe a
+  // small army and the Castle between two looks (CI run 36864452276).
+  const defend = async () => {
+    // (Free-for-all: raids can come from two gates, so the bot watches wider.
+    // Phase 12 made both maps 1.25x larger, gates and chokepoints with them:
+    // the watch grows the same, so it still reaches them.)
+    let threat = s.units.find((u) => u.team !== 1 && u.type !== 'drone' && Math.hypot(u.x - core.x, u.y - core.y) < (ffa ? 1250 : 875));
+    const hurt = ffa && mine(s, 'buildings', 'core').find((b) => b.hp < b.maxHp);
+    if (!threat && hurt) threat = s.units.filter((u) => u.team !== 1).sort((a, b) => Math.hypot(a.x - hurt.x, a.y - hurt.y) - Math.hypot(b.x - hurt.x, b.y - hurt.y))[0];
+    const armyNow = mine(s, 'units').filter((u) => u.type !== 'drone');
+    maxArmy = Math.max(maxArmy, armyNow.length); // (a round that defends skips the count below)
+    see();
+    // A fight can start and end between two rounds (a round of touch actions
+    // takes seconds): soldiers lost since the last look are a threat too, so
+    // what is left goes at the nearest enemy (CI run 36745864284 lost 13
+    // units between two looks and never reacted).
+    if (!threat && armyNow.length < lastArmy) threat = s.units.filter((u) => u.team !== 1 && u.type !== 'drone').sort((a, b) => Math.hypot(a.x - core.x, a.y - core.y) - Math.hypot(b.x - core.x, b.y - core.y))[0];
+    lastArmy = armyNow.length;
+    if (!threat || !armyNow.length) return false;
+    await groupArmy();
+    await sendGroup(threat);
+    log.push(`${Math.round(s.time)}s defend`);
+    defends++;
+    return true;
+  };
   for (let round = 0; round < 2000 && Date.now() - started < 14 * 60_000; round++) {
     s = await state();
     if (s.result) break;
     if (ffa && s.fallen.some((f) => f.team === 1)) { fell = s.fallen.find((f) => f.team === 1); break; }
+    // An early look: answer a raid at once, then still build and train this
+    // round (ending the round here starved the army: 3 trained by 306 s).
+    if (await defend()) s = await state();
     if (round % 5 === 0) console.log(`[${Math.round((Date.now() - started) / 1000)}s real] game ${Math.round(s.time)}s lumen ${s.lumen} supply ${s.supply.used}/${s.supply.cap} drones ${mine(s, 'units', 'drone').length} army ${mine(s, 'units').filter((u) => u.type !== 'drone').length} buildings ${mine(s, 'buildings').map((b) => b.type[0] + (b.built ? '' : '*')).join('')} waves ${wave}`);
     // Build the next planned structure once the previous one is finished and it is affordable.
     const pending = mine(s, 'buildings').some((b) => !b.built);
@@ -249,29 +284,13 @@ async function play(page, query, ffa) {
     }
     // Defense: enemy combat units near the base -> the whole army goes at them.
     s = await state();
-    // (Free-for-all: raids can come from two gates, so the bot watches wider.)
-    let threat = s.units.find((u) => u.team !== 1 && u.type !== 'drone' && Math.hypot(u.x - core.x, u.y - core.y) < (ffa ? 1000 : 700));
-    const hurt = ffa && mine(s, 'buildings', 'core').find((b) => b.hp < b.maxHp);
-    if (!threat && hurt) threat = s.units.filter((u) => u.team !== 1).sort((a, b) => Math.hypot(a.x - hurt.x, a.y - hurt.y) - Math.hypot(b.x - hurt.x, b.y - hurt.y))[0];
-    const armyNow = mine(s, 'units').filter((u) => u.type !== 'drone');
-    // A fight can start and end between two rounds (a round of touch actions
-    // takes seconds): soldiers lost since the last look are a threat too, so
-    // what is left goes at the nearest enemy (CI run 36745864284 lost 13
-    // units between two looks and never reacted).
-    if (!threat && armyNow.length < lastArmy) threat = s.units.filter((u) => u.team !== 1 && u.type !== 'drone').sort((a, b) => Math.hypot(a.x - core.x, a.y - core.y) - Math.hypot(b.x - core.x, b.y - core.y))[0];
-    lastArmy = armyNow.length;
-    if (threat && armyNow.length) {
-      await groupArmy();
-      await sendGroup(threat);
-      log.push(`${Math.round(s.time)}s defend`);
-      defends++;
-      continue;
-    }
+    if (await defend()) continue;
     // Attack: when 14+ combat units wait at the rally point, box-select them,
     // save them as group 1 (press and hold), then attack-move on the enemy Core.
     s = await state();
     const army = mine(s, 'units').filter((u) => u.type !== 'drone');
     maxArmy = Math.max(maxArmy, army.length);
+    see();
     const atRally = army.filter((u) => Math.hypot(u.x - rally.x, u.y - rally.y) < 260);
     if (atRally.length >= (ffa ? 6 : 16) + wave * 2) {
       await groupArmy();
@@ -294,7 +313,7 @@ async function play(page, query, ffa) {
   }
   s = await state();
   console.log(`mobile playthrough${ffa ? ' (free-for-all)' : ''}: ${log.join('; ')}`);
-  console.log(`mobile playthrough result: ${s.result ? `${s.result.winner === 1 ? 'player (touch) wins' : s.result.winner ? `AI camp ${s.result.winner} wins` : 'draw'} by ${s.result.reason} at ${Math.round(s.result.time)}s game time` : `no result by ${Math.round(s.time)}s`}; max army ${maxArmy}, waves ${wave}, defences ${defends}; touch actions: ${JSON.stringify(actions)}`);
+  console.log(`mobile playthrough result: ${s.result ? `${s.result.winner === 1 ? 'player (touch) wins' : s.result.winner ? `AI camp ${s.result.winner} wins` : 'draw'} by ${s.result.reason} at ${Math.round(s.result.time)}s game time` : `no result by ${Math.round(s.time)}s`}; trained ${soldiers.size}, max army ${maxArmy}, waves ${wave}, defences ${defends}; touch actions: ${JSON.stringify(actions)}`);
   // The claim is that touch alone can play a whole match to its end, not that
   // this simple scripted player beats the AI (it usually loses; see README).
   expect(navigations, 'no gesture navigated the page').toEqual([]);
@@ -304,7 +323,7 @@ async function play(page, query, ffa) {
   // opportunity waves from its neighbours (PHASE8_SPEC.md "Part C"), so this
   // simple bot can fall at about 5 minutes with a small army; 4 units still
   // proves training by touch.
-  expect(maxArmy, 'trained an army by touch').toBeGreaterThanOrEqual(ffa ? 4 : 10);
+  expect(soldiers.size, 'trained an army by touch').toBeGreaterThanOrEqual(ffa ? 4 : 10);
   expect(wave + defends, 'fought with armed touch orders (attack waves or defence)').toBeGreaterThanOrEqual(1);
   expect(actions.holds, 'assigned a control group by press-and-hold').toBeGreaterThanOrEqual(1);
   expect(actions.pinches, 'zoomed by pinch').toBeGreaterThanOrEqual(1);

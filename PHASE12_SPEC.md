@@ -473,3 +473,19 @@ made the headless sim pass even at 150 (slowest tick 33 ms at most) and the
 desktop too, but the phone proxy still fails at 150 under both measures
 (one-tick p95 77.0 ms in the 1v1 swarm, 70.3 ms in the free-for-all swarm).
 **The cap stays at 100.**
+
+### 6. The four-camp balance matrix (issue #192)
+
+The 900-match matrix (9 corner classes × 100 seeds, Hard; the same seeds as
+Phases 8 and 9), re-run once on the shipped Phase 12 code and data. Full
+tables in [BALANCE.md](BALANCE.md) "Phase 12 re-measurement".
+
+| | Phase 9 (before) | Phase 12 (after) | Limit |
+|---|---|---|---|
+| Rush / Boom / Turtle wins | 24% / 28% / 48% | 25% / 17% / 58% | no strategy above 65% |
+| Corners NW / NE / SE / SW | 28 / 23 / 22 / 27% | 25 / 22 / 23 / 29% | no corner above 45% |
+| Average match | 13.1 min | 14.9 min | |
+
+Both limits hold, so by the rule set in advance there is **no outlier and no
+tuning pass**. Turtle's 10-point gain and Boom's 11-point loss are recorded
+as the new baseline, with the likely reason in BALANCE.md.

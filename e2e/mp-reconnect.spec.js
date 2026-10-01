@@ -41,7 +41,17 @@ async function leaveAndReturn(browser, leaverIndex) {
   await sleepRender(leaver);
 
   // Handback: only after a steady link, announced to everyone.
-  await expect.poll(async () => (await netState(leaver)).notices, { timeout: 60000 }).toContain('You are back in control of your camp.');
+  await expect.poll(async () => (await netState(leaver)).notices, { timeout: 60000 }).toContain('You are back in control of your camp.').catch(async (e) => {
+    // Why no handback: every player's view of the returning one (the leader
+    // hands back once it is caught up, at the live edge and steady).
+    const view = (p) => p.page.evaluate((x) => {
+      const ss = globalThis.__net.session, peer = ss.peers.get(x), now = ss.t.now();
+      return { me: ss.me, mode: ss.mode, tick: ss.tick, leader: ss.leader?.(), held: ss.ls?.held(), backSent: ss.backSent ? [...ss.backSent] : null,
+        peer: peer && { tick: peer.tick, caughtUp: peer.caughtUp, steadyFor: now - peer.since, heardAgo: now - peer.heard, connected: ss.t.connected(x) } };
+    }, leaver.slot);
+    for (const p of ps) console.log(`# DIAG ${p.name}:`, JSON.stringify(await view(p).catch((x) => String(x))));
+    throw e;
+  });
   const handedBackAfter = Date.now() - tBack;
   for (const p of stay) await expect.poll(async () => (await netState(p)).notices, { timeout: 30000 }).toContain(`${leaver.name} is back in control.`);
   await scriptPlayer(leaver, strategies[leaverIndex]); // its player plays again
