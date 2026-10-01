@@ -22,7 +22,7 @@ All art is drawn in code, and all audio is synthesized with the Web Audio API.
 
 The start screen asks for a **difficulty** and, optionally, which **strategy** the AI
 plays (Auto uses the tier's default). Both sides play the same mirrored map with the
-same units, buildings, costs, build times, pathing and a **60-supply population
+same units, buildings, costs, build times, pathing and a **100-supply population
 cap**, so the AI gets no special treatment. You win by destroying the enemy's last
 completed **Castle**, and you lose if yours falls. At **30:00** the match ends
 on score.
@@ -103,7 +103,7 @@ on score.
 Pick **Free-for-all (4 camps)** on the start screen. You are one of four camps
 on a larger map; the other three are AI camps at the chosen difficulty.
 
-- **The map.** 96 × 96 tiles, a 3 × 3 grid of zones walled off from each other
+- **The map.** 120 × 120 tiles, a 3 × 3 grid of zones walled off from each other
   with gates. The four camps sit in the corners, each laid out like the 1v1
   base: you are **Azure** (north-west), **Crimson** (north-east) plays Warband
   Raid, **Rose** (south-east) plays Merchant Kingdom, **Jade** (south-west)
@@ -186,6 +186,30 @@ Three changes from player feedback ([PHASE9_SPEC.md](PHASE9_SPEC.md)):
   cancels and trainings) and leans toward leaving camps in. In a
   free-for-all its land becomes neutral and the gold it had is left in its
   home zone for whoever takes it; in a 1v1 the other side wins.
+
+## Army size and map scale (Phase 12)
+
+Players found that once a camp hit the old supply cap of 60, more
+Storehouses bought nothing. Phase 12 measured how big the armies can get
+while the game stays playable, against a performance budget written down
+before any measurement ([PHASE12_SPEC.md](PHASE12_SPEC.md)):
+
+- **The cap is 100 supply** in every mode (1v1, free-for-all, multiplayer).
+  It is the highest cap at which a forced clash, with every camp full, kept
+  the sim tick, the desktop frame and an emulated phone's frame (a 4x
+  throttled CPU at phone size) inside the budget. 150 fails on the phone
+  proxy; 200 fails badly. The phone numbers are an emulation: no physical
+  phone has run them.
+- **A Storehouse gives 10 supply** (it gave 8). The Castle and 9
+  Storehouses reach the cap.
+- **The maps are 1.25x larger** in each direction: the 1v1 is 100 × 75, the
+  free-for-all 120 × 120 with wider gates, and each gold mine holds 2,500
+  (1,500 before). Bases keep their exact layout. Marching between camps takes
+  about a third longer (the nearest free-for-all round trip is 109 s), so an
+  undefended Castle still falls many times faster than help can arrive.
+- **A big army's order sets off over a few ticks.** Route planning in one tick
+  is capped, so ordering a full army across the map no longer freezes the
+  game for a moment; the last routes are planned within about 0.35 s.
 
 ## Multiplayer (Phases 10 and 11)
 
@@ -443,7 +467,7 @@ mine and carry it to a **Storehouse**; the Castle is not a drop-off.
 | Building | Size | HP | Cost | Build | Role |
 |---|---|---|---|---|---|
 | Castle | 4×4 | 1500 | 400 | 60 s | Your seat; trains Peasants |
-| Storehouse | 3×3 | 600 | 100 | 20 s | Gold drop-off, +8 supply |
+| Storehouse | 3×3 | 600 | 100 | 20 s | Gold drop-off, +10 supply |
 | Barracks | 3×3 | 800 | 150 | 30 s | Trains the army |
 | Watchtower | 2×2 | 500 | 120 | 25 s | Tower: 14 arrow / 0.8 s, 224 range |
 
@@ -548,7 +572,7 @@ exact commit.
 | `test/counters.test.js` | Each counter row is checked with 50 seeded 1v1s (≥ 80% required, and each currently wins 100%) |
 | `test/selection.test.js`, `e2e/selection.spec.js`, `e2e/combat.spec.js` | Drag-box, control groups, formation moves, attack and attack-move |
 | `test/bot.test.js` | The Phase 1 sandbox bot (now a preset of the AI engine) builds every building, trains one of each unit, and beats a squad of training dummies |
-| `test/supply.test.js` | Both teams are capped identically. Storehouses raise the cap to the max of 60, and queued production reserves supply. |
+| `test/supply.test.js` | Both teams are capped identically. The Castle and nine Storehouses reach the max of 100, and queued production reserves supply. |
 | `test/match.test.js`, `e2e/match.spec.js` | Map symmetry. Destroying either Castle ends the match with the right result screen; mutual loss is a draw; the time limit always decides. |
 | `test/spatial.test.js` | Enemy scanning via the spatial index matches brute force exactly. A 200-unit battle runs at about 1.8 ms per step. |
 | `test/ai.test.js` | The AI acts only through `world.issue()`, and five deliberately cheating AIs are caught by the read-only guard |
@@ -641,5 +665,9 @@ internal names).
   under the cap (Stone Bastion beats it 99% at Easy).
 - **Side bias.** The Merchant Kingdom mirror's east skew came from unmirrored
   tie-breaks. It is fixed, and mirror matches now split 50/50.
+- **Phase 12 (cap 100, larger maps).** In the four-camp matrix Stone Bastion
+  now wins 58% (48% before), Warband Raid 25% and Merchant Kingdom 17%; every
+  corner is between 22% and 29%. Both stay inside the limits set in advance
+  (no strategy above 65%, no corner above 45%), so nothing was tuned.
 
 The headless tests load the exact PathFinding.js bundle the CDN serves, so they exercise the library build that ships.

@@ -97,7 +97,14 @@ export class Session {
   // How many ticks this peer may run this frame: real time normally, faster
   // when it is behind the others (after a gap or a rejoin).
   stepBudget(realtime) {
-    const behind = this.maxPeerTick() - this.tick;
+    // The others' turns (each sent up to `delay` ticks ahead of its sender's
+    // tick, the moment it is committed) say where they are more freshly than
+    // their heartbeats, which can be half a second old: a held, returning
+    // player paced only by heartbeats could stay ~10 ticks behind for good,
+    // never close enough to be handed back (Phase 12 CI).
+    let latest = this.maxPeerTick();
+    for (const k of this.ls.turns.keys()) latest = Math.max(latest, k - this.ls.delay);
+    const behind = latest - this.tick;
     return behind > this.ls.delay * 2 ? Math.max(realtime, 60) : realtime;
   }
 
@@ -193,7 +200,9 @@ export class Session {
     for (const x of this.ls.held()) {
       const p = this.peers.get(x);
       if (!p || this.backSent.has(x) || !p.caughtUp || !this.t.connected(x)) continue;
-      if (p.tick < this.tick - this.ls.delay * 2) continue; // not at the live edge yet
+      // Not at the live edge yet: compared with where this peer was when that
+      // heartbeat arrived, so its age (up to heartbeatMs) does not count as lag.
+      if (p.tick < (p.tickAt ?? this.tick) - this.ls.delay * 2) continue;
       if (now - p.since < this.net.handbackStableMs) continue;
       this.backSent.add(x);
       this.ls.system({ kind: 'back', team: x });
@@ -216,7 +225,7 @@ export class Session {
         // Caught up: playing, and aware of its own hold, which only a player
         // restored from a snapshot can be (a partitioned player that ran on
         // alone is not, and is never handed back until it rejoins).
-        if (p) { p.tick = msg.k; p.caughtUp = !!msg.up && !!msg.held?.includes(from); }
+        if (p) { p.tick = msg.k; p.tickAt = this.tick; p.caughtUp = !!msg.up && !!msg.held?.includes(from); }
         // Held at the sender's tick, while my own history says I was in
         // control then: I was taken over without knowing (a partition).
         // (A peer that simply has not reached my handback yet still lists me

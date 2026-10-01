@@ -489,3 +489,103 @@ tables in [BALANCE.md](BALANCE.md) "Phase 12 re-measurement".
 Both limits hold, so by the rule set in advance there is **no outlier and no
 tuning pass**. Turtle's 10-point gain and Boom's 11-point loss are recorded
 as the new baseline, with the likely reason in BALANCE.md.
+
+### 7. Verification (issue #193)
+
+**(a) Regression.** `npm test` (342 tests), the fairness suite, the browser
+suite, the mobile touch playthroughs, the multiplayer suite and the
+cross-engine lockstep job pass on every slice's head in CI. Fingerprints
+were re-pinned three times, each with the reason beside it in
+`test/freeze.test.js`, and each re-pin is backed by a replay.
+`test/phase11-data.js` puts back the Phase 11 values of exactly the fields
+this phase changed:
+- the supply layer: the cap 60 and the Storehouse's 8;
+- the pathing layer: an unlimited route budget;
+- the maps layer: the Phase 11 map modules byte for byte, the AI's map
+  coordinates and `CAMP_TRAVEL`.
+
+With all three put back, the Phase 4 gameplay hash and every fixed-seed
+fingerprint from Phases 3, 5, 6, 8 and 9 reproduce exactly. So the code
+changes alter nothing except through these values.
+
+| Pin | Re-pinned because |
+|---|---|
+| `GOLDEN_PHASE12`, `GAMEPLAY_HASH_PHASE12` (cap 100, Storehouse 10, Phase 11 maps) | the larger Storehouse and the higher cap move every AI build order; then the work budget, which cap-100 games reach |
+| `GOLDEN_PHASE12_MAPS`, `GAMEPLAY_HASH_PHASE12_MAPS` (the shipped data) | the resized maps and their gold |
+| file hashes of `src/sim/pathfinder.js`, `movement.js`, `steering.js`, `src/data/*` and the AI engine | each change above, listed beside `FROZEN` |
+
+**(b) Performance.** Sections 1-3 (Phase 11 maps, before and after the sim
+work) and section 5 (the shipped maps): headless and throttled-phone
+tables against the budget.
+
+**(c) Travel.** Section 5.
+
+**(d) Balance.** Section 6 and BALANCE.md.
+
+**(e) Playthroughs at the new cap and map size.**
+- `test/phase12.test.js` plays a 1v1 and a four-camp free-for-all to the
+  **30:00 time limit** at cap 100, every camp scripted as an economy that
+  fills the cap. Every camp peaks at 99 supply, housed by its Castle and
+  Storehouses, and both matches end on the time limit with the camps
+  ranked.
+- The touch playthroughs (`e2e/mobile-playthrough.spec.js`, CI job
+  `mobile-playthrough`) play a full 1v1 and a full four-camp free-for-all
+  on a phone viewport by touch alone, on the new maps.
+- The full 900-match matrix played every corner arrangement to a declared
+  result (13 at the time limit).
+
+**Why the touch bot now loses its Castle sooner.** On the new data the
+free-for-all touch playthrough's bot lost its Castle at about 300-330 s in
+every run, where Phase 11 runs lasted longer. Measured with
+`tools/raid-timing.mjs`: camp 1 given no brain (its Castle and four
+Peasants), the other camps playing their scripts at Easy, as in the
+playthrough, 20 seeds, up to 20:00:
+
+| Idle player camp | Phase 11 data | Phase 12 data |
+|---|---|---|
+| Raided (and eliminated) within 20 minutes | 16 of 20 | 18 of 20 |
+| First raid, quartiles | 371 / 469 / 697 s | 376 / 395 / 432 s |
+| Castle falls, median | 506 s | 460 s |
+
+The earliest raids are no earlier; the late ones mostly disappear, so a
+weak camp is raided by about 6.5 minutes on most seeds. The playthrough's own
+seed (11) is the extreme case: under Phase 11 the AI never raided the idle
+camp in 20 minutes; under Phase 12 it raids at 366 s and the Castle falls at
+404 s. Neither half of the change does it alone on that seed (the old maps
+alone: never raided; the old cap and Storehouse alone: raided at 1,109 s).
+Which rival a four-camp AI turns on is sensitive to every number, and the
+systematic effect is the 20-seed shift above. The bot was made to answer raids
+that come sooner: its watch radius scales with the map, it looks twice a
+round, and "trained an army" counts soldiers trained rather than alive at
+once. It is recorded, not tuned (Phase 12 changes no AI behaviour), and
+listed in BACKLOG.md with the Easy-tier raid timing it compounds.
+
+**(f) Multiplayer.** The multiplayer suite (lobbies, WebRTC, lockstep
+whole matches of 2 and 4 players, disconnects, rejoin by snapshot, chat)
+and the cross-engine job (Chromium, Firefox and WebKit in one lockstep
+match) pass on the new cap and maps. Nothing in the network code assumed
+the old cap or map size. Two changes were needed. The two-player whole-match test
+waits up to 12 minutes of real time instead of 8, because a cap-100 match can
+now run to the 30:00 limit (one CI run was still in play at 26.7 game
+minutes when the 8 minutes ran out). And CI exposed a latent Phase 11 race
+in `src/net/play.js`: the metronome committed this player's turns once a
+frame, so when a frame ran more ticks than the input delay (the tests' 8x
+speed, or catching up after a gap) a UI command could land in the current
+tick's turn and run with no delay (given and run at tick 17). Turns are now
+committed after every tick, and the per-frame pace the old code had
+implicitly is kept explicitly (a first version without it left a returning
+player ~30 ticks behind and never handed back; the reconnect test now prints
+every player's view of the returning one when handback does not come). Every
+peer always agreed: no desync was possible, only a lost delay.
+
+**Confidence in real phones, stated plainly.** Every phone number in this
+phase comes from desktop Chromium at a phone viewport with its CPU
+throttled 4x and a software GPU. That models a mid-range phone's JavaScript
+speed, not its GPU, memory, thermal throttling or browser engine (iOS
+Safari is WebKit). Under the budget's literal raw-frame reading, that proxy
+supports only cap 60 when every camp fields an all-1-supply army; cap 100
+rests on the one-tick frame measure (section 3, amendment 3) and on the
+mixed-army cells, which pass under both. No physical phone has run this
+game in this phase or any earlier one. Cap 100 is the best-supported
+number this environment can give, not a guarantee; a real-device check is
+the first item in BACKLOG.md for Phase 12.

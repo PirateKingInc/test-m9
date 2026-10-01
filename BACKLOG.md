@@ -113,6 +113,19 @@ These shipped in Phase 11:
 * in-match chat over the data channels
 The deferred items are at the end of the list below, tagged [P11].
 
+## Phase 12: Scale validation (done)
+
+These shipped in Phase 12:
+* a performance budget set before measuring, a headless and a browser
+  (desktop and 4x-throttled phone viewport) scale harness, and a measured
+  ceiling: supply cap **100** (it was 60)
+* route planning made cheap without changing a route, and a deterministic
+  per-tick budget of pathfinding work so a whole-army order never stalls a tick
+* the Storehouse at 10 supply (Castle + 9 Storehouses reach the cap)
+* both maps 1.25x larger with wider gates and 2,500-gold mines; travel times
+  and `CAMP_TRAVEL` re-measured; the four-camp matrix re-run (no outlier)
+The deferred items are at the end of the list below, tagged [P12].
+
 ## Post-project (not scheduled)
 
 The project's phases are complete. These ideas were deliberately not
@@ -179,3 +192,11 @@ Phase 3.
 - [P11] A rejoin snapshot is about 120–135 KB of JSON in a four-camp match (measured at 5, 10 and 11 minutes), sent in 16 KB chunks, plus up to 30 s of turns. Compressing it (a CompressionStream over the JSON) would cut it several times; not needed at today's sizes.
 - [P11] Spectating a multiplayer match (a fifth person watching), and matchmaking or persistent identity: out of scope for Phase 11.
 - [P11] Real-network latency above the 200 ms input delay slows the game for everyone (it waits for the late turns: about 12 ticks per second at 150–400 ms per message, measured). An adaptive input delay (raised for the match when a peer's round trip is high) would keep the pace smooth at the cost of a laggier feel.
+- [P12] **Real-phone measurement of the cap.** Cap 100 rests on a desktop CPU throttled 4x at a phone viewport, with a software GPU, using the one-tick frame measure. Under the raw frame measure that proxy supports only 60 in the worst case (every camp an all-1-supply army). A physical mid-range phone (Android Chrome, iOS Safari) running the same scenario (`e2e/scale-mobile.spec.js` does it in Chromium) would settle whether 100 holds, or whether there is room for more.
+- [P12] **The phone limit is the sim tick at the battle peak** (separation steering and combat scans over hundreds of units), not drawing. Cheaper separation (a smaller cell, which changes push order and so every fingerprint), sleeping idle units, or flow fields for large groups (see the [P3] flow-field item) are the levers for a cap above 100.
+- [P12] **Stone Bastion (Turtle) wins 58% of free-for-alls** after Phase 12 (48% before; Merchant Kingdom 17%, down from 28%). That is inside the 65% severe-outlier line, so it was recorded rather than tuned. Longer marches and an uncapped late army favour the camp that defends and attacks late. A measured pass on Boom's opportunity and wave thresholds would be the first thing to try.
+- [P12] **The AI does not plan for the bigger cap.** Its attack waves still leave at about 30 supply, so AI camps peak at a median of 67 supply in fights (99 when they never attack). Scaling wave sizes with `SUPPLY.max` would change the strategies' character and needs its own balance pass.
+- [P12] A full-cap army's order sets off over up to about 0.35 s (7 ticks) on the 1v1 map, rear units last, because route planning is budgeted per tick. Sharing one route across a group order would remove the stagger and most of the planning cost.
+- [P12] The 1v1 strategy matrix (BALANCE.md, Phase 3) was not re-run at cap 100 on the larger map; the fixed-seed 1v1 games are re-pinned and the fairness suite passes, but per-matchup win rates are unmeasured.
+- [P12] The four-camp batch runner now takes about 50 minutes for 900 matches on the 120 x 120 map (in 20-seed chunks, `tools/ffa-merge.mjs`).
+- [P12] **A weak free-for-all camp is raided sooner.** With the Phase 12 data an idle player camp is first raided at a median 395 s (469 s before) and by 432 s on three seeds in four (697 s before); 18 of 20 are eliminated within 20 minutes (16 before) (`tools/raid-timing.mjs`). With the [P9] item on Easy opportunity waves, a new or touch player meets raids by about 6.5 minutes. Scaling `RIVALS.attack` by difficulty would address both.
