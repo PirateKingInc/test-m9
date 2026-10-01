@@ -39,19 +39,22 @@ const sha = (buf) => createHash('sha256').update(buf).digest('hex');
 // src/ai/engine.js (the AI builds Storehouses up to SUPPLY.max, not a literal
 // 60): with the Phase 11 values put back (test/phase11-data.js) every
 // fingerprint and the gameplay hash below reproduce exactly.
-// The next slice replaces the count of route searches per tick with a budget
-// of pathfinding work, as data in the new src/data/scale.js (re-pinning
-// pathfinder.js and movement.js). Phase 11 had no budget, and the replays put
-// back exactly that (an unlimited budget).
+// The maps slice re-pins src/data/map.js, ffa.js and strategies.js (both maps
+// 1.25x larger with richer mines, the AI's 1v1 field and search coordinates
+// moved with them, CAMP_TRAVEL re-measured); with the Phase 11 maps put back
+// too, everything reproduces again. It also replaces the count of route
+// searches per tick with a budget of pathfinding work, as data in the new
+// src/data/scale.js (re-pinning pathfinder.js and movement.js); Phase 11 had
+// no budget, and the replays put back exactly that (an unlimited budget).
 export const FROZEN = {
   "src/data/buildings.js": "bace30ca3494c0e456f561a07292923cec16fb67598daec23c21913dd420037a",
   "src/data/camp-rules.js": "eaba6b6ba317c1a0a1027eedb46a1888ca23b860bce20b49cf2a8618406049da",
   "src/data/difficulty.js": "5edbe78a9ebb8172eed5c945f34732d549375eeb806df9265e684577b1a0ea6e",
-  "src/data/ffa.js": "aae3f1f3cef2a7e34f8b923414f643189ffb44872e105f25b9d9d30a021877df",
-  "src/data/map.js": "7ca9715b0b10d0d0a5659268c05bb7df451bda0306b21032a0fa5f13abc6436f",
+  "src/data/ffa.js": "9ab668e3e0e86dba07da8b0ba51e30cfec3ca85c32478f0aace2725734e3313b",
+  "src/data/map.js": "3f758574b3d31d8c9df09fc1e7dd5283c9cc3930262c7717774e8d57aa0ead89",
   "src/data/rivals.js": "54c99cdb2916999bc23ec81d33a8438d9db58915afa7ef7fb73e0a43032ac905",
   "src/data/scale.js": "7ac077270650f1436fa9e2dbb35ffc8765247f19ce75430d5cfa990d2e7059f2",
-  "src/data/strategies.js": "ce6e3cd4a084145f4ae7315103bf953ae76d6e6b5cfdc117aab6f966fe15e499",
+  "src/data/strategies.js": "fbed5d315e5b5520e2b71d0686cbbc3c9454ed523a7bcb5560ec26807cad1a3a",
   "src/data/units.js": "b401f86514666b40bd0a2f8b5b1ac664563a6f33be2869391763c747f36a3ca0",
   "src/sim/combat.js": "75bdaad3d784746da47791b0e2fb8a16a3413db6550ac5436dd10357356a830a",
   "src/sim/constants.js": "5b908c2299440ddc070608d52ebc5ee3ab663c5eca24fdb209bbc782bdc845cd",
@@ -100,9 +103,12 @@ export const GAMEPLAY_HASH = '9fd621ee00b78dd2e7123d0492c21ba28d79c1e80cf0b60046
 // is the Phase 4 one, so nothing else moved; the Phase 12 values are pinned too.
 export const GAMEPLAY_HASH_PHASE12 = '2c2ddeed0a1ae04bd53237011e884020315890ed6e96b69ac2f4c61b6fc78800';
 
+export const GAMEPLAY_HASH_PHASE12_MAPS = '2ba95fd453b64bb4500c8cf593f3dcc0eeec7149121d093de17ef59a95399f85';
+
 test('every gameplay value in src/data is the Phase 4 release, but for the Phase 12 changes', () => {
   assert.equal(withPhase11(gameplayHash), GAMEPLAY_HASH);
-  assert.equal(gameplayHash(), GAMEPLAY_HASH_PHASE12); // (src/data/scale.js holds no gameplay value)
+  assert.equal(withPhase11(gameplayHash, ['maps']), GAMEPLAY_HASH_PHASE12); // the cap and Storehouse alone
+  assert.equal(gameplayHash(), GAMEPLAY_HASH_PHASE12_MAPS); // and the resized maps
 });
 
 // A fingerprint of everything collision and combat touch: positions, HP, orders.
@@ -261,11 +267,13 @@ test('Phase 9 equivalence: the free-for-all with auto-defend and hopeless camps 
 });
 
 // Phase 12 (PHASE12_SPEC.md): the same 1v1 fingerprints and free-for-all
-// production logs with the Phase 12 data (supply cap 100, Storehouse 10).
+// production logs with the Phase 12 cap and Storehouse (supply cap 100,
+// Storehouse 10), on the Phase 11 maps.
+// Re-pinned in the maps slice: there the route-search budget became a budget
+// of pathfinding work (src/data/scale.js) instead of a count of searches, and
+// cap-100 games do reach it, so these games (still on the Phase 11 maps) move.
 // A larger Storehouse moves every AI's build order, so all of these move;
-// the tests above prove they move only through the data. Re-pinned when the
-// route-search budget became a budget of pathfinding work (src/data/scale.js)
-// instead of a count of searches: cap-100 games reach it, so these move.
+// the tests above prove they move only through the data.
 export const GOLDEN_PHASE12 = {
   sandboxBot: '109126657f0ba006',
   'rush-boom-hard-1': '2d6c39c6c640565b',
@@ -287,6 +295,36 @@ export const GOLDEN_PHASE12 = {
   'seed3-600s': '3c250c0acf7823d9 (343 build/train orders)',
 };
 
-test('Phase 12: fixed-seed games with the Phase 12 data play out as pinned', () => {
-  assert.deepEqual({ ...fingerprints(), ...phase5Fingerprints(), ...ffaProductionLogs() }, GOLDEN_PHASE12);
+const phase12Fingerprints = () => ({ ...fingerprints(), ...phase5Fingerprints(), ...ffaProductionLogs() });
+
+test('Phase 12: fixed-seed games with the new cap and Storehouse play out as pinned', () => {
+  assert.deepEqual(withPhase11(phase12Fingerprints, ['maps']), GOLDEN_PHASE12); // (on the Phase 11 maps)
+});
+
+// Phase 12, the maps slice: the same games on the resized maps with their
+// richer gold mines (PHASE12_SPEC.md "Maps"). Everything moves; the replays
+// above (Phase 11 maps put back) prove it moves only through the map data.
+export const GOLDEN_PHASE12_MAPS = {
+  sandboxBot: 'd2c55e0aba64b23d',
+  'rush-boom-hard-1': 'db97648bf04507c2',
+  'turtle-rush-normal-2': 'ab45b76e26b78f74',
+  'boom-turtle-easy-3': '4f58aa58f730b561',
+  'rush-rush-easy-11': '837421c680d98139 2/core-destroyed/991.40 {"1":12006,"2":10147}',
+  'rush-boom-normal-12': 'cb00627b2d9d7cd2 2/core-destroyed/554.10 {"1":5259,"2":15126}',
+  'rush-turtle-hard-13': 'ff2c87a01e244584 2/core-destroyed/1120.65 {"1":1786,"2":7695}',
+  'boom-rush-easy-14': '15e7ab581a0922e4 1/core-destroyed/882.60 {"1":19940,"2":11683}',
+  'boom-boom-normal-15': 'f3ec21401fc7d7ba 2/core-destroyed/820.10 {"1":11996,"2":8122}',
+  'boom-turtle-hard-16': 'df77b72ce0013b24 1/core-destroyed/620.75 {"1":14050,"2":1690}',
+  'turtle-rush-easy-17': 'c0818562e52f27cc 1/core-destroyed/807.10 {"1":12044,"2":10193}',
+  'turtle-boom-normal-18': 'c2a65d298c621223 1/core-destroyed/669.05 {"1":8091,"2":12496}',
+  'turtle-turtle-hard-19': '9214f3c5f97bf508 2/core-destroyed/430.05 {"1":874,"2":4932}',
+  'idlePlayer-rush-hard-5': '4d8298ab01c5d282 2/core-destroyed/267.00',
+  'sentinel-sentinel-timeLimit-7': 'bb14edf17ddcb3d2 1/time-limit/1800.05 {"1":17538,"2":17170}',
+  'seed1-600s': 'ada03599c2797689 (527 build/train orders)',
+  'seed2-600s': '278aa6de0ae1d08d (449 build/train orders)',
+  'seed3-600s': '3af23e5610ee1b16 (447 build/train orders)',
+};
+
+test('Phase 12: fixed-seed games on the resized maps play out as pinned', () => {
+  assert.deepEqual(phase12Fingerprints(), GOLDEN_PHASE12_MAPS);
 });

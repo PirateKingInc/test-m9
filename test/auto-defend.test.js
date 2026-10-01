@@ -86,8 +86,8 @@ test('after the fight it walks back to its post', () => {
 test('it does not walk back into a zone that has turned hostile', () => {
   const w = ffa();
   w.zone('w').owner = 1;
-  const guard = w.at('bulwark', 1, 16, 34); // in the West field, which Azure owns
-  const raider = w.at('drone', 3, 16, 60);
+  const guard = w.at('bulwark', 1, 16, 44); // in the West field, which Azure owns
+  const raider = w.at('drone', 3, 16, 70);
   w.runFor(0.6);
   assert.equal(guard.order.target, raider.id);
   w.zone('w').owner = 3; // meanwhile the West field falls to Rose
@@ -111,7 +111,7 @@ test('an order from the owner cancels the automatic one and forgets the post', (
 
 test('it is the same rule for every camp (an AI camp\'s units defend its zone too)', () => {
   const w = ffa();
-  const guard = w.at('striker', 3, 70, 90), raider = w.at('striker', 1, 90, 70);
+  const guard = w.at('striker', 3, 94, 114), raider = w.at('striker', 1, 114, 94);
   w.runFor(0.6);
   assert.equal(guard.order.target, raider.id);
   assert.equal(guard.order.defend, 'se');

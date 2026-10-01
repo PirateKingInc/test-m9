@@ -16,7 +16,7 @@ circles and building rectangles). The simulation runs at a fixed
 |---|---|
 | Resource | **Lumen** (one type) |
 | Starting stockpile | **250** |
-| Crystal node | 2×2 tiles, **1500** Lumen each, blocks movement, disappears when empty |
+| Crystal node | 2×2 tiles, **2500** Lumen each (1500 until Phase 12), blocks movement, disappears when empty |
 | Drone carry | **8** Lumen per trip |
 | Mining time | **2.0 s** at the node (the Drone must be within 8 px of the node edge) |
 | Drop-off | instant when within 8 px of a **completed Lumen Depot** (the Command Core is *not* a drop-off) |
@@ -96,24 +96,27 @@ intended winner must win **at least 80%** of them.
 
 ## Map (`src/data/map.js`)
 
-- **80 × 60 tiles** (2560 × 1920 px), which is larger than one screen.
+- **100 × 75 tiles** (3200 × 2400 px), which is larger than one screen.
+  (80 × 60 until Phase 12, which scaled every distance by 1.25 for the
+  supply cap of 100, widened the chokepoints from 6 to 8 tiles and kept each
+  base's layout around its Castle; PHASE12_SPEC.md "Maps".)
 - Since Phase 2 the map is **mirror-symmetric about the vertical center line**
   so both starts are equally fair: a feature of width `w` at tile `x` has a twin
-  at `80 − x − w`. The west half is unchanged from Phase 1.
-- **Player start (team 1, west):** Command Core at tile (8,27). Four Drones at
-  tiles (13,27)–(13,30). The camera starts centered on the Core.
-- **AI start (team 2, east, match mode only):** Command Core at (68,27). Four
-  Drones at (66,27)–(66,30).
+  at `100 − x − w`.
+- **Player start (team 1, west):** Command Core at tile (8,35). Four Drones at
+  tiles (13,35)–(13,38). The camera starts centered on the Core.
+- **AI start (team 2, east, match mode only):** Command Core at (88,35). Four
+  Drones at (86,35)–(86,38).
 - **Rock (impassable):**
-  - Ridge A at x=30–31 and its mirror Ridge B at x=48–49, each covering
-    y 0–17, 24–35 and 42–59. The gaps at y 18–23 and 36–41 are chokepoints.
-  - Outcrops at (14,10) 4×3, (12,46) 5×3 and their mirrors (62,10) 4×3 and
-    (63,46) 5×3. The center plateau is at (38,26) 4×8.
-- **Crystal nodes (20 × 1500 Lumen):**
-  - West home field: (20,21), (22,24), (23,27), (23,30), (22,33) and (20,36)
-  - East home field (mirror): (58,21), (56,24), (55,27), (55,30), (56,33) and (58,36)
-  - North-middle: (37,6), (41,6), (39,3) and (39,9)
-  - South-middle: (37,51), (41,51), (39,48) and (39,54)
+  - Ridge A at x=38–39 and its mirror Ridge B at x=60–61, each covering
+    y 0–21, 30–43 and 52–74. The gaps at y 22–29 and 44–51 are chokepoints.
+  - Outcrops at (18,13) 4×3, (15,58) 5×3 and their mirrors (78,13) 4×3 and
+    (80,58) 5×3. The center plateau is at (48,33) 4×9.
+- **Crystal nodes (20 × 2500 Lumen; 1500 until Phase 12):**
+  - West home field: (20,29), (22,32), (23,35), (23,38), (22,41) and (20,44)
+  - East home field (mirror): (78,29), (76,32), (75,35), (75,38), (76,41) and (78,44)
+  - North-middle: (47,8), (51,8), (49,5) and (49,11)
+  - South-middle: (47,64), (51,64), (49,61) and (49,67)
 
 ### Side symmetry (Phase 3)
 
@@ -136,7 +139,7 @@ The rules now:
 
 ## Movement & pathfinding
 
-- **Library:** PathFinding.js 0.4.18 (`PF.AStarFinder`) routes on the 80×60 tile
+- **Library:** PathFinding.js 0.4.18 (`PF.AStarFinder`) routes on the 100×75 tile
   grid. Diagonals are allowed only when no corner is cut (`allowDiagonal` +
   `dontCrossCorners`; the CDN browser bundle uses these legacy option names).
   Headless tests load that exact CDN bundle.

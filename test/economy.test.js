@@ -80,9 +80,9 @@ test('drones go idle when no node is left nearby', () => {
 test('on the real map four drones gather into a new depot', () => {
   const w = makeWorld();
   const drones = [...w.ofKind('unit')];
-  w.issue({ type: 'build', ids: [drones[0].id], building: 'depot', tx: 17, ty: 27 });
+  w.issue({ type: 'build', ids: [drones[0].id], building: 'depot', tx: 17, ty: 35 });
   runUntil(w, () => [...w.ofKind('building')].every((b) => b.built), 60);
-  const node = [...w.ofKind('node')].find((n) => n.tx === 23 && n.ty === 27);
+  const node = [...w.ofKind('node')].find((n) => n.tx === 23 && n.ty === 35);
   w.issue({ type: 'gather', ids: drones.map((u) => u.id), node: node.id });
   const before = w.resources[1];
   w.run(60);

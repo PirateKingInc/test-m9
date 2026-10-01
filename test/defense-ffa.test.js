@@ -17,8 +17,8 @@ function watch(s, seconds) {
 test('early aggression: one raider each from two different camps is still a rush (defend mode)', () => {
   const s = scenario();
   s.w.time = 100;
-  const home = s.at('striker', 2, 80, 16, 4);
-  const azure = s.at('striker', 1, 76, 20), jade = s.at('striker', 4, 78, 22);
+  const home = s.at('striker', 2, 104, 16, 4);
+  const azure = s.at('striker', 1, 100, 20), jade = s.at('striker', 4, 102, 22);
   watch(s, 6);
   assert.ok(s.ai.defending, 'defend mode');
   const r = s.ai.reactions.find((x) => x.kind === 'early-aggression');
@@ -29,7 +29,7 @@ test('early aggression: one raider each from two different camps is still a rush
 });
 
 test('early aggression still works for every camp on the map (per-camp mirror)', () => {
-  const spots = { 1: [16, 16], 2: [80, 16], 3: [80, 80], 4: [16, 80] };
+  const spots = { 1: [16, 16], 2: [104, 16], 3: [104, 104], 4: [16, 104] }; // beside each Castle
   for (const team of [1, 2, 3, 4]) {
     const s = scenario({ team });
     s.w.time = 100;

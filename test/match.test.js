@@ -25,7 +25,7 @@ test('match setup: both teams start with a Core, four Drones and 250 Lumen; sand
     assert.equal(units(w, team).filter((u) => u.type === 'drone').length, 4);
     assert.equal(w.resources[team], 250);
   }
-  assert.deepEqual([core(w, 2).tx, core(w, 2).ty], [68, 27]);
+  assert.deepEqual([core(w, 2).tx, core(w, 2).ty], [88, 35]);
   const sandbox = makeWorld();
   assert.equal(sandbox.mode, 'sandbox');
   assert.equal(units(sandbox, 2).length, 0);

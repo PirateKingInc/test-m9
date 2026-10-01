@@ -11,7 +11,7 @@ const T = FFA_MAP.tile;
 
 function ready() {
   const s = scenario();
-  s.army = s.at('striker', 2, 78, 18, 14);
+  s.army = s.at('striker', 2, 102, 18, 14);
   s.ai.stats.waves = 1; // past the first wave: the next leaves at 10 +/-30% units
   s.think = () => { s.ai.scout.scan(); s.ai.intelCache = null; s.ai.commandArmy(); };
   // What the AI "has seen" of a rival: remembered sightings far from our eyes.
@@ -30,7 +30,7 @@ test('a wave marches on the pick: with no intel, the nearest rival (Rose)', () =
   think();
   assert.equal(ai.mode, 'attack');
   assert.equal(ai.goal.team, 3);
-  assert.ok(army.every((u) => u.order.type === 'attackMove' && heading(u).y > 64), 'south, to Rose');
+  assert.ok(army.every((u) => u.order.type === 'attackMove' && heading(u).y > 80), 'south, to Rose');
   assert.ok(ai.reactions.some((r) => r.kind === 'target' && r.detail.startsWith('attacking camp 3')));
 });
 
@@ -48,7 +48,7 @@ test('opportunism: a wave in the field turns on a rival it sees weakened by a th
   assert.equal(ai.goal.team, 1, 'retargeted at Azure');
   const r = ai.reactions.find((x) => x.kind === 'retarget');
   assert.match(r.detail, /^camp 3 -> camp 1: weaker, engaged with camp 4/);
-  assert.ok(army.every((u) => u.order.type === 'attackMove' && heading(u).x < 32), 'the whole wave turns west');
+  assert.ok(army.every((u) => u.order.type === 'attackMove' && heading(u).x < 40), 'the whole wave turns west');
 });
 
 test('a wave does not turn round on a small change in the numbers (switch margin)', () => {
@@ -64,17 +64,17 @@ test('a wave does not turn round on a small change in the numbers (switch margin
 
 test('caution: with every rival clearly stronger, a ready army claims the nearest free zone instead of attacking', () => {
   const { ai, army, remember, think } = ready();
-  remember(1, 'bulwark', 9, 10, 14); remember(3, 'bulwark', 9, 86, 82); remember(4, 'bulwark', 9, 10, 82);
+  remember(1, 'bulwark', 9, 10, 14); remember(3, 'bulwark', 9, 110, 106); remember(4, 'bulwark', 9, 10, 106);
   think();
   assert.equal(ai.intel().cautious, true);
   assert.equal(ai.goal.claim.id, 'e', 'the East field: the nearest neutral zone to the north-east camp');
-  assert.ok(army.every((u) => u.order.type === 'attackMove' && Math.round(heading(u).x) === 80 && Math.round(heading(u).y) === 48));
+  assert.ok(army.every((u) => u.order.type === 'attackMove' && Math.round(heading(u).x) === 100 && Math.round(heading(u).y) === 60));
   assert.ok(ai.reactions.some((r) => r.kind === 'cautious-claim'));
 });
 
 test('caution: a claimed zone leads to the next, and a rival that weakens becomes the target again', () => {
   const { w, ai, army, remember, think } = ready();
-  remember(1, 'bulwark', 9, 10, 14); remember(3, 'bulwark', 9, 86, 82); remember(4, 'bulwark', 9, 10, 82);
+  remember(1, 'bulwark', 9, 10, 14); remember(3, 'bulwark', 9, 110, 106); remember(4, 'bulwark', 9, 10, 106);
   think();
   w.zones.find((z) => z.id === 'e').owner = 2; // taken
   think();
@@ -88,7 +88,7 @@ test('caution: a claimed zone leads to the next, and a rival that weakens become
 
 test('caution: with nothing free to claim, the army stays home (holds)', () => {
   const { w, ai, army, remember, think } = ready();
-  remember(1, 'bulwark', 9, 10, 14); remember(3, 'bulwark', 9, 86, 82); remember(4, 'bulwark', 9, 10, 82);
+  remember(1, 'bulwark', 9, 10, 14); remember(3, 'bulwark', 9, 110, 106); remember(4, 'bulwark', 9, 10, 106);
   for (const z of w.zones) if (z.field) ai.scout.memory.set(`tower-${z.id}`, { kind: 'building', type: 'spire', team: 1, x: z.field[0] * T, y: z.field[1] * T, seenAt: 0, health: 1 });
   think();
   assert.equal(ai.mode, 'gather', 'no wave');
@@ -98,7 +98,7 @@ test('caution: with nothing free to claim, the army stays home (holds)', () => {
 
 test('the read-only guard catches the targeting code writing game state', () => {
   const { ai, remember, think } = ready();
-  remember(1, 'bulwark', 9, 10, 14); remember(3, 'bulwark', 9, 86, 82); remember(4, 'bulwark', 9, 10, 82);
+  remember(1, 'bulwark', 9, 10, 14); remember(3, 'bulwark', 9, 110, 106); remember(4, 'bulwark', 9, 10, 106);
   const honest = ai.claimZone;
   ai.claimZone = function cheat() { for (const z of this.w.zones) z.owner = this.team; return honest.call(this); };
   assert.throws(() => think(), MutationError);

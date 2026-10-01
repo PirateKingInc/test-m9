@@ -49,8 +49,8 @@ test('the Foundry trains all four combat units; the Core trains the Drone', () =
   }
 });
 
-test('map is 80x60 with 20 crystal nodes', () => {
-  assert.equal(MAP.cols, 80);
-  assert.equal(MAP.rows, 60);
+test('map is 100x75 with 20 crystal nodes (Phase 12; 80x60 before)', () => {
+  assert.equal(MAP.cols, 100);
+  assert.equal(MAP.rows, 75);
   assert.equal(MAP.nodes.length, 20);
 });

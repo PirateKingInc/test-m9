@@ -6,8 +6,9 @@ import { PF, makeWorld } from './helpers.js';
 import { Match } from '../src/ai/match.js';
 import { STRATEGIES } from '../src/data/strategies.js';
 import { DIFFICULTY } from '../src/data/difficulty.js';
+import { MAP } from '../src/data/map.js';
 
-const COLS = 80;
+const COLS = MAP.cols;
 
 test('grid spiral order in the east half is the mirror image of the west half', () => {
   const w = makeWorld({ setup: 'match' });

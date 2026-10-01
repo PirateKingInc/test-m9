@@ -24,7 +24,7 @@ test('nine zones: four home zones owned by their camps, five neutral', () => {
   assert.deepEqual(w.zones.filter((z) => z.owner != null).map((z) => [z.id, z.owner]), [['nw', 1], ['ne', 2], ['sw', 4], ['se', 3]]);
   for (const t of [1, 2, 3, 4]) assert.equal(zonesOf(w, t).length, 1);
   assert.equal(zoneAt(w, 10 * T, 10 * T).id, 'nw');
-  assert.equal(zoneAt(w, 48 * T, 48 * T).id, 'c');
+  assert.equal(zoneAt(w, 60 * T, 60 * T).id, 'c');
 });
 
 test('a camp alone in a neutral zone takes it after the hold time, not before', () => {
@@ -43,8 +43,8 @@ test('a contested zone changes hands only once one camp holds it alone', () => {
   const w = ffa();
   const a = w.addUnit('bulwark', 2, 0, 0), b = w.addUnit('bulwark', 3, 0, 0);
   hold(w, a, 'c'); hold(w, b, 'c');
-  a.x = 35 * T; a.y = 35 * T; // opposite corners of the Centre, too far apart to fight
-  b.x = 60 * T; b.y = 60 * T;
+  a.x = 43 * T; a.y = 43 * T; // opposite corners of the Centre, too far apart to fight
+  b.x = 76 * T; b.y = 76 * T;
   runFor(w, 12);
   assert.equal(zone(w, 'c').owner, null, 'contested: nobody takes it');
   assert.equal(zone(w, 'c').contested, true);
@@ -75,7 +75,7 @@ test('Peasants alone never take a zone; a finished Watchtower does', () => {
   hold(w, d, 's');
   runFor(w, 15);
   assert.equal(zone(w, 's').owner, null);
-  w.addBuilding('spire', 4, 44, 76, { built: true });
+  w.addBuilding('spire', 4, 55, 95, { built: true });
   runFor(w, TERRITORY.captureHold + 1.5);
   assert.equal(zone(w, 's').owner, 4);
 });

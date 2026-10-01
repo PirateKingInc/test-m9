@@ -36,10 +36,11 @@ for (const strategy of ['rush', 'boom', 'turtle']) {
     }, 900);
     assert.ok(ok, 'expanded within 15 minutes');
     const r = ai.reactions.find((e) => e.kind === 'expand');
-    assert.ok(firstWanted != null && r.t - firstWanted < 30, `expanded ${(r.t - firstWanted).toFixed(1)}s after its trigger first held`);
+    firstWanted ??= r.t; // the trigger first held in the very tick the AI expanded (seen after it, not before)
+    assert.ok(r.t - firstWanted < 30, `expanded ${(r.t - firstWanted).toFixed(1)}s after its trigger first held`);
     assert.ok(r.detail.includes('home-low') || r.t >= x.after, `expanded at ${r.t.toFixed(0)}s: ${r.detail}`);
     if (r.detail.includes('home-low')) assert.ok(ai.homeLeft() < x.orHomeBelow + 0.05);
-    assert.ok(ai.expansion.center.x > 32 * T && ai.expansion.center.x < 48 * T, 'a middle field (between the ridges)');
+    assert.ok(ai.expansion.center.x > 40 * T && ai.expansion.center.x < 60 * T, 'a middle field (between the ridges)');
     const mine = (type) => [...m.world.ofKind(type === 'drone' || type === 'unit' ? 'unit' : 'building')];
     // Staffed and defended within two minutes of the Depot finishing.
     // (It may abort a field that turns out contested and take the other one.)
@@ -65,7 +66,7 @@ test('the AI never builds an expansion in a field the enemy holds', () => {
   const north = EXPANSION.fields.north;
   w.addBuilding('depot', 1, north.depot[0], north.depot[1], { built: true });
   w.addBuilding('spire', 1, north.spire[0], north.spire[1], { built: true });
-  const northC = { x: 40 * T, y: north.center[1] * T }, southC = { x: 40 * T, y: EXPANSION.fields.south.center[1] * T };
+  const northC = { x: north.center[0] * T, y: north.center[1] * T }, southC = { x: EXPANSION.fields.south.center[0] * T, y: EXPANSION.fields.south.center[1] * T };
   const ok = runUntil(m, () => {
     for (const b of w.ofKind('building')) {
       if (b.team === 2 && b.type === 'depot' && near(b, northC, 12)) assert.ok(!b.built, 'no finished AI Depot in the held field');

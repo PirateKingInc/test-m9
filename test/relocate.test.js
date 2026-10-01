@@ -118,9 +118,9 @@ test('moving into a zone a rival holds is no capture, and the site can be destro
 test('a moved Watchtower that finishes in a rival\'s zone contests it, as an army walking in would; it does not take it', () => {
   const w = ffa();
   w.zone('w').owner = 3;
-  w.addUnit('striker', 3, 26 * 32, 60 * 32); // one Rose soldier far across the zone, out of range
+  w.addUnit('striker', 3, 30 * 32, 74 * 32); // one Rose soldier far across the zone, out of range
   const tower = w.addBuilding('spire', 1, 20, 20, { built: true });
-  const res = w.issue({ type: 'relocate', id: tower.id, tx: 4, ty: 34, team: 1 });
+  const res = w.issue({ type: 'relocate', id: tower.id, tx: 4, ty: 42, team: 1 });
   assert.ok(res.ok, res.reason);
   w.run(14);
   assert.equal(w.get(res.id).built, true);

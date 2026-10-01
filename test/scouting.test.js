@@ -7,7 +7,7 @@ import { Match } from '../src/ai/match.js';
 import { STRATEGIES, SCOUTING } from '../src/data/strategies.js';
 import { DIFFICULTY } from '../src/data/difficulty.js';
 
-const AI_BASE = { x: 70 * 32, y: 29 * 32 }; // center of the AI Command Core
+const AI_BASE = { x: 90 * 32, y: 37 * 32 }; // center of the AI Command Core (Phase 12 map)
 
 // Test harness (not the AI): the player side is just a stand-in here, so its Core
 // is made indestructible to keep the match running while scenarios are staged.
@@ -113,7 +113,7 @@ test('the AI only knows what it can see: a far-away massed army goes unnoticed',
   const blind = { ...STRATEGIES.boom, scoutAt: null }; // no scout Drone
   const m = immortalPlayer(new Match({ seed: 9, PF, ai: { strategy: blind, difficulty: 'hard' }, player: null }));
   m.run(100); // before Boom's first wave leaves, so no AI unit is anywhere near the player
-  spawn(m, 'bulwark', 8, 12 * 32, 40 * 32); // deep in the player's base, 50+ tiles away
+  spawn(m, 'bulwark', 8, 12 * 32, 48 * 32); // deep in the player's base, 70+ tiles away
   m.run(40);
   assert.equal(m.ai.stats.waves, 0);
   assert.equal(m.ai.counterFor, null);

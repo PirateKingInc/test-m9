@@ -12,13 +12,13 @@ function withDrone(opts) {
 
 test('placement validity: rock, nodes, buildings and map bounds are rejected', () => {
   const w = makeWorld();
-  assert.equal(canPlace(w, 'depot', 15, 27), true, 'open ground next to the home field');
-  assert.equal(canPlace(w, 'depot', 29, 5), false, 'overlaps ridge A');
-  assert.equal(canPlace(w, 'depot', 19, 20), false, 'overlaps a crystal node');
-  assert.equal(canPlace(w, 'depot', 10, 28), false, 'overlaps the Command Core');
-  assert.equal(canPlace(w, 'core', 77, 10), false, 'runs off the map');
+  assert.equal(canPlace(w, 'depot', 15, 35), true, 'open ground next to the home field');
+  assert.equal(canPlace(w, 'depot', 37, 5), false, 'overlaps ridge A');
+  assert.equal(canPlace(w, 'depot', 19, 28), false, 'overlaps a crystal node');
+  assert.equal(canPlace(w, 'depot', 10, 36), false, 'overlaps the Command Core');
+  assert.equal(canPlace(w, 'core', 97, 10), false, 'runs off the map');
   const drone = [...w.ofKind('unit')][0];
-  const res = w.issue({ type: 'build', ids: [drone.id], building: 'depot', tx: 29, ty: 5 });
+  const res = w.issue({ type: 'build', ids: [drone.id], building: 'depot', tx: 37, ty: 5 });
   assert.equal(res.ok, false);
   assert.equal(w.resources[1], 250, 'rejected placement costs nothing');
 });

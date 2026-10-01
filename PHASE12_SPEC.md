@@ -332,17 +332,144 @@ this phase or any earlier one.
   values. The fingerprints with the new values are pinned beside them
   (`GOLDEN_PHASE12`, `GAMEPLAY_HASH_PHASE12`).
 
-### The route-search budget, revisited (issue #191)
+### 5. Maps, gold and travel (issue #191)
 
-A count of searches is the wrong unit once routes get longer: on a larger map
-96 cross-map searches took 85 ms. The budget is now **pathfinding work**: the
-nodes A* touches plus the flood fill toward an unreachable goal, which is
-what costs time and is just as deterministic. Measured cost is 0.36-0.58 ms
-per 1,000 nodes, so the budget is **50,000 nodes a tick** (about 18-29 ms),
-held as data in `src/data/scale.js`.
+**Why resize.** At cap 100 a full army is 1.67x the Phase 11 one. Both maps
+grow by **1.25 in each direction** (area 1.56x), which keeps the open ground
+per unit of a full-cap army at 94% of Phase 11's. Chokepoints and gates widen
+by the same factor. Each base keeps its exact layout around its Castle, so
+every AI build spot (written relative to the Castle) is unchanged.
 
-Unlike the count, this budget binds in ordinary play: with no budget, the
-busiest tick of 45 full AI matches at cap 60 touched 92,000-101,000 nodes.
-So the cap-100 fixed-seed games move and are re-pinned (`GOLDEN_PHASE12`).
-The Phase 11 replays put back an unlimited budget, which is exactly what
-Phase 11 had, and every earlier fingerprint reproduces.
+| | Phase 11 | Phase 12 |
+|---|---|---|
+| 1v1 map | 80 × 60 | **100 × 75** |
+| 1v1 ridges / chokepoints | x 30-31 and 48-49; gaps 6 tiles (y 18-23, 36-41) | x 38-39 and 60-61; gaps **8** tiles (y 22-29, 44-51) |
+| 1v1 Castles | (8,27), (68,27) | (8,35), (88,35) |
+| Free-for-all map | 96 × 96, 32-tile zones | **120 × 120, 40-tile zones** |
+| Free-for-all gates (camp east / camp south / centre) | 7 / 8 / 8 tiles | **9 / 10 / 10** tiles |
+| Gold per mine (both maps) | 1,500 | **2,500** (× 5/3, the cap's growth) |
+| Mines | 20 (1v1), 46 (free-for-all) | unchanged |
+
+The AI's 1v1 data that names map tiles (the two middle fields' Depot, Spire
+and guard spots, and the enemy-half search points) moved with the map; the
+free-for-all AI derives everything from the zones.
+
+**Travel (Phase 6's method, `test/travel.test.js`, `tools/travel.mjs`).** The
+same 20-unit army, each march the median of 12 shifted marches, both
+directions averaged:
+
+| Camp pair | Phase 11 one-way | Phase 12 one-way | Phase 12 round trip |
+|---|---|---|---|
+| NW-SW (nearest) | 40.7 s | **54.3 s** | 108.6 s |
+| NW-NE | 49.5 s | **64.4 s** | 125.6 s |
+| NW-SE (diagonal) | 66.6 s | **88.1 s** | 176.7 s |
+| 1v1 west-east (for comparison) | | | 100.7 s |
+
+An undefended Castle still falls to the 14-unit raid in **9.0 s**, so the
+nearest round trip is **12x** its lifetime (9x in Phase 11): leaving home
+undefended is, if anything, a bigger risk than before, and every leg stays
+well under the 2-minute ceiling Phase 6 set. Mirror pairs agree to 0.1 s.
+`CAMP_TRAVEL` (which the AI's rival ranking uses) holds the new numbers.
+
+**Economy: does a dedicated economy player approach the cap?**
+(`node tools/economy.mjs`, three seeds, hard; `--phase11` for the old values.)
+
+| | Phase 11 (cap 60) | Phase 12 (cap 100) |
+|---|---|---|
+| Sentinel (economy, never attacks), 30 minutes: peak supply | 60, reached at **5.7 min** | 99, reached at **8.7 min** |
+| Sentinel: reaches 50 / 75 / 90% of the cap at | 3.3-3.5 / 4.3 / 5.2 min | 4.8 / 6.7 / 8.2 min |
+| Sentinel: gold mined in 30 minutes | 12.5k | 16.6k |
+| AI strategies in real 1v1 fights (9 matches, 18 camps): peak supply | 34-60, median 55; 6 camps at the cap | 39-77, median 67; none at the cap |
+| AI strategies: gold mined by the longest-lasting camps | up to 15.1k | up to 24.8k |
+
+So a dedicated economy still reaches the cap, but at about 9 minutes into a
+30-minute match instead of under 6, and with every Storehouse up to the ninth
+still adding to its army. The AI scripts, which attack in waves of about 30
+supply, peak at a median 67 supply instead of 55, and none is held at the
+cap any more (6 of 18 camps were). The cap, not gold, still decides the late game for a player who
+only builds, because the cap is set by what a phone can run, not by the
+economy.
+
+**The route-search budget, revisited.** On the larger maps a route costs
+more: crossing the 1v1 map touches about 4,500 pathfinding nodes against
+about 1,200 for the free-for-all's camp-to-centre march. The first headless run at cap
+100 on the new 1v1 map went back over the slowest-tick budget (85 ms: 96
+long searches in one tick). A count of searches was the wrong unit, so the
+budget is now **pathfinding work**: the nodes A* touches plus the flood fill
+toward an unreachable goal, which is what costs time and is just as
+deterministic. Measured cost is 0.36-0.58 ms per 1,000 nodes, so the budget
+is **50,000 nodes a tick** (about 18-29 ms), held as data in
+`src/data/scale.js`.
+
+Unlike the count, this budget does bind in ordinary play. With no budget,
+the busiest tick of 45 full AI matches (27 1v1, 18 free-for-all) touched
+92,000-101,000 nodes at cap 60 on the Phase 11 maps, and up to 208,000 at
+cap 100 on the new free-for-all. So the
+fixed-seed games move, and they are re-pinned. The Phase 11 replays put back
+an unlimited budget, which is exactly what Phase 11 had, and every earlier
+fingerprint reproduces. What a player sees: a full-cap 1v1 army ordered
+across the map has every route planned within **0.35 s** (7 ticks; the
+free-for-all, 0.1 s), the first units setting off at once. That busiest
+free-for-all tick, about 0.1 s of planning in one tick, is now spread over
+about four.
+
+**Performance on the resized maps, re-verified** (the shipped code and data;
+`perf/scale-headless-maps.json`, `perf/scale-browser-maps.json`):
+
+| Map | Army | Cap | Units | Tick mean (≤ 5) | p95 | p99 (≤ 16.7) | p99 range | Slowest (≤ 50) | Ticks > 50 ms per run | First tick |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 1v1 | mix | 60 | 96 | 0.23 | 0.7 | 2.2 | 1.1–2.7 | 19.6 | 0 / 0 / 0 | 19.5 |
+| 1v1 | mix | 100 | 150 | 0.59 | 2.1 | 8.8 | 8.1–9.2 | 12.3 | 0 / 0 / 0 | 12.3 |
+| 1v1 | mix | 150 | 216 | 0.99 | 4.1 | 9.5 | 9.3–9.7 | 17.1 | 0 / 0 / 0 | 16.2 |
+| 1v1 | swarm | 60 | 120 | 0.49 | 1.6 | 8.2 | 7.9–8.6 | 20.4 | 0 / 0 / 0 | 19.3 |
+| 1v1 | swarm | 100 | 200 | 1.13 | 4.6 | 9.7 | 9.7–12.6 | 17.4 | 0 / 0 / 0 | 13.3 |
+| 1v1 | swarm | 150 | 300 | 2.24 | 9.5 | 15.3 | 10.7–16.6 | 20.5 | 0 / 0 / 0 | 17.0 |
+| ffa | mix | 60 | 192 | 0.34 | 1.1 | 2.2 | 1.9–2.4 | 27.3 | 0 / 0 / 0 | 46.0 |
+| ffa | mix | 100 | 300 | 0.75 | 2.1 | 4.1 | 3.8–4.3 | 39.2 | 0 / 0 / 0 | 29.7 |
+| ffa | mix | 150 | 432 | 0.94 | 3.0 | 5.6 | 5.4–5.9 | 32.0 | 0 / 0 / 0 | 38.9 |
+| ffa | swarm | 60 | 240 | 0.40 | 1.4 | 2.5 | 2.4–2.8 | 27.1 | 0 / 0 / 0 | 31.0 |
+| ffa | swarm | 100 | 400 | 0.91 | 3.3 | 6.3 | 5.4–8.1 | 23.1 | 0 / 0 / 0 | 26.9 |
+| ffa | swarm | 150 | 600 | 1.45 | 5.4 | 12.0 | 10.4–12.1 | 32.5 | 0 / 0 / 0 | 50.8 |
+
+**Mobile proxy (844 × 390, touch, 4x CPU throttle)** — ms of main-thread JavaScript; budget p50 ≤ 33.3, p95 ≤ 66.7, sim ≥ 19 ticks/s
+
+| Map | Army | Cap | Units | Sim ticks/s | One-tick frame p50 | One-tick frame p95 | Raw frame p50 | Raw frame p95 | Ticks per frame | Tick p50 / p95 | fps (not judged) |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| 1v1 | mix | 60 | 96 | 20.0 | 6.3 | 21.6 | 5.6 | 24.1 | 1.0 | 1.7 / 7.3 | 20.9 |
+| 1v1 | mix | 100 | 150 | 20.0 | 11.3 | 34.6 | 11.9 | 43.9 | 1.3 | 3.1 / 15.2 | 14.8 |
+| 1v1 | mix | 150 | 216 | 20.0 | 14.6 | 51.4 | 17.5 | **85.3** | 1.8 | 5.5 / 23.9 | 11.1 |
+| 1v1 | swarm | 60 | 120 | 20.0 | 7.0 | 30.3 | 6.3 | 31.4 | 1.1 | 2.3 / 11.2 | 18.7 |
+| 1v1 | swarm | 100 | 200 | 20.0 | 10.6 | 54.3 | 12.0 | **90.7** | 1.6 | 5.3 / 26.0 | 12.2 |
+| 1v1 | swarm | 150 | 300 | 19.3 | 16.1 | **77.0** | 24.2 | **172.8** | 2.4 | 9.3 / 38.3 | 8.0 |
+| ffa | mix | 60 | 192 | 20.0 | 8.5 | 20.2 | 7.6 | 21.4 | 0.9 | 3.3 / 7.8 | 22.5 |
+| ffa | mix | 100 | 300 | 19.9 | 13.2 | 31.4 | 12.8 | 38.0 | 1.1 | 6.4 / 14.2 | 17.9 |
+| ffa | mix | 150 | 432 | 19.8 | 20.4 | 48.5 | 24.0 | **79.3** | 1.6 | 11.2 / 23.2 | 12.5 |
+| ffa | swarm | 60 | 240 | 20.0 | 11.7 | 33.8 | 11.6 | 43.2 | 1.2 | 5.4 / 12.7 | 17.2 |
+| ffa | swarm | 100 | 400 | 19.9 | 18.4 | 46.4 | 22.0 | **73.1** | 1.6 | 11.1 / 22.4 | 12.5 |
+| ffa | swarm | 150 | 600 | 19.5 | 30.6 | **70.3** | **50.1** | **154.8** | 2.4 | 18.9 / 35.5 | 8.3 |
+
+**Desktop (1280 × 800)** — ms of main-thread JavaScript; budget p50 ≤ 16.7, p95 ≤ 33.3, sim ≥ 19.5 ticks/s
+
+| Map | Army | Cap | Units | Sim ticks/s | One-tick frame p50 | One-tick frame p95 | Raw frame p50 | Raw frame p95 | Ticks per frame | Tick p50 / p95 | fps (not judged) |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| 1v1 | mix | 60 | 96 | 20.0 | 1.7 | 4.7 | 1.7 | 5.2 | 1.2 | 0.4 / 1.7 | 17.0 |
+| 1v1 | mix | 100 | 150 | 20.0 | 2.6 | 8.6 | 3.0 | 10.2 | 1.4 | 0.8 / 3.6 | 14.4 |
+| 1v1 | mix | 150 | 216 | 20.0 | 4.2 | 13.1 | 4.5 | 17.3 | 1.6 | 1.3 / 5.6 | 12.5 |
+| 1v1 | swarm | 60 | 120 | 20.0 | 1.5 | 6.9 | 1.7 | 7.9 | 1.2 | 0.5 / 2.5 | 16.3 |
+| 1v1 | swarm | 100 | 200 | 20.0 | 3.9 | 11.6 | 4.3 | 15.6 | 1.5 | 1.2 / 6.0 | 13.0 |
+| 1v1 | swarm | 150 | 300 | 20.0 | 6.5 | 17.1 | 8.1 | 29.4 | 2.0 | 2.4 / 7.8 | 10.2 |
+| ffa | mix | 60 | 192 | 20.0 | 2.3 | 4.5 | 2.7 | 5.6 | 1.6 | 0.8 / 1.9 | 12.6 |
+| ffa | mix | 100 | 300 | 20.0 | 3.4 | 8.0 | 4.9 | 10.5 | 1.9 | 1.5 / 3.1 | 10.5 |
+| ffa | mix | 150 | 432 | 20.0 | 4.5 | 12.4 | 6.8 | 19.4 | 2.1 | 2.1 / 4.5 | 9.3 |
+| ffa | swarm | 60 | 240 | 20.0 | 2.7 | 7.3 | 3.7 | 9.7 | 1.7 | 1.1 / 3.1 | 11.4 |
+| ffa | swarm | 100 | 400 | 20.0 | 4.5 | 11.5 | 7.4 | 16.7 | 2.2 | 2.2 / 4.4 | 9.3 |
+| ffa | swarm | 150 | 600 | 19.9 | 5.9 | 18.1 | 11.7 | 31.2 | 2.5 | 3.5 / 6.9 | 7.9 |
+
+At **cap 100** every budget holds headless, on the desktop and on the phone
+proxy's one-tick frame (worst p95 54.3 ms against 66.7). The raw phone frame
+still misses in the two swarm cells only (1v1 90.7 ms, free-for-all 73.1 ms
+p95, at 1.6 ticks a frame); every mixed-army cell passes it. The work budget
+made the headless sim pass even at 150 (slowest tick 33 ms at most) and the
+desktop too, but the phone proxy still fails at 150 under both measures
+(one-tick p95 77.0 ms in the 1v1 swarm, 70.3 ms in the free-for-all swarm).
+**The cap stays at 100.**

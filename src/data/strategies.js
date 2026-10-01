@@ -36,7 +36,7 @@ export const SCOUTING = {
   counterShare: 0.7, // share of new production given to counters when reacting
   // Where attack waves look for the enemy when its start is empty and no enemy
   // building is known (west-half tiles; mirrored when searching the east).
-  searchPoints: [[10, 8], [10, 51], [22, 10], [22, 49], [40, 7], [40, 52]],
+  searchPoints: [[12, 10], [12, 64], [28, 12], [28, 61], [50, 9], [50, 65]], // (Phase 12: the 100 x 75 map)
   // Counter picks from the Phase 1 counter table (PROJECT.md): primary first.
   counters: {
     striker: ['bulwark', 'sparker'],
@@ -51,8 +51,9 @@ export const SCOUTING = {
 // is itself mirror-symmetric about the map's center line.
 export const EXPANSION = {
   fields: {
-    north: { center: [40, 7], depot: [33, 6], spire: [34, 10], guard: [35, 13] },
-    south: { center: [40, 52], depot: [33, 50], spire: [34, 46], guard: [35, 45] },
+    // (Phase 12: the 100 x 75 map; the same offsets from each field's centre.)
+    north: { center: [50, 9], depot: [43, 8], spire: [44, 12], guard: [45, 15] },
+    south: { center: [50, 65], depot: [43, 63], spire: [44, 59], guard: [45, 58] },
   },
   fieldRadius: 6, // tiles: crystal nodes this close to the center belong to the field
   homeRadius: 14, // tiles from our Core that count as the home field

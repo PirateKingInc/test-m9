@@ -1,7 +1,7 @@
 // Phase 7 zone holding (PHASE7_SPEC.md "Zone holding"): an AI camp defends the
 // non-home zones it owns and retakes one it just lost, with a small squad from
 // its home army. Crimson (team 2, north-east) owns the East zone (gold field
-// at tile 80, 48) in each scenario.
+// at tile 100, 60) in each scenario.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { scenario } from './rivals-helpers.js';
@@ -9,13 +9,13 @@ import { FFA_MAP } from '../src/data/ffa.js';
 import { SIM_DT } from '../src/sim/constants.js';
 
 const T = FFA_MAP.tile;
-const EAST = { x: 80 * T, y: 48 * T };
+const EAST = { x: 100 * T, y: 60 * T };
 
 function owning() {
   const s = scenario();
   s.east = s.w.zones.find((z) => z.id === 'e');
   s.east.owner = 2;
-  s.home = s.at('striker', 2, 80, 18, 6);
+  s.home = s.at('striker', 2, 104, 18, 6);
   s.think = () => { s.ai.scout.scan(); s.ai.intelCache = null; s.ai.commandArmy(); };
   // Play the world with the AI deciding, for `sec` seconds.
   s.play = (sec) => { for (let i = 0; i < sec / SIM_DT; i++) { s.w.step(); s.ai.update(); } };
@@ -37,14 +37,14 @@ test('defend: a rival taking a zone we own draws a squad of up to 4 home units',
 
 test('defend: rival units seen in our zone draw a squad; a much bigger force does not', () => {
   const small = owning();
-  small.at('striker', 2, 78, 47); // a lookout in the zone
-  small.at('striker', 3, 80, 50, 2);
+  small.at('striker', 2, 98, 59); // a lookout in the zone
+  small.at('striker', 3, 100, 62, 2);
   small.think();
   assert.equal(small.ai.squad?.kind, 'defend', '2 Horsemen vs a squad of 4: go');
 
   const big = owning();
-  big.at('striker', 2, 78, 47);
-  big.at('bulwark', 3, 80, 50, 4); // 12 supply of Shield Knights vs a 4-Horseman squad
+  big.at('striker', 2, 98, 59);
+  big.at('bulwark', 3, 100, 62, 4); // 12 supply of Shield Knights vs a 4-Horseman squad
   big.think();
   assert.equal(big.ai.squad, null, 'no squad thrown at a force more than 1.5x its size');
 });
@@ -71,8 +71,8 @@ test('recapture: not after lostMemory, and not against a bigger force seen there
   const held = owning();
   held.think();
   held.east.owner = 3;
-  held.at('striker', 2, 78, 47);
-  held.at('striker', 3, 80, 50, 5);
+  held.at('striker', 2, 98, 59);
+  held.at('striker', 3, 100, 62, 5);
   held.think();
   assert.equal(held.ai.squad, null, '5 Horsemen hold it: a 4-unit squad does not try');
 });

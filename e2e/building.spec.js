@@ -16,20 +16,20 @@ test('drone places a Depot via hotkey + ghost; invalid spots are refused; constr
 
   // W = Lumen Depot. Hover over the Command Core (invalid) and click: refused.
   await page.keyboard.press('KeyW');
-  const core = await toScreen(page, 10 * 32, 29 * 32);
+  const core = await toScreen(page, 10 * 32, 37 * 32);
   await page.mouse.move(core.x, core.y);
   expect(await page.evaluate(() => window.__game.scene.ui.ghost().valid)).toBe(false);
   await page.mouse.click(core.x, core.y);
   expect((await buildings(page)).length).toBe(1);
 
-  // Valid spot on open ground: centered on tile (16.5, 28.5) -> footprint at (15,27).
-  const spot = await toScreen(page, 16.5 * 32, 28.5 * 32);
+  // Valid spot on open ground: centered on tile (16.5, 36.5) -> footprint at (15,35).
+  const spot = await toScreen(page, 16.5 * 32, 36.5 * 32);
   await page.mouse.move(spot.x, spot.y);
-  expect(await page.evaluate(() => window.__game.scene.ui.ghost())).toMatchObject({ tx: 15, ty: 27, valid: true });
+  expect(await page.evaluate(() => window.__game.scene.ui.ghost())).toMatchObject({ tx: 15, ty: 35, valid: true });
   await page.mouse.click(spot.x, spot.y);
   const bs = await buildings(page);
   expect(bs).toHaveLength(2);
-  expect(bs[1]).toMatchObject({ type: 'depot', tx: 15, ty: 27 });
+  expect(bs[1]).toMatchObject({ type: 'depot', tx: 15, ty: 35 });
   await expect(page.locator('#lumen')).toHaveText('150');
   expect(await page.evaluate(() => window.__game.scene.ui.placing)).toBe(null);
 

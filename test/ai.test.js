@@ -38,7 +38,7 @@ test('the Phase 1 sandbox script runs as team 2 through a read-only view, mirror
   const mine = [...w.ofKind('building')].filter((b) => b.team === 2);
   assert.deepEqual([...new Set(mine.map((b) => b.type))].sort(), ['core', 'depot', 'foundry', 'spire']);
   const depot = mine.find((b) => b.type === 'depot');
-  assert.deepEqual([depot.tx, depot.ty], [80 - 17 - 3, 26], 'mirror of the west depot spot (17,26)');
+  assert.deepEqual([depot.tx, depot.ty], [100 - 17 - 3, 34], 'mirror of the west depot spot (17,34)');
   assert.ok(mine.every((b) => b.x > w.width / 2), 'all of it in the east half');
   assert.ok(ai.stats.commands > 10);
   assert.equal(ai.army().length >= 2, true, 'it trained combat units');

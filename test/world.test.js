@@ -18,20 +18,20 @@ test('seeded RNG is deterministic and in [0,1)', () => {
 
 test('map is larger than one screen and matches SPEC dimensions', () => {
   const w = new World();
-  assert.equal(w.width, 2560);
-  assert.equal(w.height, 1920);
+  assert.equal(w.width, 3200);
+  assert.equal(w.height, 2400);
   assert.ok(w.width > 1920 && w.height > 1080);
 });
 
 test('rocks, nodes and the starting core block their tiles', () => {
   const w = new World();
-  assert.equal(w.grid.isWalkable(30, 0), false); // ridge A
-  assert.equal(w.grid.isWalkable(30, 20), true); // ridge A chokepoint
-  assert.equal(w.grid.isWalkable(20, 21), false); // crystal node
-  assert.equal(w.grid.isWalkable(9, 28), false); // command core
-  assert.equal(w.grid.isWalkable(13, 27), true); // drone start tile
+  assert.equal(w.grid.isWalkable(38, 0), false); // ridge A
+  assert.equal(w.grid.isWalkable(38, 25), true); // ridge A chokepoint
+  assert.equal(w.grid.isWalkable(20, 29), false); // crystal node
+  assert.equal(w.grid.isWalkable(9, 36), false); // command core
+  assert.equal(w.grid.isWalkable(13, 35), true); // drone start tile
   assert.equal([...w.ofKind('node')].length, MAP.nodes.length);
-  assert.equal([...w.ofKind('node')].every((n) => n.amount === 1500), true);
+  assert.equal([...w.ofKind('node')].every((n) => n.amount === 2500), true);
 });
 
 test('start state: one built core, four drones, 250 Lumen', () => {

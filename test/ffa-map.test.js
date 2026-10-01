@@ -9,9 +9,9 @@ const N = FFA_MAP.cols;
 const key = (r) => r.join(',');
 const mirror = ([x, y, w, h], fx, fy) => [fx ? N - x - w : x, fy ? N - y - h : y, w, h];
 
-test('96 x 96, four camps, 44 gold mines, 9 zones tiling the map', () => {
-  assert.equal(FFA_MAP.cols, 96);
-  assert.equal(FFA_MAP.rows, 96);
+test('120 x 120, four camps, 46 gold mines, 9 zones tiling the map (Phase 12; 96 x 96 before)', () => {
+  assert.equal(FFA_MAP.cols, 120);
+  assert.equal(FFA_MAP.rows, 120);
   assert.deepEqual(FFA_MAP.camps.map((c) => c.team), [1, 2, 3, 4]);
   assert.equal(FFA_MAP.nodes.length, 4 * 6 + 4 * 4 + 6);
   assert.equal(FFA_MAP.zones.length, 9);
