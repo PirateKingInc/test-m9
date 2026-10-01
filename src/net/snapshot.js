@@ -92,7 +92,7 @@ for (const [mod, m] of Object.entries({ units: UNITS_MOD, buildings: BUILDINGS_M
 // They are rebuilt by FIXUPS after a restore.
 const SKIP = {
   World: new Set(['PF', 'events', 'byKind']),
-  Pathfinder: new Set(['PF', 'finder', 'cache', 'views', 'frame', 'walk']),
+  Pathfinder: new Set(['PF', 'finder', 'cache', 'views', 'frame', 'walk', 'touched']),
   AiEngine: new Set(['issueFn']),
   SandboxBot: new Set(['issueFn']),
 };

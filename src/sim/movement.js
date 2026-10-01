@@ -1,29 +1,31 @@
 // Path following, stuck recovery and wall sliding. Pure sim code.
+import { PATHING } from '../data/scale.js';
+
 const ARRIVE = 2; // px, final waypoint
 const PASS = 12; // px, intermediate waypoints count as reached within this radius
 const STUCK_WINDOW = 1.0; // s
 const STUCK_MIN_PROGRESS = 4; // px per window
 const MAX_REPATHS = 3;
 const MAX_CROWD_WAIT = 15; // s a unit will queue behind moving traffic before giving up
-const PATH_BUDGET = 96; // route searches per tick (Phase 12, see setDestination)
 
 // Give the unit a new destination. Returns false if no route exists.
 //
-// Phase 12: at most PATH_BUDGET searches run in one tick. An order to a
-// whole army (hundreds of units at a high supply cap) would otherwise plan
-// every route in the same tick, a stall longer than the 0.05 s the tick
-// simulates (PHASE12_SPEC.md). Past the budget the unit keeps its new
-// destination with its route pending (an empty path) and plans it in a later
-// tick, in unit order, so a big army sets off over a few ticks. Normal play
-// at the Phase 11 scale never reached the budget (peak 90 searches in a tick).
+// Phase 12: route searches stop for the tick once they have touched
+// PATHING.workPerTick pathfinding nodes between them (the work, which is what costs
+// time, and deterministic, so every lockstep peer defers the same units). An
+// order to a whole army (hundreds of units at a high supply cap) would
+// otherwise plan every route in the same tick, a stall longer than the 0.05 s
+// the tick simulates (PHASE12_SPEC.md). Past the budget the unit keeps its
+// new destination with its route pending (an empty path) and plans it in a
+// later tick, in unit order, so a big army sets off over a few ticks.
 export function setDestination(world, u, x, y) {
   u.dest = { x, y };
   u.pathIdx = 0;
   u.stuck = { t: 0, best: Infinity, repaths: 0, waited: 0 };
   u.pathVersion = world.grid.version;
-  if (world.pathTick !== world.tick) { world.pathTick = world.tick; world.pathCount = 0; }
-  if (world.pathCount >= PATH_BUDGET) { u.path = []; u.pathPending = true; return true; }
-  world.pathCount++;
+  const pf = world.pathfinder;
+  if (world.pathTick !== world.tick) { world.pathTick = world.tick; world.pathWork = pf.work; }
+  if (pf.work - world.pathWork >= PATHING.workPerTick) { u.path = []; u.pathPending = true; return true; }
   if (u.pathPending) u.pathPending = false;
   u.path = world.pathfinder.find(u.x, u.y, x, y) || [];
   return u.path.length > 0;

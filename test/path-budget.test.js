@@ -7,8 +7,12 @@ import { PF, makeWorld, emptyWorld, tileCenter } from './helpers.js';
 import { Pathfinder } from '../src/sim/pathfinder.js';
 import { createRng } from '../src/sim/rng.js';
 import { FFA_MAP } from '../src/data/ffa.js';
+import { PATHING } from '../src/data/scale.js';
+import { SUPPLY } from '../src/data/buildings.js';
+import { World } from '../src/sim/world.js';
+import { setCap, fillArmies } from '../tools/scale-scenario.js';
 
-const BUDGET = 96;
+const BUDGET = PATHING.workPerTick;
 
 function army(w, n) {
   const ids = [];
@@ -19,32 +23,32 @@ function army(w, n) {
   return ids;
 }
 
-test('an order to a big army plans at most the budget of routes a tick; the rest follow in unit order', () => {
-  const w = emptyWorld({ cols: 60, rows: 40, rocks: [[30, 0, 2, 30]] });
-  const ids = army(w, 250);
-  const goal = tileCenter(50, 20);
-  const s0 = w.pathfinder.searches;
-  w.issue({ type: 'move', ids, x: goal.x, y: goal.y });
-  assert.equal(w.pathfinder.searches - s0, BUDGET, 'the order itself plans only the budget');
-  const units = ids.map((id) => w.get(id));
+test('an order to a full-cap army plans routes up to the work budget a tick; the rest follow in unit order, within 0.5 s', () => {
+  setCap(SUPPLY.max);
+  const w = new World({ seed: 1, PF, setup: 'match' });
+  fillArmies(w, SUPPLY.max, 'swarm'); // the 1v1's worst case: every soldier 1 supply
+  const pf = w.pathfinder, enemy = [...w.ofKind('building')].find((b) => b.type === 'core' && b.team === 2);
+  const units = [...w.ofKind('unit')].filter((u) => u.team === 1 && u.type !== 'drone');
+  const w0 = pf.work, s0 = pf.searches;
+  w.issue({ type: 'attackMove', ids: units.map((u) => u.id), x: enemy.x, y: enemy.y, team: 1 });
+  const perSearch = (pf.work - w0) / (pf.searches - s0);
+  assert.ok(pf.work - w0 >= BUDGET && pf.work - w0 < BUDGET + 2 * perSearch, `the order stopped planning at the budget (${pf.work - w0} nodes)`);
   const planned = () => units.filter((u) => !u.pathPending && u.path && u.path.length > 0).length;
-  assert.equal(planned(), BUDGET);
-  assert.deepEqual(units.slice(0, BUDGET).map((u) => !!u.pathPending), Array(BUDGET).fill(false), 'first come, first planned');
-  assert.ok(units.slice(BUDGET).every((u) => u.pathPending && u.dest), 'the rest keep their destination, route pending');
+  const first = planned();
+  assert.ok(first > 0 && first < units.length, `${first} of ${units.length} routes planned with the order`);
+  assert.deepEqual(units.map((u) => !!u.pathPending), units.map((_, i) => i >= first), 'first come, first planned');
+  assert.ok(units.every((u) => u.dest), 'the rest keep their destination, route pending');
   let ticks = 0;
   while (planned() < units.length) {
-    const before = w.pathfinder.searches;
+    const before = pf.work;
     w.step();
     ticks++;
-    assert.ok(w.pathfinder.searches - before <= BUDGET + 4, 'a tick never plans much past the budget'); // (+ a second search when a goal is unreachable)
-    assert.ok(ticks < 10, 'every route is planned within a few ticks');
+    assert.ok(pf.work - before < BUDGET + 2 * perSearch, 'a tick never plans much past the budget');
   }
-  // The order and the step after it share one tick's budget: 96 routes with
-  // the order, none in that step, then 96 and 58 in the next two ticks.
-  assert.equal(ticks, 3);
-  // Pending units wait in place, then march like everyone else.
+  assert.ok(ticks <= 10, `every route planned within 0.5 s (${ticks} ticks)`);
+  // Pending units waited in place, then march like everyone else.
   for (let i = 0; i < 400; i++) w.step();
-  assert.ok(units.every((u) => u.x > 32 * 31), 'the whole army crossed the wall');
+  assert.ok(units.every((u) => u.hp <= 0 || u.x > 40 * 32), 'the whole army is past the west ridge');
 });
 
 test('a small order is untouched by the budget', () => {

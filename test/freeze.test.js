@@ -39,6 +39,10 @@ const sha = (buf) => createHash('sha256').update(buf).digest('hex');
 // src/ai/engine.js (the AI builds Storehouses up to SUPPLY.max, not a literal
 // 60): with the Phase 11 values put back (test/phase11-data.js) every
 // fingerprint and the gameplay hash below reproduce exactly.
+// The next slice replaces the count of route searches per tick with a budget
+// of pathfinding work, as data in the new src/data/scale.js (re-pinning
+// pathfinder.js and movement.js). Phase 11 had no budget, and the replays put
+// back exactly that (an unlimited budget).
 export const FROZEN = {
   "src/data/buildings.js": "bace30ca3494c0e456f561a07292923cec16fb67598daec23c21913dd420037a",
   "src/data/camp-rules.js": "eaba6b6ba317c1a0a1027eedb46a1888ca23b860bce20b49cf2a8618406049da",
@@ -46,6 +50,7 @@ export const FROZEN = {
   "src/data/ffa.js": "aae3f1f3cef2a7e34f8b923414f643189ffb44872e105f25b9d9d30a021877df",
   "src/data/map.js": "7ca9715b0b10d0d0a5659268c05bb7df451bda0306b21032a0fa5f13abc6436f",
   "src/data/rivals.js": "54c99cdb2916999bc23ec81d33a8438d9db58915afa7ef7fb73e0a43032ac905",
+  "src/data/scale.js": "7ac077270650f1436fa9e2dbb35ffc8765247f19ce75430d5cfa990d2e7059f2",
   "src/data/strategies.js": "ce6e3cd4a084145f4ae7315103bf953ae76d6e6b5cfdc117aab6f966fe15e499",
   "src/data/units.js": "b401f86514666b40bd0a2f8b5b1ac664563a6f33be2869391763c747f36a3ca0",
   "src/sim/combat.js": "75bdaad3d784746da47791b0e2fb8a16a3413db6550ac5436dd10357356a830a",
@@ -56,9 +61,9 @@ export const FROZEN = {
   "src/sim/geometry.js": "15ee1ec57af7007c22ed774bdddf71647a22085dd89c00e30f269270d0f06d49",
   "src/sim/grid.js": "f990df96f1d979bf2302f8d5567e8aed7fa9148e5e6411144c7b91cb66b137c9",
   "src/sim/hopeless.js": "6b6f232c23bef7d7a065ca700d20de21b129026b1c7767c4c819cc3ddcfd7f8b",
-  "src/sim/movement.js": "9a9357576e795e6e7cae5bb1f2672ba56a81086c4a1820835a3ace1a761cff34",
+  "src/sim/movement.js": "04f67f3f45dfce7223b305fd982f9d59a25c8b65e7e263c717bc95a71db03a9a",
   "src/sim/orders.js": "e1a2790c0ae437911afa30e2149b642b4770ea195cdc4171c516ce77385e1ba0",
-  "src/sim/pathfinder.js": "238fcbac8aa26f8aa83eade1e5859bf0a7fb5913097dd88b623a938d47338bf9",
+  "src/sim/pathfinder.js": "3eabc9108371b3e78226240d7ae04032f60f3aa28099843273e2e4772ad9195f",
   "src/sim/production.js": "4a4d10ec7300e92407a80a5ee2a8c975dc749b8a87b0b9300cb9911864e9f578",
   "src/sim/rng.js": "16b01e7963ce86441359bdea3b68f2b4479afbcc9ea3d1018ef4da36614d95f0",
   "src/sim/selection.js": "cf20075f76b5ac3023454f2392cab4f47b0ca50d8ef5f49b885c1e4e04abe3ef",
@@ -97,7 +102,7 @@ export const GAMEPLAY_HASH_PHASE12 = '2c2ddeed0a1ae04bd53237011e884020315890ed6e
 
 test('every gameplay value in src/data is the Phase 4 release, but for the Phase 12 changes', () => {
   assert.equal(withPhase11(gameplayHash), GAMEPLAY_HASH);
-  assert.equal(gameplayHash(), GAMEPLAY_HASH_PHASE12);
+  assert.equal(gameplayHash(), GAMEPLAY_HASH_PHASE12); // (src/data/scale.js holds no gameplay value)
 });
 
 // A fingerprint of everything collision and combat touch: positions, HP, orders.
@@ -258,7 +263,9 @@ test('Phase 9 equivalence: the free-for-all with auto-defend and hopeless camps 
 // Phase 12 (PHASE12_SPEC.md): the same 1v1 fingerprints and free-for-all
 // production logs with the Phase 12 data (supply cap 100, Storehouse 10).
 // A larger Storehouse moves every AI's build order, so all of these move;
-// the tests above prove they move only through the data.
+// the tests above prove they move only through the data. Re-pinned when the
+// route-search budget became a budget of pathfinding work (src/data/scale.js)
+// instead of a count of searches: cap-100 games reach it, so these move.
 export const GOLDEN_PHASE12 = {
   sandboxBot: '109126657f0ba006',
   'rush-boom-hard-1': '2d6c39c6c640565b',
@@ -274,10 +281,10 @@ export const GOLDEN_PHASE12 = {
   'turtle-boom-normal-18': 'c33099125a448d87 2/core-destroyed/529.35 {"1":1609,"2":10678}',
   'turtle-turtle-hard-19': 'a6557f70ca75614a 2/core-destroyed/428.85 {"1":2755,"2":5730}',
   'idlePlayer-rush-hard-5': 'f5847976ce56956f 2/core-destroyed/255.70',
-  'sentinel-sentinel-timeLimit-7': '2846b2454266795b 1/time-limit/1800.05 {"1":13406,"2":12882}',
-  'seed1-600s': 'c87705652fef76e7 (401 build/train orders)',
+  'sentinel-sentinel-timeLimit-7': 'f6dabef5b6da1459 1/time-limit/1800.05 {"1":13406,"2":12882}',
+  'seed1-600s': 'f2e4b2d472c98c09 (365 build/train orders)',
   'seed2-600s': 'ca74fba9295fac27 (412 build/train orders)',
-  'seed3-600s': '68db27e89dcdbb1b (397 build/train orders)',
+  'seed3-600s': '3c250c0acf7823d9 (343 build/train orders)',
 };
 
 test('Phase 12: fixed-seed games with the Phase 12 data play out as pinned', () => {

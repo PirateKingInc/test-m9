@@ -7,13 +7,16 @@ import { lobbyToGame, scriptPlayer, netState, sameHashes, sleepRender } from './
 const FAST = { speed: 8 }; // 8x game time per real time (the lockstep is tick-based)
 
 test('two players play a whole match over WebRTC and end with identical state', async ({ browser }) => {
-  test.setTimeout(10 * 60_000);
+  // Phase 12: at the supply cap of 100 a match can run to the 30:00 limit
+  // (36,000 ticks); CI runs the lockstep at about 65 ticks a real second, so
+  // a whole match needs up to ~9.5 minutes of real time.
+  test.setTimeout(15 * 60_000);
   const { ps } = await lobbyToGame(browser, ['Ava', 'Bram'], { net: FAST });
   await uiCommandCrosses(ps[0], ps[1]);
   for (const p of ps) await sleepRender(p); // the screen's part is done; save CPU for the simulation
   await scriptPlayer(ps[0], 'boom');
   await scriptPlayer(ps[1], 'rush');
-  await untilDone(ps, 8 * 60_000);
+  await untilDone(ps, 12 * 60_000);
   const st = await Promise.all(ps.map(netState));
   console.log(`# 2 players: ${st[0].result.reason} at tick ${st[0].tick}, winner camp ${st[0].result.winner}; commands sent ${st.map((s) => s.sent)}; final hash ${st[0].hash}`);
   expect(st[1].tick).toBe(st[0].tick);

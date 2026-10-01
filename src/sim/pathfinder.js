@@ -10,6 +10,7 @@ export class Pathfinder {
     this.base = null;
     this.baseVersion = -1;
     this.searches = 0;
+    this.work = 0; // nodes all searches so far have touched (the route-search budget, movement.js)
   }
 
   // A search-ready PathFinding.js grid. Instead of cloning 4800 nodes per search
@@ -45,6 +46,7 @@ export class Pathfinder {
     for (const n of c.touched) n.opened = n.closed = n.parent = n.g = n.h = n.f = undefined;
     c.touched.length = 0;
     this.walk = c.walk;
+    this.touched = c.touched;
     return c.base;
   }
 
@@ -88,6 +90,7 @@ export class Pathfinder {
         }
       }
     }
+    this.work += queue.length; // (Phase 12: counts toward the route-search budget)
     return best;
   }
 
@@ -154,11 +157,13 @@ export class Pathfinder {
 
     this.searches++;
     let raw = this.finder.findPath(s.tx, s.ty, goal.tx, goal.ty, this.pfGrid());
+    this.work += this.touched.length;
     if (raw.length === 0) {
       exact = false;
       goal = this.nearestReachable(s.tx, s.ty, goalTile.tx, goalTile.ty);
       if (!goal) return null;
       raw = this.finder.findPath(s.tx, s.ty, goal.tx, goal.ty, this.pfGrid());
+      this.work += this.touched.length;
       if (raw.length === 0) return [];
     }
     const pts = this.smooth(raw).slice(1).map(([cx, cy]) => g.center(cx, cy));

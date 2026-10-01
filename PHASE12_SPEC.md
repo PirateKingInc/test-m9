@@ -331,3 +331,18 @@ this phase or any earlier one.
   Phases 3-9 reproduces. So the code changes alter nothing except through these
   values. The fingerprints with the new values are pinned beside them
   (`GOLDEN_PHASE12`, `GAMEPLAY_HASH_PHASE12`).
+
+### The route-search budget, revisited (issue #191)
+
+A count of searches is the wrong unit once routes get longer: on a larger map
+96 cross-map searches took 85 ms. The budget is now **pathfinding work**: the
+nodes A* touches plus the flood fill toward an unreachable goal, which is
+what costs time and is just as deterministic. Measured cost is 0.36-0.58 ms
+per 1,000 nodes, so the budget is **50,000 nodes a tick** (about 18-29 ms),
+held as data in `src/data/scale.js`.
+
+Unlike the count, this budget binds in ordinary play: with no budget, the
+busiest tick of 45 full AI matches at cap 60 touched 92,000-101,000 nodes.
+So the cap-100 fixed-seed games move and are re-pinned (`GOLDEN_PHASE12`).
+The Phase 11 replays put back an unlimited budget, which is exactly what
+Phase 11 had, and every earlier fingerprint reproduces.
