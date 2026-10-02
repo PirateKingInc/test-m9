@@ -9,6 +9,8 @@
 //
 // If CF_TURN_KEY_ID, CF_TURN_KEY_API_TOKEN, CLOUDFLARE_API_TOKEN or
 // CLOUDFLARE_ACCOUNT_ID are set, their exact values are searched for too.
+// GITHUB_SHA, if set, is the deployed commit (pages.yml writes it to
+// version.txt): public, so it alone is exempt from the hex-token rule.
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { TURN } from '../src/net/config.js';
@@ -37,6 +39,8 @@ for (const f of files) {
   let body;
   if (base) {
     const res = await fetch(new URL(f, base), { cache: 'no-store' });
+    // A dotfile (.nojekyll) that the host does not serve cannot leak anything.
+    if (res.status === 404 && f.split('/').pop().startsWith('.')) continue;
     if (!res.ok) { problems.push(`${f}: live site answered ${res.status}`); continue; }
     body = Buffer.from(await res.arrayBuffer());
   } else body = readFileSync(join(dir, f));
@@ -46,7 +50,9 @@ for (const f of files) {
   if (!TEXT.test(f)) continue;
   workerRefs += text.split(TURN.endpoint).length - 1;
   for (const [what, re] of RULES) {
-    const m = text.replaceAll(TURN.endpoint, '').match(re);
+    let scan = text.replaceAll(TURN.endpoint, '');
+    if (/^[0-9a-f]{40}$/.test(process.env.GITHUB_SHA || '')) scan = scan.replaceAll(process.env.GITHUB_SHA, '');
+    const m = scan.match(re);
     if (m) problems.push(`${f}: ${what}: "${m[0]}"`);
   }
 }
