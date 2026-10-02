@@ -3,6 +3,7 @@
 // to the Firebase Local Emulator Suite. Run with `npm run test:mp`.
 import { readFileSync } from 'node:fs';
 import { expect } from '@playwright/test';
+import { TURN } from '../src/net/config.js';
 
 const SDK = 'https://www.gstatic.com/firebasejs/12.19.0/';
 const CDN = {
@@ -19,27 +20,56 @@ export const EMULATOR = {
 // A new player: its own context, on the Multiplayer screen with its name typed.
 // net: Phase 11 timing overrides (shorter grace periods, faster play);
 // latency: [lo, hi] ms added to every data-channel message, order preserved.
+// stall: [everyMs, forMs]: on top of that, every everyMs nothing is sent for
+// forMs, then everything held goes at once (bursty, uneven delivery).
 // contextOptions: extra options for the player's browser context (a phone's
 // viewport and touch, say).
-export async function player(browser, name, { net = null, latency = null, context: ctx = null, contextOptions = {} } = {}) {
+// Phase 12b: turn: 'live' asks the real TURN Worker for a relay credential;
+// otherwise the Worker is unreachable and the game connects STUN-only (its
+// fallback). relay: every one of this player's connections is forced through
+// the TURN relay (iceTransportPolicy 'relay'), as if no direct path existed;
+// relay: 'tls' also allows only TURN over TLS on port 443 (UDP blocked).
+export async function player(browser, name, { net = null, latency = null, stall = null, turn = 'off', relay = false, context: ctx = null, contextOptions = {} } = {}) {
   const context = ctx || await browser.newContext({ viewport: { width: 1280, height: 800 }, ...contextOptions });
   const page = await context.newPage();
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message));
-  await page.addInitScript(({ emu, net, latency }) => {
+  await page.addInitScript(({ emu, net, latency, stall, relay }) => {
     globalThis.__DM_FIREBASE_EMULATOR__ = emu;
     if (net) globalThis.__DM_NET_OVERRIDES__ = net;
+    if (relay) { // relayed or nothing: host and server-reflexive candidates are never used
+      // relay 'tls': and only TURN over TLS on port 443, as on a network that blocks UDP
+      const only = (cfg) => relay !== 'tls' ? cfg : { ...cfg, iceServers: (cfg.iceServers || []).map((s) => ({ ...s, urls: [].concat(s.urls).filter((u) => /^turns:.*:443\b/.test(u)) })).filter((s) => s.urls.length) };
+      const RPC = globalThis.RTCPeerConnection;
+      globalThis.RTCPeerConnection = class extends RPC {
+        constructor(cfg = {}, ...rest) { super({ ...only(cfg), iceTransportPolicy: 'relay' }, ...rest); }
+        setConfiguration(cfg = {}) { return super.setConfiguration({ ...only(cfg), iceTransportPolicy: 'relay' }); }
+      };
+    }
+    { // Every ICE candidate this page gathers, counted by type (host, srflx, relay).
+      globalThis.__gathered = {};
+      const RPC = globalThis.RTCPeerConnection;
+      if (RPC) globalThis.RTCPeerConnection = class extends RPC {
+        constructor(...a) {
+          super(...a);
+          this.addEventListener('icecandidate', (e) => { const ty = / typ (\w+)/.exec(e.candidate?.candidate || '')?.[1]; if (ty) globalThis.__gathered[ty] = (globalThis.__gathered[ty] || 0) + 1; });
+        }
+      };
+    }
     try { localStorage.setItem('prism-tutorial-v1', 'done'); } catch { /* ignore */ }
     if (latency) { // a slow network under the real data channels, in order
       const send = RTCDataChannel.prototype.send, last = new WeakMap();
       RTCDataChannel.prototype.send = function (data) {
         const now = performance.now();
-        const at = Math.max(now + latency[0] + Math.random() * (latency[1] - latency[0]), last.get(this) || 0);
+        let at = Math.max(now + latency[0] + Math.random() * (latency[1] - latency[0]), last.get(this) || 0);
+        if (stall && at % stall[0] < stall[1]) at += stall[1] - at % stall[0]; // held to the end of the stall
+        at = Math.max(at, last.get(this) || 0);
         last.set(this, at);
         setTimeout(() => { try { send.call(this, data); } catch { /* closed */ } }, at - now);
       };
     }
-  }, { emu: EMULATOR, net, latency });
+  }, { emu: EMULATOR, net, latency, stall, relay });
+  if (turn !== 'live') await page.route(TURN.endpoint, (r) => r.abort());
   for (const [url, file] of Object.entries(CDN)) await page.route(url, (r) => r.fulfill({ body: readFileSync(file), contentType: 'text/javascript' }));
   await page.route(`${SDK}*`, (r) => r.fulfill({ body: readFileSync(`node_modules/firebase/${new URL(r.request().url()).pathname.split('/').pop()}`), contentType: 'text/javascript' }));
   await page.goto('/');

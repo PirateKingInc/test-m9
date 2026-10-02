@@ -211,7 +211,7 @@ before any measurement ([PHASE12_SPEC.md](PHASE12_SPEC.md)):
   is capped, so ordering a full army across the map no longer freezes the
   game for a moment; the last routes are planned within about 0.35 s.
 
-## Multiplayer (Phases 10 and 11)
+## Multiplayer (Phases 10, 11 and 12b)
 
 Free-for-all for 2–4 people, each in their own browser, plus AI for any empty
 camp. Phase 10 is the lobby and the direct connections
@@ -236,9 +236,10 @@ disconnects, reconnection and chat ([PHASE11_SPEC.md](PHASE11_SPEC.md)).
    told.
 6. After the start, every pair of players opens a **direct WebRTC
    connection** and proves it with a test message; the screen shows each
-   connection and its round trip. A connection that cannot be made directly
-   (some strict corporate or campus networks) is reported as such: there is
-   no relay server yet (backlog).
+   connection and its round trip. A pair that cannot connect directly (a
+   phone on a cellular network, strict corporate or campus Wi-Fi) is
+   connected through a **relay** instead (Phase 12b, below). Only if even
+   that fails is it reported as "could not connect directly".
 7. Once every connection is proven, **the match starts by itself** (about
    2 s later) on every screen. You command your own camp (the banner says
    which colour you are); everything else works as in single-player.
@@ -302,14 +303,44 @@ lines per 5 seconds, and kept only in memory: nothing is saved, and a
 reloaded page starts empty. Typing in the chat never triggers game
 shortcuts.
 
+### Restrictive networks: the relay (Phase 12b)
+
+Most connections are direct, browser to browser. Some networks block every
+direct path, mostly cellular carriers (carrier-grade NAT) and locked-down
+corporate or campus Wi-Fi. In the first live test a phone on mobile data
+could not connect to anyone. Since Phase 12b, such a pair is connected
+through **Cloudflare's TURN relay** instead
+([PHASE12B_SPEC.md](PHASE12B_SPEC.md)).
+
+What to expect:
+- **Nothing changes for players who can connect directly.** The relay is
+  offered as a last resort, and the browser picks it only when nothing more
+  direct works. Each pair is decided separately, so one player on mobile data
+  is relayed to everyone while the others stay direct with each other.
+- A relayed player plays the same game. The relay adds the trip to the
+  nearest Cloudflare location and back, usually tens of milliseconds, which
+  the 200 ms input delay hides. Orders still run 4 ticks after they are
+  given, on every screen at once. The relay reaches out over UDP or, when a
+  network allows only web traffic, over TCP and TLS on port 443.
+- The relay can't read the game: WebRTC encrypts it end to end.
+- If the relay service can't be reached, the game connects exactly as it did
+  before Phase 12b (direct only), with no error. A player whose network blocks
+  even the relay still sees "could not connect directly".
+
+How it stays safe: the site never contains a relay password. When a lobby
+starts connecting, each browser asks a small Cloudflare Worker
+([worker/](worker/README.md)), which holds the real key, for a credential that
+expires in 2 hours. Every deploy inspects the published site for any
+credential (`tools/check-bundle.mjs`).
+
 ### Firebase, and why its config is in the code
 
 Multiplayer uses **Firebase Realtime Database** (free Spark plan) with
 anonymous sign-in, loaded from Google's CDN only when Multiplayer is opened.
 It stores only lobby records (code, names, who holds which camp) and the
-one-time connection handshake; no game traffic goes through it. This is the
-project's one external service, a deliberate exception recorded in
-[PROJECT.md](PROJECT.md).
+one-time connection handshake; no game traffic goes through it. This and
+Cloudflare's relay (above) are the project's external services, deliberate
+exceptions recorded in [PROJECT.md](PROJECT.md).
 
 The web config in `src/net/config.js` (the `apiKey` and friends) is **meant
 to be public**: it identifies the Firebase project and is not a password.
@@ -339,10 +370,14 @@ database emulator needs Java 11+):
 npm run test:rules   # the security rules, over REST (writes outside your lobby, oversized and malformed data: refused)
 npm run test:mp      # several independent browsers: lobbies, connections, whole matches, disconnects and rejoins, chat
 npm run test:engines # one match with a Chromium, a Firefox and a WebKit player (needs `npx playwright install firefox webkit`)
+npm run test:relay   # Phase 12b: relay-forced lobbies through the real Cloudflare TURN service and the deployed Worker
 ```
 
 Each starts the emulators, runs, and stops them. CI runs them in the
-`multiplayer` and `cross-engine` jobs. The lockstep and the protocol also have
+`multiplayer`, `cross-engine` and `relay` jobs. Only `test:relay` reaches
+outside the machine (Cloudflare). The other multiplayer tests make the Worker
+unreachable on purpose, so they also prove the game connects STUN-only
+without it. The lockstep and the protocol also have
 Node tests that need no emulator (`npm test`): the determinism gate
 (`test/lockstep-gate.test.js`: 2–4 peers in one process, byte-identical at
 every tick) and the protocol on a simulated network (`test/session.test.js`:

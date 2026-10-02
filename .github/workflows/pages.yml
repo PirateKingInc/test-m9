@@ -39,6 +39,8 @@ jobs:
           cp sheet.html _site/
           echo "$GITHUB_SHA" > _site/version.txt
           touch _site/.nojekyll
+      - name: No credential in the site (Phase 12b)
+        run: node tools/check-bundle.mjs _site
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
@@ -58,3 +60,7 @@ jobs:
           done
           echo "Site never served $GITHUB_SHA with HTTP 200" >&2
           exit 1
+      - name: No credential in the live site, inspected file by file (Phase 12b)
+        env:
+          SITE_URL: ${{ steps.deployment.outputs.page_url }}
+        run: node tools/check-bundle.mjs _site "$SITE_URL"

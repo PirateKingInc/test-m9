@@ -165,7 +165,8 @@ async function startLinks(lobby) {
   state.mesh = { close() {} }; // placeholder until the mesh module is up
   show('mp-links');
   renderLineup(lobby);
-  const { Mesh } = await import('./mesh.js');
+  const [{ Mesh }, { ready }] = await Promise.all([import('./mesh.js'), import('./ice.js')]);
+  await ready(); // Phase 12b: a relay credential first, if the Worker answers in time
   if (!state.lobby) return;
   state.mesh = new Mesh(lobby, () => renderLinks(lobby));
   renderLinks(lobby);

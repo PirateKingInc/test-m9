@@ -1,0 +1,27 @@
+# Phase 12b: the TURN credential Worker (worker/README.md). Deployed by hand
+# with Wrangler; nothing in the static site depends on this file.
+name = "dragonmarch-turn"
+main = "src/index.js"
+compatibility_date = "2026-09-01"
+workers_dev = true
+
+[vars]
+# The game's live origin, and the browser tests' local server (e2e/server.js).
+ALLOWED_ORIGINS = "https://piratekinginc.github.io,http://localhost:4173"
+# Credential lifetime: longer than a lobby can live (1 hour, database.rules.json),
+# so it never expires under a match (Cloudflare then cuts the relay).
+TTL_S = "7200"
+
+# 30 credential requests a minute per client IP, per Cloudflare location.
+# Generous for carrier-grade NAT, where many phones share one address.
+[[ratelimits]]
+name = "RATE_LIMITER"
+namespace_id = "1201"
+
+  [ratelimits.simple]
+  limit = 30
+  period = 60
+
+# Secrets (wrangler secret put), never in this file:
+#   TURN_KEY_ID          the TURN key's ID (Cloudflare dashboard > Realtime > TURN)
+#   TURN_KEY_API_TOKEN   that key's API token

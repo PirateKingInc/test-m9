@@ -7,6 +7,7 @@ import { NET } from './net-rules.js';
 import { Lockstep, lobbyMatch, humansOf } from './lockstep.js';
 import { Session } from './session.js';
 import { Links } from './links.js';
+import { ready } from './ice.js';
 import { presence } from './presence.js';
 import { installDetMath } from './detmath.js';
 import { TEAM_TEXT } from '../theme/names.js';
@@ -56,6 +57,7 @@ export async function rejoinMatch(saved, fb) {
   const status = (await fb.get(fb.ref(fb.db, `lobbies/${code}/meta/status`))).val();
   if (status !== 'started') { forgetMatch(); return false; }
   const others = Object.fromEntries(Object.entries(uids).filter(([s]) => Number(s) !== me));
+  await ready(); // Phase 12b: a fresh relay credential (this is a new page)
   const links = new Links({ fb, code, me, uid: fb.uid, slots: others, returning: true });
   const uninstall = installDetMath();
   run({ fb, code, me, names, uids, links, ls: null, uninstall, meta });

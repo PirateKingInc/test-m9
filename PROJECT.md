@@ -87,6 +87,21 @@ Ideas are not built on the side.
   rules in `database.rules.json`. Tests run against the Firebase Local Emulator
   Suite (`firebase-tools`, a dev dependency), never the production project.
   There is still no build step. See PHASE10_SPEC.md.
+- **Phase 12b: Cloudflare (a TURN relay and a Worker).** Some networks,
+  notably cellular carrier-grade NAT, block every direct WebRTC path, which
+  public STUN can't get around. Multiplayer therefore also depends on
+  **Cloudflare Realtime TURN** (free for the first 1,000 GB a month, then
+  $0.05/GB) as a relay of last resort, and on a small **Cloudflare Worker**
+  (`worker/`, free tier) that mints short-lived TURN credentials. Both are
+  used only when a multiplayer lobby starts connecting. The Worker holds the
+  TURN key's API token as a Worker secret. The site contains only the Worker's
+  URL, and a browser only ever receives a credential that expires in 2 hours.
+  A static credential is never shipped (project owner's decision), and every
+  deploy inspects the site for one (`tools/check-bundle.mjs`). Direct
+  connections stay direct. If the Worker can't be reached, the game connects
+  STUN-only as before. Relay traffic is end-to-end encrypted (DTLS), so
+  Cloudflare relays it without being able to read it. The Worker is deployed
+  with Wrangler, not by CI (worker/README.md). See PHASE12B_SPEC.md.
 
 ## Counter relationships (design contract)
 

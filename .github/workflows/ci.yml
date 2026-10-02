@@ -109,3 +109,32 @@ jobs:
         run: npx playwright install --with-deps chromium firefox webkit
       - name: One match, three engines (emulator)
         run: npm run test:engines
+
+  relay:
+    # Phase 12b: the TURN relay fallback, against the real Cloudflare service.
+    # Every player asks the deployed Worker (worker/) for a short-lived
+    # credential, as the live game does; relay-only players are forced through
+    # Cloudflare TURN. 2-4 player lobbies, the input delay under relay, the
+    # bandwidth measurement, and the cross-engine lockstep with a relay-only
+    # WebKit player. No secret is needed here: the Worker holds the TURN key.
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/firebase/emulators
+          key: firebase-emulators-${{ hashFiles('package-lock.json') }}
+      - run: npm ci
+      - name: Install Chromium, Firefox and WebKit for Playwright
+        run: npx playwright install --with-deps chromium firefox webkit
+      - name: Relay-forced lobbies, input delay, bandwidth, cross-engine (emulator + real TURN)
+        run: npm run test:relay

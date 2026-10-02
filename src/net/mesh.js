@@ -3,7 +3,8 @@
 // handshake: an offer, an answer and ICE candidates per pair, through
 // lobbies/<code>/signal/<to>/<from>. Once a data channel is open, both sides
 // prove it with a test message; no game state is sent in this phase.
-import { ICE_SERVERS, CONNECT } from './config.js';
+import { CONNECT } from './config.js';
+import { iceServers } from './ice.js';
 
 export class Mesh {
   constructor(lobby, onUpdate = () => {}) {
@@ -40,7 +41,7 @@ export class Mesh {
 
   connection(peer) {
     if (peer.pc) return peer.pc;
-    const pc = peer.pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
+    const pc = peer.pc = new RTCPeerConnection({ iceServers: iceServers() });
     pc.onicecandidate = ({ candidate: c }) => {
       if (!c || !c.candidate || this.closed) return; // null: gathering finished
       const rec = { c: c.candidate };

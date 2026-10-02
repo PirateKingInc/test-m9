@@ -25,9 +25,19 @@ export const LOBBY = {
   alphabet: 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789', // no 0/O, no 1/I
 };
 
-// Public STUN servers for NAT traversal. No TURN relay in this phase: a
-// minority of restrictive networks cannot connect directly (BACKLOG.md).
+// Public STUN servers for NAT traversal. Phase 12b appends a TURN relay after
+// them (src/net/ice.js) for networks that cannot connect directly.
 export const ICE_SERVERS = [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }];
+
+// Phase 12b: the Worker that mints short-lived TURN credentials
+// (worker/README.md). Its URL is public; the TURN key's API token stays in the
+// Worker and never reaches this site.
+export const TURN = {
+  endpoint: 'https://dragonmarch-turn.piratekinginc.workers.dev/ice',
+  timeoutMs: 4000, // slower than this: connect STUN-only
+  retryMs: 60000, // after a failure, STUN-only for this long before asking again
+  refreshMarginMs: 3600000, // a credential with less life left than this is not used for a new connection
+};
 
 export const CONNECT = {
   channel: 'dragonmarch', // the data channel's label

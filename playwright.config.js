@@ -7,6 +7,8 @@ export default defineConfig({
   testIgnore: [
     ...(process.env.MOBILE_PLAYTHROUGH ? [] : ['**/mobile-playthrough.spec.js']),
     ...(process.env.MULTIPLAYER ? [] : ['**/mp-*.spec.js']),
+    // Phase 12b: the real Cloudflare TURN relay: npm run test:relay.
+    ...(process.env.RELAY ? [] : ['**/mp-relay.spec.js']),
   ],
   timeout: 60_000,
   use: { baseURL: 'http://localhost:4173', viewport: { width: 1280, height: 800 } },

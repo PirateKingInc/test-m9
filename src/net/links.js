@@ -1,13 +1,15 @@
 // Phase 11: the data channels under a match (PHASE11_SPEC.md "Snapshots and
 // reconnection"). It adopts the channels Phase 10's Mesh opened and verified,
 // unchanged, and reopens a link that dies, through the same signaling paths
-// (lobbies/<code>/signal/<to>/<from>) and the same STUN servers. Firebase
+// (lobbies/<code>/signal/<to>/<from>) and the same ICE servers (STUN, then
+// Phase 12b's TURN relay). Firebase
 // carries only that handshake; everything else goes over the channels.
 //
 // Who reopens: a player coming back (after a reload) offers to everyone; when
 // both tabs are alive and a link dies, the player in the higher slot offers.
 // If two offers cross, the higher slot yields and answers the other one.
-import { ICE_SERVERS, CONNECT } from './config.js';
+import { CONNECT } from './config.js';
+import { iceServers } from './ice.js';
 
 const REOFFER_AFTER_MS = 3000; // a link down this long gets a new offer
 const REOFFER_EVERY_MS = 10000; // and another every so often while still down
@@ -80,7 +82,7 @@ export class Links {
   fresh(slot) {
     const l = this.links.get(slot);
     try { l.pc?.close(); } catch { /* closed */ }
-    const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
+    const pc = new RTCPeerConnection({ iceServers: iceServers() });
     l.pc = pc; l.ch = null; l.queued = []; l.up = false;
     const peer = this.slots[slot];
     pc.onicecandidate = ({ candidate: c }) => {
