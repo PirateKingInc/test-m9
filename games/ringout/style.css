@@ -1,0 +1,30 @@
+:root { --bg: #0d1220; --panel: #161e33; --ink: #e8ecf6; --dim: #93a0bd; --accent: #4aa3ff; --line: #2a3555; }
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); font: 16px/1.4 system-ui, -apple-system, Segoe UI, Roboto, sans-serif; overscroll-behavior: none; }
+body { display: grid; place-items: center; min-height: 100%; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 24px; width: min(440px, calc(100vw - 32px)); }
+h1 { margin: 0 0 4px; letter-spacing: .2em; font-size: 28px; }
+.dim { color: var(--dim); font-size: 14px; }
+.field { display: grid; gap: 4px; margin: 12px 0; }
+.field span { font-size: 13px; color: var(--dim); }
+input, select { background: #0b1020; color: var(--ink); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; font: inherit; min-width: 0; }
+.row { display: flex; gap: 8px; margin: 12px 0; }
+.row input { flex: 1; }
+button { background: var(--accent); color: #06101f; border: 0; border-radius: 8px; padding: 10px 16px; font: inherit; font-weight: 600; cursor: pointer; }
+button.ghost { background: transparent; color: var(--ink); border: 1px solid var(--line); }
+button:disabled { opacity: .5; cursor: default; }
+.code { font: 700 32px/1 ui-monospace, monospace; letter-spacing: .15em; margin: 8px 0; }
+.list { padding-left: 20px; } .list li { margin: 4px 0; }
+.peer-verified { color: #5bdc8a; } .peer-failed { color: #ff6b5b; }
+#status { min-height: 1.4em; color: #ffd34d; font-size: 14px; }
+#play { position: fixed; inset: 0; }
+#arena { width: 100%; height: 100%; display: block; touch-action: none; }
+#hud { position: absolute; top: 10px; left: 0; right: 0; display: flex; justify-content: center; gap: 18px; pointer-events: none; font-weight: 600; }
+#scores { display: flex; gap: 14px; } #round { color: var(--dim); }
+#net-status { position: absolute; top: 44px; left: 50%; transform: translateX(-50%); background: #000a; padding: 6px 12px; border-radius: 8px; font-size: 14px; }
+#notices { position: absolute; bottom: 70px; left: 12px; display: grid; gap: 6px; font-size: 14px; pointer-events: none; }
+#notices div { background: #000a; padding: 6px 10px; border-radius: 8px; }
+#dash-btn { position: absolute; right: 18px; bottom: 18px; width: 84px; height: 84px; border-radius: 50%; display: none; }
+body.touch #dash-btn { display: block; } body.touch #help { display: none; }
+#help { position: absolute; bottom: 8px; left: 0; right: 0; text-align: center; margin: 0; pointer-events: none; }
+#result { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; }

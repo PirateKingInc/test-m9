@@ -37,6 +37,7 @@ jobs:
           cp index.html _site/
           cp -r src _site/
           cp -r platform _site/ # Platform Milestone 1: the lockstep module
+          cp -r games _site/ # and the games built on it (Ringout)
           cp sheet.html _site/
           echo "$GITHUB_SHA" > _site/version.txt
           touch _site/.nojekyll

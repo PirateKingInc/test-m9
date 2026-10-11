@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Ringout</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main id="menu" class="card">
+  <h1>RINGOUT</h1>
+  <p class="dim">Push the others off a shrinking ring. 2–4 players, each on their own device. Built on the DragonMarch lockstep platform.</p>
+  <section id="entry">
+    <label class="field"><span>Your name</span><input id="name" maxlength="16" autocomplete="off" placeholder="Shown to the other players"></label>
+    <label class="field"><span>Pace</span><select id="pace"><option value="easy">Relaxed</option><option value="normal" selected>Normal</option><option value="hard">Fast</option></select></label>
+    <div class="row"><button id="create">Create lobby</button><button id="practice" class="ghost">Practice vs bots</button></div>
+    <p class="dim">or join one with its match code</p>
+    <div class="row"><input id="code" maxlength="9" autocomplete="off" placeholder="ABC-DEF" autocapitalize="characters" spellcheck="false"><button id="join">Join</button></div>
+  </section>
+  <section id="room" hidden>
+    <p class="dim">Match code: share it with the other players</p>
+    <p id="code-shown" class="code"></p>
+    <ol id="players" class="list"></ol>
+    <p id="hint" class="dim"></p>
+    <div class="row"><button id="start" hidden>Start match</button><button id="leave" class="ghost">Leave</button></div>
+  </section>
+  <section id="links" hidden>
+    <p id="links-title"></p>
+    <ul id="peers" class="list"></ul>
+    <p id="links-note" class="dim">The match begins once every player is connected.</p>
+    <div class="row"><button id="back" class="ghost">Back</button></div>
+  </section>
+  <p id="status" role="status"></p>
+</main>
+<div id="play" hidden>
+  <canvas id="arena"></canvas>
+  <div id="hud"><div id="scores"></div><div id="round"></div></div>
+  <div id="net-status" hidden></div>
+  <div id="notices"></div>
+  <button id="dash-btn" type="button">DASH</button>
+  <div id="result" hidden class="card"><h2 id="result-title"></h2><p id="result-detail" class="dim"></p><button id="again">Back to menu</button></div>
+  <p id="help" class="dim">Arrows / WASD to steer · Space to dash · on a phone: drag to steer, tap DASH</p>
+</div>
+<script type="module" src="main.js"></script>
+</body>
+</html>

@@ -9,6 +9,10 @@
 //
 // If CF_TURN_KEY_ID, CF_TURN_KEY_API_TOKEN, CLOUDFLARE_API_TOKEN or
 // CLOUDFLARE_ACCOUNT_ID are set, their exact values are searched for too.
+//
+// Platform Milestone 1: every game on the platform names the Worker in its own
+// config file (Dragonmarch's src/net/config.js, Ringout's
+// games/ringout/config.js), once each; nowhere else.
 // GITHUB_SHA, if set, is the deployed commit (pages.yml writes it to
 // version.txt): public, so it alone is exempt from the hex-token rule.
 import { readdirSync, readFileSync, statSync } from 'node:fs';
@@ -34,6 +38,7 @@ const RULES = [
 const secrets = ['CF_TURN_KEY_ID', 'CF_TURN_KEY_API_TOKEN', 'CLOUDFLARE_API_TOKEN', 'CLOUDFLARE_ACCOUNT_ID'].filter((k) => process.env[k]);
 
 const problems = [];
+const WORKER_FILES = ['src/net/config.js', 'games/ringout/config.js'];
 let scanned = 0, bytes = 0, workerRefs = 0;
 for (const f of files) {
   let body;
@@ -48,7 +53,9 @@ for (const f of files) {
   const text = body.toString('latin1'); // binaries too: a secret is ASCII wherever it hides
   for (const k of secrets) if (text.includes(process.env[k])) problems.push(`${f}: contains the value of ${k}`);
   if (!TEXT.test(f)) continue;
-  workerRefs += text.split(TURN.endpoint).length - 1;
+  const refs = text.split(TURN.endpoint).length - 1;
+  workerRefs += refs;
+  if (refs && (!WORKER_FILES.includes(f.split('\\').join('/')) || refs > 1)) problems.push(`${f}: the Worker URL ${refs}x (only once, in a game's config file: ${WORKER_FILES.join(', ')})`);
   for (const [what, re] of RULES) {
     let scan = text.replaceAll(TURN.endpoint, '');
     if (/^[0-9a-f]{40}$/.test(process.env.GITHUB_SHA || '')) scan = scan.replaceAll(process.env.GITHUB_SHA, '');
@@ -56,7 +63,7 @@ for (const f of files) {
     if (m) problems.push(`${f}: ${what}: "${m[0]}"`);
   }
 }
-if (workerRefs !== 1) problems.push(`the Worker URL appears ${workerRefs} times (expected once, in src/net/config.js)`);
+if (!workerRefs) problems.push('the Worker URL appears nowhere (expected in src/net/config.js)');
 
 console.log(`# bundle check (${base ? `live: ${base}` : `local: ${dir}`}): ${scanned} files, ${(bytes / 1024).toFixed(0)} KiB; ${secrets.length} secret values compared exactly (${secrets.join(', ') || 'none set'}); Worker URL referenced ${workerRefs}x`);
 if (problems.length) { for (const p of problems) console.error(`FAIL ${p}`); process.exit(1); }
