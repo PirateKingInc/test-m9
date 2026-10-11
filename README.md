@@ -11,7 +11,17 @@ drawn in code (Phase 4), the fantasy reskin with a wider zoom range
 (Phase 6), and the first half of **multiplayer**: lobbies with match codes
 and direct connections between players (Phase 10).
 
-**Play:** https://piratekinginc.github.io/test-m8/ (desktop with mouse and keyboard, or a phone/tablet with touch; landscape recommended)
+**Play:** https://piratekinginc.github.io/test-m9/ (desktop with mouse and keyboard, or a phone/tablet with touch; landscape recommended)
+
+**The DragonMarch Multiplayer Platform (Platform Milestone 1).** Dragonmarch's
+multiplayer now runs on a reusable, game-agnostic lockstep module,
+[`platform/lockstep/`](platform/lockstep/README.md) (lobbies, WebRTC with a
+TURN relay fallback, input-delayed lockstep, desync detection, disconnect
+hold and snapshot rejoin). A second, unrelated game is built on it to prove
+it: **Ringout**, a 2-4 player arena brawler on a shrinking ring, at
+https://piratekinginc.github.io/test-m9/games/ringout/ (try "Practice vs
+bots" alone, or create a lobby and share the code). See
+[PLATFORM_SPEC.md](PLATFORM_SPEC.md) and the integration guide.
 
 It's a static site with no build step. [Phaser 3](https://phaser.io) and
 [PathFinding.js](https://github.com/qiao/PathFinding.js) load from the jsDelivr CDN.
@@ -568,7 +578,8 @@ npm run serve        # http://localhost:8080 (or open index.html via any static 
 ## Tests
 
 ```bash
-npm test             # headless sim tests (node --test)
+npm test             # headless sim tests (node --test), plus the lockstep module's and Ringout's
+npm run test:platform  # just the lockstep module's and Ringout's headless tests
 npm run test:e2e     # Playwright browser tests, desktop and mobile emulation (npx playwright install chromium first)
 npm run test:mobile  # the touch-only playthroughs, 1v1 and free-for-all (their own CI job)
 npm run test:rules   # Phase 10: the Firebase security rules, against the emulator (needs Java 11+)
