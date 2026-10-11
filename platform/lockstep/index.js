@@ -10,3 +10,6 @@ export { createCodec, hashText } from './codec.js';
 
 // The engine
 export { Lockstep, DEFAULT_DELAY } from './core.js';
+export { Session, PROTOCOL_MESSAGES } from './session.js';
+export { DEFAULT_TIMING } from './timing.js';
+export { FakeNet } from './testing.js';

@@ -30,8 +30,10 @@ test('the module imports nothing outside platform/lockstep', () => {
   }
 });
 
-// Words that would mean the module still thinks in one game's terms.
-const GAME_WORDS = /\b(camps?|units?|zones?|teams?|world|Phaser|HoldBrain|AiEngine|Match|lumen|gold|castle|peasant|dragon\w*|difficulty|ringout|pucks?)\b/i;
+// Words that would mean the module still thinks in one game's terms. ("match"
+// is generic: a match is what every game plays; Dragonmarch's Match class
+// could not reach the module anyway, by the import rule above.)
+const GAME_WORDS = /\b(camps?|units?|zones?|teams?|world|Phaser|HoldBrain|AiEngine|lumen|gold|castle|peasant|dragon\w*|difficulty|ringout|pucks?)\b/i;
 test('the module code names no game concept', () => {
   for (const f of files(MODULE)) {
     const lines = code(readFileSync(f, 'utf8')).split('\n');

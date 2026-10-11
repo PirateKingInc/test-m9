@@ -1,6 +1,11 @@
 // Phase 11 multiplayer timing (PHASE11_SPEC.md). Tunable defaults, each with
-// its reasoning in the spec; determinism does not depend on any of them.
+// its reasoning in the spec; determinism does not depend on any of them. The
+// protocol's own defaults are the lockstep module's (platform/lockstep/
+// timing.js), which are these very values; chat is Dragonmarch's.
+import { DEFAULT_TIMING } from '../../platform/lockstep/index.js';
+
 const DEFAULTS = {
+  ...DEFAULT_TIMING,
   inputDelay: 4, // ticks (200 ms): commands run 4 ticks after they are issued
   heartbeatMs: 500, // a heartbeat on every channel this often
   quietMs: 2000, // nothing from a player for this long: "waiting for ..."
