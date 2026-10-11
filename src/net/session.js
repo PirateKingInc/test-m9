@@ -50,7 +50,7 @@ export class Session {
     this.ls = ls;
     ls.onTick = (T) => this.afterTick(T);
     ls.onSys = (ev) => {
-      if (ev.kind === 'back') this.notice(ev.team === this.me ? 'You are back in control of your camp.' : `${this.name(ev.team)} is back in control.`, 'back');
+      if (ev.kind === 'back') this.notice(ev.slot === this.me ? 'You are back in control of your camp.' : `${this.name(ev.slot)} is back in control.`, 'back');
     };
   }
 
@@ -205,7 +205,7 @@ export class Session {
       if (p.tick < (p.tickAt ?? this.tick) - this.ls.delay * 2) continue;
       if (now - p.since < this.net.handbackStableMs) continue;
       this.backSent.add(x);
-      this.ls.system({ kind: 'back', team: x });
+      this.ls.system({ kind: 'back', slot: x });
     }
   }
 

@@ -7,3 +7,6 @@ export { sin, cos, atan, atan2, hypot, installDetMath, detMathInstalled } from '
 export { GOLDEN as DETMATH_GOLDEN, detMathFingerprint } from './detmath-golden.js';
 export { SeededRng } from './rng.js';
 export { createCodec, hashText } from './codec.js';
+
+// The engine
+export { Lockstep, DEFAULT_DELAY } from './core.js';
