@@ -1,14 +1,142 @@
-# Dragonmarch — Project Overview
+# DragonMarch — Project Overview
 
-A small real-time strategy game that runs in the browser as a static site
-(Phaser + PathFinding.js from a CDN, no build step, all art and audio made in code).
+**Read this first if you are picking the project up in a new session.**
 
-**Read this first if you are picking the project up in a new session.** It
-covers the whole project, lists what is out of scope, and describes the
-counter design every phase relies on. Phase-specific numbers are in
-[SPEC.md](SPEC.md). Ideas we postponed are in [BACKLOG.md](BACKLOG.md).
+DragonMarch started as one game, **Dragonmarch**, a small real-time strategy
+game that runs in the browser as a static site (Phaser + PathFinding.js from
+a CDN, no build step, all art and audio made in code). Its multiplayer
+(Phases 10–12b) is now being turned into the **DragonMarch Multiplayer
+Platform**: reusable multiplayer infrastructure that other games can be
+built on. The platform's vision, its milestones and its roadmap are the
+first part of this document. The second part covers the Dragonmarch game:
+its phases, what is out of scope for it, and the counter design every phase
+relies on. Phase-specific numbers are in [SPEC.md](SPEC.md). Ideas we
+postponed for the game are in [BACKLOG.md](BACKLOG.md).
 
-## Fixed design pillars (all phases)
+## The DragonMarch Multiplayer Platform
+
+### Vision (the long-term target)
+
+A developer should be able to use DragonMarch to add multiplayer to a
+browser game, a competitive game, a co-op game or a persistent world
+without building their own networking infrastructure from scratch. The
+target end state:
+
+- **Several networking models:** deterministic lockstep; real-time relay
+  messaging; authoritative, server-validated multiplayer; turn-based and
+  asynchronous multiplayer; and hybrid combinations of these.
+- **A shared infrastructure layer:** connectivity and relay; matchmaking and
+  lobbies; session and invitation management; disconnect and reconnect
+  recovery; state synchronisation and transport; replay recording; optional
+  identity and authentication; persistent cloud storage; analytics and
+  connection monitoring; optional voice and text chat.
+- **Engine integrations beyond the browser:** Godot, Unity and Unreal, all
+  built on the same underlying core.
+
+Nothing of that can be built at once. Authoritative servers need
+infrastructure this project has never run; each engine integration is in
+effect its own SDK in another language; relay-only and turn-based
+networking are different paradigms from lockstep. The piece that is
+already proven, and hard-won, is the **lockstep core**: WebRTC mesh
+connectivity, STUN-then-TURN relay fallback, Firebase signaling,
+cross-browser determinism, heartbeat-based disconnect detection and
+snapshot-based reconnection. So the platform starts there.
+
+### Platform milestones
+
+| Milestone | Goal | Status |
+|---|---|---|
+| **Platform Milestone 1 — The lockstep core, extracted and proven** | Turn Dragonmarch's lockstep networking from code embedded in the game into a documented, game-agnostic module (`platform/lockstep/`) with a public API: lobbies and peer connection (Firebase signaling, WebRTC mesh, Cloudflare TURN fallback), tick-tagged commands with input delay, a pluggable state hash for desync detection, snapshots through pluggable serialise/restore hooks, and disconnect detection and reconnection that are generic over what "holding a slot" means to the game. Rebuild Dragonmarch on it with zero behaviour change (every existing test passes unchanged), and prove reusability with a second, unrelated game, **Ringout**, built on the public API only. See [PLATFORM_SPEC.md](PLATFORM_SPEC.md) and the integration guide, [platform/lockstep/README.md](platform/lockstep/README.md). | in progress |
+
+### Platform roadmap (future milestones, not started)
+
+Each item below is a real future milestone. None of it is built in Platform
+Milestone 1. Each entry says what it is, what it builds on, and what a
+future session needs to decide or provision first. Numbers are a suggested
+order, not a commitment.
+
+1. **Generic signaling backend.** *Found while building Ringout.* The deployed
+   Realtime Database rules (`database.rules.json`) are Dragonmarch-shaped: a
+   lobby must carry `difficulty` (easy/normal/hard) and a 4-seat `H`/`A`
+   lineup, so a second game has to dress its settings as a difficulty and is
+   capped at 4 seats, and nothing stops a code for one game being joined from
+   another (the module's connection check catches it, after the join). Work:
+   rules with a `game` id, a bounded free-form `settings` map and a
+   configurable seat count (up to 8, the lineup validated by length); keep
+   Dragonmarch's records valid; extend `test/rules` for both shapes; deploy
+   with `firebase deploy --only database` (the owner's credentials; a rules
+   change, not new infrastructure). Then drop Ringout's pace-as-difficulty
+   mapping.
+2. **Relay-only (non-lockstep) real-time messaging.** Rooms where peers
+   exchange game messages without a shared deterministic simulation: each
+   client owns its own entities and broadcasts their state. Builds on the
+   module's lobby, mesh, links and TURN fallback, but not on `Lockstep`.
+   Needs: unreliable/unordered data channels next to the ordered one, a
+   message API with per-channel reliability, interest management for larger
+   rooms, interpolation helpers, and host migration for anything
+   host-owned. Open question: mesh (N² links) caps rooms at about 8; larger
+   rooms need a relay server (see 3).
+3. **Authoritative server networking.** A server runs the game and validates
+   every client input; clients predict and reconcile. Needs new
+   infrastructure (Cloudflare Durable Objects are the natural fit with the
+   existing Worker; a Node service on a VM is the alternative), a server-side
+   runtime for game logic written as for lockstep (the game contract's
+   `step`/`serialize` carry over), client prediction and rollback,
+   rate limits and anti-cheat. Cost and hosting are the owner's decision.
+4. **Turn-based and asynchronous multiplayer.** Players move in turns, possibly
+   hours apart, with the match stored between moves. Needs persistent storage
+   (5), move validation (server-side, or by every client replaying the move
+   log, which the lockstep core already does), notifications that it is your
+   turn, and match lists per player (which needs identity, 7).
+5. **Persistent cloud storage.** Per-player and per-match records beyond the
+   one-hour lobby: saved games, async matches, settings. Firebase already
+   hosts the lobbies; the decision is Realtime Database vs Firestore, the
+   rules, and quotas on the free plan.
+6. **Matchmaking beyond lobby codes.** Quick-match queues (join any open
+   lobby of a game with free seats), skill ratings, region-aware pairing
+   (latency from the mesh's measured round trips), and invitations by link.
+   Builds on the lobby records; needs server-side assignment (a Worker or
+   Cloud Function) so that two players are never matched into a race.
+7. **Optional identity and authentication.** Today every player is an
+   anonymous Firebase user for the life of a tab. Linking to Google, Apple or
+   email accounts gives stable identities for ratings, friends, storage and
+   moderation. Needs privacy and data-retention decisions.
+8. **Replay recording.** Lockstep makes a replay small: the seed, the lineup
+   and every turn. Record turns as they execute, export and import them, play
+   them back at any speed with seeking through periodic snapshots, and pin
+   replays to a game version (a replay is only valid for the build that made
+   it). Builds directly on `Lockstep` and the codec.
+9. **Analytics and connection monitoring.** Round-trip times, relayed vs
+   direct pairs, TURN bandwidth, desync reports with the diverging tick,
+   rejoin success, crash reports. Needs a collection endpoint (the Worker),
+   consent, and a dashboard.
+10. **Voice and text chat as a platform feature.** Dragonmarch's in-match chat
+    is game code over the module's app messages and stays so. A platform
+    feature would offer text chat with moderation hooks and rate limits for
+    any game, and voice over WebRTC audio tracks on the existing peer
+    connections (or through TURN), with push-to-talk and mute.
+11. **Hybrid models.** Combinations: lockstep with an authoritative arbiter for
+    disputes and late joiners, rollback (GGPO-style) on top of the lockstep
+    game contract for fighting-game latency, relay messaging for cosmetic
+    state beside a lockstep core. Needs 2 and 3 first.
+12. **Godot integration.** A GDScript (or C#) SDK speaking the same signaling
+    and wire protocol: Godot has WebRTC (`WebRTCPeerConnection`) and HTTP for
+    Firebase's REST API. Determinism needs fixed-point or a vetted float
+    discipline, since Godot builds differ from browsers.
+13. **Unity integration.** A C# SDK: WebRTC through Unity's package, Firebase
+    through its SDK or REST, the same protocol; determinism through
+    fixed-point maths (Unity's physics is not deterministic across
+    platforms).
+14. **Unreal integration.** A C++ plugin: WebRTC through a native library,
+    the same protocol; Unreal's own networking is server-authoritative, so
+    this mainly serves lockstep games that choose it.
+15. **Packaging.** Publish `platform/lockstep` as a versioned npm package
+    (ES modules, no build step) with semantic versioning of the wire protocol,
+    so games outside this repository can depend on it.
+
+## Dragonmarch, the game
+
+### Fixed design pillars (all phases)
 
 This document, SPEC.md and BALANCE.md use the **internal codenames** from
 Phases 1–4 (Lumen, Drone, Command Core, ...), which are also the ids in the
