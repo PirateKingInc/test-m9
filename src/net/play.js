@@ -3,78 +3,60 @@
 // reload), and runs it: the lockstep, driven by a metronome that keeps time
 // even in a background tab; the game screen (src/game, unchanged apart from
 // the local player's camp); and a small panel for waiting, notices and chat.
+// Starting, rejoining and the metronome loop are the lockstep module's
+// (platform/lockstep/browser/match.js, Platform Milestone 1); this file is
+// what is Dragonmarch's: its game, its Session, its screens.
+import { startMatch as moduleStart, rejoinMatch as moduleRejoin, matchStore } from '../../platform/lockstep/index.js';
 import { NET } from './net-rules.js';
-import { Lockstep, lobbyMatch, humansOf } from './lockstep.js';
+import { Lockstep, lobbyMatch } from './lockstep.js';
 import { Session } from './session.js';
-import { Links } from './links.js';
-import { ready } from './ice.js';
-import { presence } from './presence.js';
-import { installDetMath } from './detmath.js';
+import { CONNECT } from './config.js';
+import { ICE } from './ice.js';
 import { TEAM_TEXT } from '../theme/names.js';
 import { setPlayer } from '../game/player.js';
 
-const KEY = 'dm-mp'; // this tab's match, for rejoining after a reload
+const store = matchStore('dm-mp'); // this tab's match, for rejoining after a reload
 const $ = (id) => document.getElementById(id);
 const el = (tag, props = {}, ...kids) => { const e = Object.assign(document.createElement(tag), props); e.append(...kids); return e; };
 
-export const savedMatch = () => { try { return JSON.parse(sessionStorage.getItem(KEY)); } catch { return null; } };
-const saveMatch = (m) => { try { sessionStorage.setItem(KEY, JSON.stringify(m)); } catch { /* private mode */ } };
-export const forgetMatch = () => { try { sessionStorage.removeItem(KEY); } catch { /* ignore */ } };
+export const savedMatch = () => store.load();
+export const forgetMatch = () => store.forget();
 
 // Handles for the browser tests, on the same object the lobby screens use.
 const expose = (o) => Object.assign((globalThis.__net ||= {}), o);
 
-// Names and uids by slot, from the lobby's slots.
-function roster(slots, lineup) {
-  const names = {}, uids = {};
-  for (const s of humansOf(lineup)) { names[s] = slots[s]?.name || TEAM_TEXT[s]; uids[s] = slots[s]?.uid; }
-  return { names, uids };
-}
+// Dragonmarch on the module's runner: its Lockstep and its Session.
+const runOptions = {
+  ice: ICE, channel: CONNECT.channel, timing: NET, store,
+  restore: (snap, { me, players }) => Lockstep.restore(snap, { humans: players, me, delay: NET.inputDelay }),
+  createSession: (o) => new Session({ ls: o.lockstep, me: o.me, humans: o.players, names: o.names, transport: o.transport, arbiter: o.arbiter, net: NET }),
+};
 
 // Right after Phase 10's mesh verified every pair: start the match. Returns
 // false (and starts nothing) unless every pair is verified with an open
 // channel at this moment.
 export async function startMatch(lobby, mesh) {
-  const peers = [...(mesh.peers?.values() || [])];
-  if (!peers.length || !peers.every((p) => p.state === 'verified' && p.channel?.readyState === 'open')) return false;
-  const { meta, slot: me, fb, code } = lobby;
-  const { names, uids } = roster(lobby.slots, meta.lineup);
-  saveMatch({ code, slot: me, names, uids, meta: { seed: meta.seed, lineup: meta.lineup, difficulty: meta.difficulty } });
-  await lobby.keepForMatch();
-  mesh.close = () => {}; // the links own the channels now
-  const others = Object.fromEntries(Object.entries(uids).filter(([s]) => Number(s) !== me));
-  const links = new Links({ fb, code, me, uid: fb.uid, slots: others });
-  for (const p of mesh.peers.values()) links.adopt(p.slot, p.pc, p.channel);
-  const uninstall = installDetMath(); // before the match is built: every peer alike
-  const ls = new Lockstep({ match: lobbyMatch(meta, globalThis.PF), humans: humansOf(meta.lineup), me });
-  run({ fb, code, me, names, uids, links, ls, uninstall });
+  const run = await moduleStart({
+    lobby, mesh, ...runOptions, fallbackName: (s) => TEAM_TEXT[s],
+    buildLockstep: ({ meta, me, players }) => new Lockstep({ match: lobbyMatch(meta, globalThis.PF), humans: players, me }),
+  });
+  if (!run) return false;
+  showMatch(run);
   return true;
 }
 
 // After a reload: the same tab (same anonymous id) rejoins its match.
 export async function rejoinMatch(saved, fb) {
-  const { code, slot: me, names, uids, meta } = saved;
-  const status = (await fb.get(fb.ref(fb.db, `lobbies/${code}/meta/status`))).val();
-  if (status !== 'started') { forgetMatch(); return false; }
-  const others = Object.fromEntries(Object.entries(uids).filter(([s]) => Number(s) !== me));
-  await ready(); // Phase 12b: a fresh relay credential (this is a new page)
-  const links = new Links({ fb, code, me, uid: fb.uid, slots: others, returning: true });
-  const uninstall = installDetMath();
-  run({ fb, code, me, names, uids, links, ls: null, uninstall, meta });
+  const run = await moduleRejoin({ fb, saved, ...runOptions });
+  if (!run) return false;
+  showMatch(run);
   return true;
 }
 
-function run({ fb, code, me, names, uids, links, ls, uninstall }) {
-  const pres = presence(fb, code, fb.uid);
-  const humans = Object.keys(uids).map(Number).sort((a, b) => a - b);
-  const session = new Session({
-    ls, me, humans, names,
-    transport: { send: (s, m) => links.send(s, m), connected: (s) => links.connected(s), now: () => performance.now() },
-    arbiter: { online: pres.online, present: (s) => pres.present(uids[s]) },
-  });
-  links.onMessage = (s, m) => session.receive(s, m);
-  links.onUp = (s) => session.linkUp(s);
-  links.start();
+// The screens over a running match.
+function showMatch(run) {
+  const { session, links, presence: pres } = run;
+  const { me, names } = session;
   expose({ session, links, presence: pres });
   const ui = panel(session, names, me);
   session.onNotice = (n) => ui.notice(n);
@@ -90,41 +72,8 @@ function run({ fb, code, me, names, uids, links, ls, uninstall }) {
   };
   if (session.mode === 'play') begin();
   else session.onRejoined = () => begin();
-
-  // The metronome: a worker's timer keeps running in a background tab, where
-  // a page's timers and animation frames are throttled or stopped. Every
-  // player's game waits for every other's turns, so it must keep time.
-  let last = performance.now(), acc = 0;
-  const tick = () => {
-    const now = performance.now();
-    acc = Math.min(acc + (now - last) * NET.speed, 2000 * NET.speed);
-    last = now;
-    session.pump();
-    if (session.mode === 'play' && !session.desync && game) {
-      let budget = session.stepBudget(Math.floor(acc / 50));
-      // This frame's pace is unchanged: a player whose turns are needed runs
-      // up to the turns it had committed when the frame began, as when turns
-      // were only committed once a frame (a held, returning player is not
-      // limited by its own turns). Handback relies on that pace: CI run
-      // 36883494112 with no limit left a returning player 30 ticks behind.
-      const ls = session.ls, limit = ls.nextCommit;
-      while (budget-- > 0) {
-        if (ls.isHuman(ls.me, ls.tick) && ls.tick >= limit) { acc = Math.min(acc, 50); break; }
-        if (!ls.step()) { acc = Math.min(acc, 50); break; }
-        acc = Math.max(0, acc - 50);
-        // But keep this player's turns committed `delay` ticks ahead after
-        // every tick, not only once a frame: when a frame runs more ticks than
-        // the delay (faster than real time, or catching up), it could otherwise
-        // reach a tick whose turn was still open, and a UI command given then
-        // ran with no input delay (CI run 36873821731: given and run at tick 17).
-        for (const turn of ls.commit()) session.broadcast(turn);
-      }
-      if (session.ls.done) { forgetMatch(); }
-    }
-    ui.status({ ...session.status(), online: pres.online() });
-  };
-  metronome(50, tick);
-  addEventListener('pagehide', () => { links.close(); pres.stop(); uninstall(); });
+  run.canStep = () => !!game; // the ticks start with the game screen
+  run.onFrame = () => ui.status({ ...session.status(), online: pres.online() });
 }
 
 // The game screen for this peer's camp, over the lockstep's world.
@@ -203,18 +152,6 @@ function placeChat() {
   chat.style.right = `${right}px`;
   chat.style.bottom = `${Math.max(0, H - line)}px`;
   log.style.maxHeight = `${Math.max(0, Math.min(140, line - ceiling - fixed))}px`;
-}
-
-// A metronome: a tiny worker posting a message every `ms`; a page timer if
-// workers are unavailable.
-function metronome(ms, fn) {
-  try {
-    const src = `setInterval(() => postMessage(0), ${ms});`;
-    const w = new Worker(URL.createObjectURL(new Blob([src], { type: 'text/javascript' })));
-    w.onmessage = fn;
-    return;
-  } catch { /* no workers */ }
-  setInterval(fn, ms);
 }
 
 // ---- the panel: waiting, notices, chat ------------------------------------------

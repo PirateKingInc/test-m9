@@ -4,16 +4,13 @@
 // `ffa.camps` table single-player passes to Match (src/game/main.js), so the
 // match and the AI run unchanged.
 import { FFA_STRATEGIES } from '../data/ffa.js';
+import { lineupOf as moduleLineupOf, playersIn } from '../../platform/lockstep/index.js';
 import { LOBBY } from './config.js';
 
 // slots: { 1: {uid, name}, 3: {...} } -> 'HAHA' (Human / AI per camp 1-4).
-export function lineupOf(slots) {
-  let s = '';
-  for (let n = 1; n <= LOBBY.slots; n++) s += slots?.[n] ? 'H' : 'A';
-  return s;
-}
+export const lineupOf = (slots) => moduleLineupOf(slots, LOBBY.slots);
 
-export const humansIn = (lineup) => [...lineup].filter((c) => c === 'H').length;
+export const humansIn = playersIn;
 
 // 'HHAA', 'normal' -> { 3: { strategy: 'boom', difficulty: 'normal' }, 4: {...} }
 export function campsFor(lineup, difficulty) {
