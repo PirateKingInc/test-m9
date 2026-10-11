@@ -5,7 +5,8 @@
   "description": "Prism Outpost: a mini RTS sandbox (Phase 1). Static site, Phaser + PathFinding.js from CDN.",
   "type": "module",
   "scripts": {
-    "test": "node --test \"test/*.test.js\"",
+    "test": "node --test \"test/*.test.js\" \"platform/**/test/*.test.js\" \"games/**/test/*.test.js\"",
+    "test:platform": "node --test \"platform/**/test/*.test.js\" \"games/**/test/*.test.js\"",
     "test:e2e": "playwright test",
     "serve": "npx http-server -p 8080 -c-1 .",
     "test:fairness": "node --test \"test/fairness/*.test.js\"",
